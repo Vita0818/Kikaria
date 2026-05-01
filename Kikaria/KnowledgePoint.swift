@@ -14,6 +14,7 @@ struct KnowledgePoint: Identifiable, Equatable {
     var hint: String
     var content: String
     var isReinforced: Bool
+    var isMastered: Bool
     var createdAt: Date
     var updatedAt: Date
 }
@@ -188,6 +189,7 @@ extension KnowledgePoint {
             hint: hint,
             content: content,
             isReinforced: false,
+            isMastered: false,
             createdAt: date,
             updatedAt: date
         )

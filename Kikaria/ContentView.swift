@@ -14,6 +14,9 @@ private enum KikariaTheme {
     static let cyan = Color(red: 0.57, green: 0.88, blue: 0.91)
     static let mist = Color(red: 0.91, green: 0.97, blue: 0.99)
     static let blueGray = Color(red: 0.62, green: 0.72, blue: 0.80)
+    static let masteredGreen = Color(red: 0.36, green: 0.76, blue: 0.54)
+    static let masteredDeepGreen = Color(red: 0.12, green: 0.47, blue: 0.30)
+    static let masteredCompletedGreen = Color(red: 0.79, green: 0.93, blue: 0.84)
     static let deepText = Color(red: 0.13, green: 0.25, blue: 0.33)
     static let softText = Color(red: 0.42, green: 0.54, blue: 0.62)
 
@@ -35,6 +38,24 @@ private enum KikariaTheme {
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
+
+    static let masteredGradient = LinearGradient(
+        colors: [
+            Color(red: 0.39, green: 0.78, blue: 0.55),
+            Color(red: 0.68, green: 0.91, blue: 0.76)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    static let masteredActionGradient = LinearGradient(
+        colors: [
+            Color(red: 0.25, green: 0.66, blue: 0.42),
+            Color(red: 0.54, green: 0.82, blue: 0.63)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
 }
 
 private enum AppRoute: Hashable {
@@ -42,6 +63,8 @@ private enum AppRoute: Hashable {
     case review
     case reinforcement
     case reinforcementReview
+    case mastered
+    case masteredReview
     case settings
     case editProfile
     case markdownEditor
@@ -50,9 +73,26 @@ private enum AppRoute: Hashable {
 enum ReviewMode {
     case normal
     case reinforcement
+    case mastered
+
+    var isNormal: Bool {
+        if case .normal = self {
+            return true
+        }
+
+        return false
+    }
 
     var isReinforcement: Bool {
         if case .reinforcement = self {
+            return true
+        }
+
+        return false
+    }
+
+    var isMastered: Bool {
+        if case .mastered = self {
             return true
         }
 
@@ -84,6 +124,10 @@ struct ContentView: View {
 
     private var reinforcedCount: Int {
         knowledgePoints.filter(\.isReinforced).count
+    }
+
+    private var masteredCount: Int {
+        knowledgePoints.filter(\.isMastered).count
     }
 
     var body: some View {
@@ -122,7 +166,7 @@ struct ContentView: View {
 
                     Spacer(minLength: 42)
 
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         NavigationLink(value: AppRoute.scope) {
                             HomeEntryCard(
                                 title: "选择范围",
@@ -138,8 +182,16 @@ struct ContentView: View {
                             )
                         }
                         .buttonStyle(.plain)
+
+                        NavigationLink(value: AppRoute.mastered) {
+                            HomeEntryCard(
+                                title: "已掌握",
+                                countText: "\(masteredCount)"
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.bottom, 18)
+                    .padding(.bottom, 12)
                 }
                 .padding(.horizontal, 24)
             }
@@ -169,6 +221,22 @@ struct ContentView: View {
                         knowledgePoints: $knowledgePoints,
                         selectedTags: .constant([]),
                         mode: .reinforcement,
+                        onReturnHome: {
+                            navigationPath.removeAll()
+                        }
+                    )
+                case .mastered:
+                    MasteredView(
+                        knowledgePoints: $knowledgePoints,
+                        onStartReview: {
+                            navigationPath.append(.masteredReview)
+                        }
+                    )
+                case .masteredReview:
+                    ReviewView(
+                        knowledgePoints: $knowledgePoints,
+                        selectedTags: .constant([]),
+                        mode: .mastered,
                         onReturnHome: {
                             navigationPath.removeAll()
                         }
@@ -911,6 +979,8 @@ struct ReviewView: View {
             }
         case .reinforcement:
             return knowledgePoints.filter(\.isReinforced)
+        case .mastered:
+            return knowledgePoints.filter(\.isMastered)
         }
     }
 
@@ -928,7 +998,7 @@ struct ReviewView: View {
                 .ignoresSafeArea()
 
             if matchingPoints.isEmpty {
-                if mode.isReinforcement {
+                if mode.isReinforcement || mode.isMastered {
                     ReinforcementCompletionView {
                         if let onReturnHome {
                             onReturnHome()
@@ -1015,6 +1085,18 @@ struct ReviewView: View {
                                         chooseRandomPoint()
                                     }
                                 }
+                            } else if mode.isMastered {
+                                ReviewActionButton(
+                                    title: "移出已掌握",
+                                    systemImage: "minus.circle.fill",
+                                    isPrimary: true,
+                                    tone: .green
+                                ) {
+                                    removeCurrentPointFromMastered(shouldShowToast: true)
+                                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                        chooseRandomPoint()
+                                    }
+                                }
                             } else {
                                 ReviewActionButton(
                                     title: currentPoint.isReinforced ? "已添加至集锦" : "加入重点集锦",
@@ -1022,7 +1104,14 @@ struct ReviewView: View {
                                     isPrimary: !currentPoint.isReinforced,
                                     isEnabled: !currentPoint.isReinforced
                                 ) {
-                                    addCurrentPointToReinforcement()
+                                    addCurrentPointToReinforcementAndAdvance()
+                                }
+
+                                MasteredReviewButton(isMastered: currentPoint.isMastered) {
+                                    markCurrentPointAsMastered()
+                                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                        chooseRandomPoint()
+                                    }
                                 }
                             }
 
@@ -1078,7 +1167,7 @@ struct ReviewView: View {
             }
         }
         .onChange(of: selectedTags) {
-            if !mode.isReinforcement {
+            if mode.isNormal {
                 pointHistory.removeAll()
                 chooseRandomPoint(rememberCurrent: false)
             }
@@ -1104,7 +1193,7 @@ struct ReviewView: View {
 
         if horizontal > threshold && horizontal > vertical * dominance {
             if translation.width > 0 {
-                guard !mode.isReinforcement, startLocation.x > 34 else {
+                guard mode.isNormal, startLocation.x > 34 else {
                     return
                 }
 
@@ -1114,22 +1203,7 @@ struct ReviewView: View {
                 }
             } else {
                 triggerGestureFeedback()
-
-                if mode.isReinforcement {
-                    removeCurrentPointFromReinforcement(shouldShowToast: true)
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
-                } else if currentPoint?.isReinforced == true {
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
-                } else {
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        isShowingContent = true
-                    }
-                    addCurrentPointToReinforcement()
-                }
+                handleSwipeLeft()
             }
         } else if vertical > threshold && vertical > horizontal * dominance {
             if translation.height < 0 {
@@ -1149,6 +1223,49 @@ struct ReviewView: View {
                     goBackOrChooseRandom()
                 }
             }
+        }
+    }
+
+    private func handleSwipeLeft() {
+        switch mode {
+        case .normal:
+            handleNormalSwipeLeft()
+        case .reinforcement:
+            handleReinforcementSwipeLeft()
+        case .mastered:
+            handleMasteredSwipeLeft()
+        }
+    }
+
+    private func handleNormalSwipeLeft() {
+        // Normal-mode left swipe only adds to reinforcement; it must never mark a point as mastered.
+        let wasMastered = currentPoint?.isMastered
+        if currentPoint?.isReinforced == true {
+            withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                chooseRandomPoint()
+            }
+        } else {
+            withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                isShowingContent = true
+            }
+            addCurrentPointToReinforcement()
+            assert(currentPoint?.isMastered == wasMastered)
+        }
+    }
+
+    private func handleReinforcementSwipeLeft() {
+        // Reinforcement-mode left swipe only removes from reinforcement; mastered status is untouched.
+        removeCurrentPointFromReinforcement(shouldShowToast: true)
+        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+            chooseRandomPoint()
+        }
+    }
+
+    private func handleMasteredSwipeLeft() {
+        // Mastered-mode left swipe only removes from mastered; reinforcement status is untouched.
+        removeCurrentPointFromMastered(shouldShowToast: true)
+        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+            chooseRandomPoint()
         }
     }
 
@@ -1215,8 +1332,32 @@ struct ReviewView: View {
             return
         }
 
+        let wasMastered = knowledgePoints[index].isMastered
         knowledgePoints[index].isReinforced = true
         knowledgePoints[index].updatedAt = Date()
+        assert(knowledgePoints[index].isMastered == wasMastered)
+    }
+
+    private func addCurrentPointToReinforcementAndAdvance() {
+        addCurrentPointToReinforcement()
+        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+            chooseRandomPoint()
+        }
+    }
+
+    private func markCurrentPointAsMastered() {
+        // Mastered status is only set from the explicit "已掌握" action, not from normal-mode swipes.
+        guard let currentPointID,
+              let index = knowledgePoints.firstIndex(where: { $0.id == currentPointID })
+        else {
+            return
+        }
+
+        let title = knowledgePoints[index].title
+        knowledgePoints[index].isMastered = true
+        knowledgePoints[index].isReinforced = false
+        knowledgePoints[index].updatedAt = Date()
+        showToast("\(title) 已掌握")
     }
 
     @discardableResult
@@ -1232,11 +1373,38 @@ struct ReviewView: View {
         }
 
         let title = knowledgePoints[index].title
+        let wasMastered = knowledgePoints[index].isMastered
         knowledgePoints[index].isReinforced = false
         knowledgePoints[index].updatedAt = Date()
+        assert(knowledgePoints[index].isMastered == wasMastered)
 
         if shouldShowToast {
             showToast("\(title) 已移除")
+        }
+
+        return true
+    }
+
+    @discardableResult
+    private func removeCurrentPointFromMastered(shouldShowToast: Bool = false) -> Bool {
+        guard let currentPointID,
+              let index = knowledgePoints.firstIndex(where: { $0.id == currentPointID })
+        else {
+            return false
+        }
+
+        guard knowledgePoints[index].isMastered else {
+            return false
+        }
+
+        let title = knowledgePoints[index].title
+        let wasReinforced = knowledgePoints[index].isReinforced
+        knowledgePoints[index].isMastered = false
+        knowledgePoints[index].updatedAt = Date()
+        assert(knowledgePoints[index].isReinforced == wasReinforced)
+
+        if shouldShowToast {
+            showToast("\(title) 已移出已掌握")
         }
 
         return true
@@ -1262,12 +1430,36 @@ struct ReviewView: View {
     }
 }
 
+private enum ReviewActionTone {
+    case blue
+    case green
+}
+
 private struct ReviewActionButton: View {
     let title: String
     let systemImage: String
     let isPrimary: Bool
+    var tone: ReviewActionTone = .blue
     var isEnabled = true
     let action: () -> Void
+
+    private var primaryFill: AnyShapeStyle {
+        switch tone {
+        case .blue:
+            return AnyShapeStyle(KikariaTheme.actionGradient)
+        case .green:
+            return AnyShapeStyle(KikariaTheme.masteredGradient)
+        }
+    }
+
+    private var shadowColor: Color {
+        switch tone {
+        case .blue:
+            return KikariaTheme.sky
+        case .green:
+            return KikariaTheme.masteredGreen
+        }
+    }
 
     var body: some View {
         Button(action: action) {
@@ -1278,13 +1470,53 @@ private struct ReviewActionButton: View {
                 .padding(.vertical, 19)
                 .background {
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(isPrimary ? AnyShapeStyle(KikariaTheme.actionGradient) : AnyShapeStyle(.white.opacity(0.82)))
+                        .fill(isPrimary ? primaryFill : AnyShapeStyle(.white.opacity(0.82)))
                 }
-                .shadow(color: KikariaTheme.sky.opacity(isPrimary ? 0.22 : 0.10), radius: 16, y: 9)
+                .shadow(color: shadowColor.opacity(isPrimary ? 0.22 : 0.10), radius: 16, y: 9)
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.82)
+    }
+}
+
+private struct MasteredReviewButton: View {
+    let isMastered: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: isMastered ? "checkmark.seal.fill" : "plus.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(isMastered ? KikariaTheme.masteredGreen.opacity(0.9) : .white)
+
+                Text(isMastered ? "已设定为掌握" : "加入已掌握")
+                    .font(.headline)
+            }
+            .foregroundStyle(isMastered ? KikariaTheme.softText : .white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 19)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(
+                        isMastered
+                            ? AnyShapeStyle(.white.opacity(0.78))
+                            : AnyShapeStyle(KikariaTheme.masteredActionGradient)
+                    )
+            }
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .shadow(
+                color: isMastered
+                    ? KikariaTheme.blueGray.opacity(0.10)
+                    : KikariaTheme.masteredGreen.opacity(0.20),
+                radius: 16,
+                y: 9
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isMastered)
+        .opacity(isMastered ? 0.88 : 1)
     }
 }
 
@@ -1413,6 +1645,111 @@ struct ReinforcementView: View {
     }
 }
 
+struct MasteredView: View {
+    @Binding var knowledgePoints: [KnowledgePoint]
+    let onStartReview: () -> Void
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
+
+    private var masteredPoints: [KnowledgePoint] {
+        knowledgePoints.filter(\.isMastered)
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            if masteredPoints.isEmpty {
+                SoftEmptyState(
+                    title: "还没有已掌握",
+                    subtitle: "在背诵时查看答案后，可以把真正熟悉的知识点标记到这里。",
+                    systemImage: "checkmark.seal"
+                )
+                .padding(24)
+            } else {
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            Text("已掌握")
+                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .padding(.top, 18)
+
+                            ForEach(masteredPoints) { point in
+                                ReinforcementCard(
+                                    point: point,
+                                    removeTitle: "移出已掌握",
+                                    removeSystemImage: "minus.circle",
+                                    removeTint: KikariaTheme.masteredGreen.opacity(0.86)
+                                ) {
+                                    removeFromMastered(point)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 22)
+                        .padding(.bottom, 150)
+                    }
+
+                    VStack(spacing: 0) {
+                        Button(action: onStartReview) {
+                            MasteredStartButton(count: masteredPoints.count)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.top, 18)
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 20)
+                    .background(.ultraThinMaterial)
+                }
+            }
+
+            if let toastMessage {
+                KikariaToast(message: toastMessage)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, masteredPoints.isEmpty ? 34 : 118)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
+        .navigationTitle("已掌握")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func removeFromMastered(_ point: KnowledgePoint) {
+        guard let index = knowledgePoints.firstIndex(where: { $0.id == point.id }) else {
+            return
+        }
+
+        withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
+            knowledgePoints[index].isMastered = false
+            knowledgePoints[index].updatedAt = Date()
+        }
+
+        showToast("\(point.title) 已移出已掌握")
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
+            }
+        }
+    }
+}
+
 private struct ReinforcementStartButton: View {
     let count: Int
 
@@ -1445,8 +1782,43 @@ private struct ReinforcementStartButton: View {
     }
 }
 
+private struct MasteredStartButton: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Text("开始已掌握复习")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(KikariaTheme.deepText)
+
+            Spacer()
+
+            Text("\(count)")
+                .font(.title3.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(KikariaTheme.masteredGreen)
+
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KikariaTheme.blueGray)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 22)
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.white.opacity(0.54))
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: KikariaTheme.masteredGreen.opacity(0.16), radius: 20, y: 10)
+    }
+}
+
 private struct ReinforcementCard: View {
     let point: KnowledgePoint
+    var removeTitle = "移出重点集锦"
+    var removeSystemImage = "minus.circle"
+    var removeTint = Color.red.opacity(0.82)
     let removeAction: () -> Void
     @GestureState private var dragTranslation: CGSize = .zero
 
@@ -1476,13 +1848,13 @@ private struct ReinforcementCard: View {
                 .shadow(color: .clear, radius: 0)
 
             Button(role: .destructive, action: removeAction) {
-                Label("移出重点集锦", systemImage: "minus.circle")
+                Label(removeTitle, systemImage: removeSystemImage)
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             }
             .buttonStyle(.borderless)
-            .tint(.red.opacity(0.82))
+            .tint(removeTint)
         }
         .padding(18)
         .background {
