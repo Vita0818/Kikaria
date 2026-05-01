@@ -5,7 +5,9 @@
 //  Created by Vita on 2026/5/1.
 //
 
+import PhotosUI
 import SwiftUI
+import UIKit
 
 private enum KikariaTheme {
     static let sky = Color(red: 0.39, green: 0.73, blue: 0.96)
@@ -62,6 +64,7 @@ private struct UserProfile {
     var displayName = "Vita"
     var userHandle = "vita_0818"
     var avatarSystemName = "person.crop.circle.fill"
+    var avatarImageData: Data?
 }
 
 struct ContentView: View {
@@ -100,6 +103,7 @@ struct ContentView: View {
                         NavigationLink(value: AppRoute.settings) {
                             ProfileAvatarView(
                                 systemName: userProfile.avatarSystemName,
+                                imageData: userProfile.avatarImageData,
                                 size: 44
                             )
                         }
@@ -198,13 +202,29 @@ struct ContentView: View {
 
 private struct ProfileAvatarView: View {
     let systemName: String
+    let imageData: Data?
     let size: CGFloat
 
     var body: some View {
-        Image(systemName: systemName)
-            .font(.system(size: size))
-            .foregroundStyle(KikariaTheme.sky, .white.opacity(0.85))
-            .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 12, y: 6)
+        Group {
+            if let imageData,
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(.white.opacity(0.42), lineWidth: 1)
+                    }
+            } else {
+                Image(systemName: systemName)
+                    .font(.system(size: size))
+                    .foregroundStyle(KikariaTheme.sky, .white.opacity(0.85))
+            }
+        }
+        .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 12, y: 6)
     }
 }
 
@@ -247,6 +267,7 @@ private struct SettingsView: View {
                         VStack(spacing: 12) {
                             ProfileAvatarView(
                                 systemName: profile.avatarSystemName,
+                                imageData: profile.avatarImageData,
                                 size: 86
                             )
                             .padding(.top, 8)
@@ -346,6 +367,7 @@ private struct EditProfileView: View {
     @Binding var profile: UserProfile
     @State private var displayName: String
     @State private var userHandle: String
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     init(profile: Binding<UserProfile>) {
         _profile = profile
@@ -396,22 +418,23 @@ private struct EditProfileView: View {
                         VStack(spacing: 12) {
                             ProfileAvatarView(
                                 systemName: profile.avatarSystemName,
+                                imageData: profile.avatarImageData,
                                 size: 92
                             )
 
-                            Button {
-                            } label: {
-                                Label("更换头像稍后支持", systemImage: "photo")
+                            PhotosPicker(
+                                selection: $selectedPhotoItem,
+                                matching: .images
+                            ) {
+                                Label("更换头像", systemImage: "photo")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(KikariaTheme.softText)
+                                    .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.horizontal, 18)
                                     .padding(.vertical, 11)
                                     .background(.white.opacity(0.48), in: Capsule())
                                     .background(.ultraThinMaterial, in: Capsule())
                             }
                             .buttonStyle(.plain)
-                            .disabled(true)
-                            .opacity(0.64)
                         }
                         .padding(.top, 12)
 
@@ -434,6 +457,9 @@ private struct EditProfileView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .onChange(of: selectedPhotoItem) {
+            loadSelectedAvatar()
+        }
     }
 
     private func saveProfile() {
@@ -445,6 +471,26 @@ private struct EditProfileView: View {
         profile.displayName = trimmedName.isEmpty ? "Vita" : trimmedName
         profile.userHandle = trimmedHandle.isEmpty ? "vita_0818" : trimmedHandle
         dismiss()
+    }
+
+    private func loadSelectedAvatar() {
+        guard let selectedPhotoItem else {
+            return
+        }
+
+        Task {
+            guard let data = try? await selectedPhotoItem.loadTransferable(type: Data.self) else {
+                return
+            }
+
+            await MainActor.run {
+                guard UIImage(data: data) != nil else {
+                    return
+                }
+
+                profile.avatarImageData = data
+            }
+        }
     }
 }
 
@@ -1076,7 +1122,7 @@ struct ReviewView: View {
                     }
                 } else if currentPoint?.isReinforced == true {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        _ = removeCurrentPointFromReinforcement(shouldShowToast: true)
+                        chooseRandomPoint()
                     }
                 } else {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
