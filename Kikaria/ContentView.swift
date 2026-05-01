@@ -68,6 +68,7 @@ private enum AppRoute: Hashable {
     case settings
     case editProfile
     case markdownEditor
+    case dailyGoal
 }
 
 enum ReviewMode {
@@ -113,6 +114,7 @@ struct ContentView: View {
     @State private var userProfile = UserProfile()
     @State private var selectedTags = Set<String>()
     @State private var navigationPath: [AppRoute] = []
+    @AppStorage("dailyLearningGoal") private var dailyGoal = 20
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
@@ -159,7 +161,10 @@ struct ContentView: View {
                     Spacer(minLength: 32)
 
                     NavigationLink(value: AppRoute.review) {
-                        StartReviewButton()
+                        StartReviewButton(
+                            dailyGoal: dailyGoal,
+                            masteredCount: masteredCount
+                        )
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("开始背诵")
@@ -244,11 +249,15 @@ struct ContentView: View {
                 case .settings:
                     SettingsView(
                         profile: userProfile,
+                        dailyGoal: dailyGoal,
                         onClose: {
                             navigationPath.removeAll()
                         },
                         onEditProfile: {
                             navigationPath.append(.editProfile)
+                        },
+                        onOpenDailyGoal: {
+                            navigationPath.append(.dailyGoal)
                         },
                         onOpenMarkdownEditor: {
                             navigationPath.append(.markdownEditor)
@@ -262,6 +271,8 @@ struct ContentView: View {
                         knowledgePoints: $knowledgePoints,
                         selectedTags: $selectedTags
                     )
+                case .dailyGoal:
+                    DailyGoalSettingsView(dailyGoal: $dailyGoal)
                 }
             }
         }
@@ -298,8 +309,10 @@ private struct ProfileAvatarView: View {
 
 private struct SettingsView: View {
     let profile: UserProfile
+    let dailyGoal: Int
     let onClose: () -> Void
     let onEditProfile: () -> Void
+    let onOpenDailyGoal: () -> Void
     let onOpenMarkdownEditor: () -> Void
 
     var body: some View {
@@ -368,6 +381,15 @@ private struct SettingsView: View {
 
                         VStack(spacing: 12) {
                             SettingsOptionRow(
+                                title: "每日学习目标",
+                                subtitle: "设置每天计划掌握的数量",
+                                systemImage: "target",
+                                valueText: "\(dailyGoal)"
+                            ) {
+                                onOpenDailyGoal()
+                            }
+
+                            SettingsOptionRow(
                                 title: "知识点上传",
                                 subtitle: "粘贴或编辑 Markdown 文本",
                                 systemImage: "doc.text"
@@ -390,6 +412,7 @@ private struct SettingsOptionRow: View {
     let title: String
     let subtitle: String
     let systemImage: String
+    var valueText: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -413,6 +436,13 @@ private struct SettingsOptionRow: View {
 
                 Spacer()
 
+                if let valueText {
+                    Text(valueText)
+                        .font(.headline.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(KikariaTheme.sky)
+                }
+
                 Image(systemName: "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(KikariaTheme.blueGray)
@@ -427,6 +457,93 @@ private struct SettingsOptionRow: View {
             .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct DailyGoalSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var dailyGoal: Int
+    @State private var draftGoal: Int
+
+    init(dailyGoal: Binding<Int>) {
+        _dailyGoal = dailyGoal
+        _draftGoal = State(initialValue: dailyGoal.wrappedValue)
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.58), in: Circle())
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text("每日学习目标")
+                        .font(.headline)
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Button("完成") {
+                        dailyGoal = draftGoal
+                        dismiss()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(KikariaTheme.sky)
+                    .frame(width: 42, alignment: .trailing)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 18)
+
+                Spacer(minLength: 36)
+
+                VStack(spacing: 22) {
+                    Text("\(draftGoal)")
+                        .font(.system(size: 52, weight: .semibold, design: .serif))
+                        .monospacedDigit()
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Picker("每日学习目标", selection: $draftGoal) {
+                        ForEach(1...100, id: \.self) { goal in
+                            Text("\(goal) 个")
+                                .tag(goal)
+                        }
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 188)
+                    .clipped()
+
+                    Text("每日计划掌握的知识点数量")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(KikariaTheme.softText)
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 28)
+                .frame(maxWidth: .infinity)
+                .background(.white.opacity(0.52), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                .shadow(color: KikariaTheme.sky.opacity(0.13), radius: 24, y: 14)
+                .padding(.horizontal, 24)
+
+                Spacer(minLength: 56)
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 
@@ -724,17 +841,21 @@ private struct MarkdownEditorView: View {
 }
 
 private struct StartReviewButton: View {
+    let dailyGoal: Int
+    let masteredCount: Int
     @State private var isBreathing = false
 
     var body: some View {
         ZStack {
-            SoftBubble(
-                size: 82,
+            MetricBubble(
+                value: dailyGoal,
+                label: "目标",
+                size: 92,
                 colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
                 opacity: 0.48
             )
             .scaleEffect(isBreathing ? 1.04 : 0.98)
-            .offset(x: -88, y: isBreathing ? -70 : -62)
+            .offset(x: -92, y: isBreathing ? -72 : -64)
 
             SoftBubble(
                 size: 54,
@@ -744,13 +865,15 @@ private struct StartReviewButton: View {
             .scaleEffect(isBreathing ? 0.98 : 1.05)
             .offset(x: 96, y: isBreathing ? -50 : -58)
 
-            SoftBubble(
-                size: 68,
+            MetricBubble(
+                value: masteredCount,
+                label: "已掌握",
+                size: 78,
                 colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
                 opacity: 0.38
             )
             .scaleEffect(isBreathing ? 1.035 : 0.985)
-            .offset(x: 86, y: isBreathing ? 82 : 72)
+            .offset(x: 90, y: isBreathing ? 84 : 74)
 
             SoftBubble(
                 size: 42,
@@ -807,6 +930,33 @@ private struct SoftBubble: View {
                     .stroke(.white.opacity(0.36), lineWidth: 1)
             }
             .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 14, y: 8)
+    }
+}
+
+private struct MetricBubble: View {
+    let value: Int
+    let label: String
+    let size: CGFloat
+    let colors: [Color]
+    let opacity: Double
+
+    var body: some View {
+        ZStack {
+            SoftBubble(size: size, colors: colors, opacity: opacity)
+
+            VStack(spacing: 2) {
+                Text("\(value)")
+                    .font(.system(size: size > 84 ? 24 : 21, weight: .semibold, design: .serif))
+                    .monospacedDigit()
+                    .foregroundStyle(KikariaTheme.deepText.opacity(0.86))
+
+                Text(label)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(KikariaTheme.softText)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label) \(value)")
     }
 }
 
