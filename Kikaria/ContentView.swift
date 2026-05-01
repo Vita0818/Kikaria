@@ -703,7 +703,7 @@ private struct StartReviewButton: View {
                         .padding(1)
                 }
 
-            Image(systemName: "arrow.up")
+            Image(systemName: "arrow.right")
                 .font(.system(size: 70, weight: .regular))
                 .foregroundStyle(.white.opacity(0.96))
                 .shadow(color: KikariaTheme.deepText.opacity(0.10), radius: 8, y: 4)
