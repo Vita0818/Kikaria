@@ -40,6 +40,9 @@ private enum AppRoute: Hashable {
     case review
     case reinforcement
     case reinforcementReview
+    case settings
+    case editProfile
+    case markdownEditor
 }
 
 enum ReviewMode {
@@ -55,8 +58,16 @@ enum ReviewMode {
     }
 }
 
+private struct UserProfile {
+    var displayName = "Vita"
+    var userHandle = "vita_0818"
+    var avatarSystemName = "person.crop.circle.fill"
+}
+
 struct ContentView: View {
     @State private var knowledgePoints = KnowledgePoint.samples
+    @State private var markdownText = KnowledgePoint.defaultMarkdownText
+    @State private var userProfile = UserProfile()
     @State private var selectedTags = Set<String>()
     @State private var navigationPath: [AppRoute] = []
 
@@ -86,10 +97,14 @@ struct ContentView: View {
 
                         Spacer()
 
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 44))
-                            .foregroundStyle(KikariaTheme.sky, .white.opacity(0.85))
-                            .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 12, y: 6)
+                        NavigationLink(value: AppRoute.settings) {
+                            ProfileAvatarView(
+                                systemName: userProfile.avatarSystemName,
+                                size: 44
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("打开设置")
                     }
                     .padding(.top, 14)
 
@@ -154,7 +169,441 @@ struct ContentView: View {
                             navigationPath.removeAll()
                         }
                     )
+                case .settings:
+                    SettingsView(
+                        profile: userProfile,
+                        onClose: {
+                            navigationPath.removeAll()
+                        },
+                        onEditProfile: {
+                            navigationPath.append(.editProfile)
+                        },
+                        onOpenMarkdownEditor: {
+                            navigationPath.append(.markdownEditor)
+                        }
+                    )
+                case .editProfile:
+                    EditProfileView(profile: $userProfile)
+                case .markdownEditor:
+                    MarkdownEditorView(
+                        markdownText: $markdownText,
+                        knowledgePoints: $knowledgePoints,
+                        selectedTags: $selectedTags
+                    )
                 }
+            }
+        }
+    }
+}
+
+private struct ProfileAvatarView: View {
+    let systemName: String
+    let size: CGFloat
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: size))
+            .foregroundStyle(KikariaTheme.sky, .white.opacity(0.85))
+            .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 12, y: 6)
+    }
+}
+
+private struct SettingsView: View {
+    let profile: UserProfile
+    let onClose: () -> Void
+    let onEditProfile: () -> Void
+    let onOpenMarkdownEditor: () -> Void
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Text("设置")
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.58), in: Circle())
+                            .background(.ultraThinMaterial, in: Circle())
+                            .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 12, y: 6)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 18)
+
+                ScrollView {
+                    VStack(spacing: 24) {
+                        VStack(spacing: 12) {
+                            ProfileAvatarView(
+                                systemName: profile.avatarSystemName,
+                                size: 86
+                            )
+                            .padding(.top, 8)
+
+                            VStack(spacing: 4) {
+                                Text(profile.displayName)
+                                    .font(.system(size: 28, weight: .semibold, design: .serif))
+                                    .foregroundStyle(KikariaTheme.deepText)
+
+                                Text("@\(profile.userHandle)")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(KikariaTheme.softText)
+                            }
+
+                            Button(action: onEditProfile) {
+                                Text("编辑个人资料")
+                                    .font(.headline)
+                                    .foregroundStyle(KikariaTheme.deepText)
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 13)
+                                    .background(.white.opacity(0.62), in: Capsule())
+                                    .background(.ultraThinMaterial, in: Capsule())
+                                    .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 14, y: 8)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 4)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 22)
+
+                        VStack(spacing: 12) {
+                            SettingsOptionRow(
+                                title: "知识点上传",
+                                subtitle: "粘贴或编辑 Markdown 文本",
+                                systemImage: "doc.text"
+                            ) {
+                                onOpenMarkdownEditor()
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 34)
+                }
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+private struct SettingsOptionRow: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: systemImage)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(KikariaTheme.sky)
+                    .frame(width: 38, height: 38)
+                    .background(.white.opacity(0.50), in: Circle())
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(KikariaTheme.softText)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(KikariaTheme.blueGray)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity)
+            .background {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(.white.opacity(0.54))
+            }
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct EditProfileView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var profile: UserProfile
+    @State private var displayName: String
+    @State private var userHandle: String
+
+    init(profile: Binding<UserProfile>) {
+        _profile = profile
+        _displayName = State(initialValue: profile.wrappedValue.displayName)
+        _userHandle = State(initialValue: profile.wrappedValue.userHandle)
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.58), in: Circle())
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text("编辑个人资料")
+                        .font(.headline)
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Button("保存") {
+                        saveProfile()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(KikariaTheme.sky)
+                    .frame(width: 42, alignment: .trailing)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 18)
+
+                ScrollView {
+                    VStack(spacing: 24) {
+                        VStack(spacing: 12) {
+                            ProfileAvatarView(
+                                systemName: profile.avatarSystemName,
+                                size: 92
+                            )
+
+                            Button {
+                            } label: {
+                                Label("更换头像稍后支持", systemImage: "photo")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(KikariaTheme.softText)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 11)
+                                    .background(.white.opacity(0.48), in: Capsule())
+                                    .background(.ultraThinMaterial, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(true)
+                            .opacity(0.64)
+                        }
+                        .padding(.top, 12)
+
+                        VStack(spacing: 14) {
+                            ProfileTextField(
+                                title: "显示名称",
+                                text: $displayName
+                            )
+
+                            ProfileTextField(
+                                title: "用户 ID",
+                                text: $userHandle
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 34)
+                }
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private func saveProfile() {
+        let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedHandle = userHandle
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+
+        profile.displayName = trimmedName.isEmpty ? "Vita" : trimmedName
+        profile.userHandle = trimmedHandle.isEmpty ? "vita_0818" : trimmedHandle
+        dismiss()
+    }
+}
+
+private struct ProfileTextField: View {
+    let title: String
+    @Binding var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KikariaTheme.softText)
+
+            TextField(title, text: $text)
+                .font(.body)
+                .foregroundStyle(KikariaTheme.deepText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 15)
+                .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .shadow(color: KikariaTheme.sky.opacity(0.08), radius: 12, y: 7)
+        }
+    }
+}
+
+private struct MarkdownEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var markdownText: String
+    @Binding var knowledgePoints: [KnowledgePoint]
+    @Binding var selectedTags: Set<String>
+    @State private var draftText: String
+    @State private var errorMessage: String?
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
+
+    init(
+        markdownText: Binding<String>,
+        knowledgePoints: Binding<[KnowledgePoint]>,
+        selectedTags: Binding<Set<String>>
+    ) {
+        _markdownText = markdownText
+        _knowledgePoints = knowledgePoints
+        _selectedTags = selectedTags
+        _draftText = State(initialValue: markdownText.wrappedValue)
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.58), in: Circle())
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text("知识点上传")
+                        .font(.headline)
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Button("应用") {
+                        applyMarkdown()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(KikariaTheme.sky)
+                    .frame(width: 42, alignment: .trailing)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 16)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    TextEditor(text: $draftText)
+                        .font(.system(.body, design: .serif))
+                        .foregroundStyle(KikariaTheme.deepText)
+                        .scrollContentBackground(.hidden)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                        .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            }
+
+            if let toastMessage {
+                KikariaToast(message: toastMessage)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 34)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private func applyMarkdown() {
+        do {
+            let parsedPoints = try KnowledgePoint.parseMarkdown(draftText)
+
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
+                markdownText = draftText
+                knowledgePoints = parsedPoints
+                selectedTags.removeAll()
+                errorMessage = nil
+            }
+
+            showToast("已更新 \(parsedPoints.count) 个知识点")
+        } catch {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                errorMessage = "没有解析到有效知识点。请检查 # 标题、hint: 和 content:。"
+            }
+        }
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
             }
         }
     }
