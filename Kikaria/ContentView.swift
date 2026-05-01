@@ -397,6 +397,8 @@ struct ReviewView: View {
     @State private var pointHistory: [KnowledgePoint.ID] = []
     @State private var gestureFeedback = false
     @State private var isShowingScopePanel = false
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
@@ -513,7 +515,7 @@ struct ReviewView: View {
                                     systemImage: "minus.circle.fill",
                                     isPrimary: true
                                 ) {
-                                    removeCurrentPointFromReinforcement()
+                                    removeCurrentPointFromReinforcement(shouldShowToast: true)
                                     withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
                                         chooseRandomPoint()
                                     }
@@ -561,6 +563,16 @@ struct ReviewView: View {
                 .transition(.move(edge: .leading).combined(with: .opacity))
                 .zIndex(4)
             }
+
+            if let toastMessage {
+                KikariaToast(message: toastMessage)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 34)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+                    .zIndex(5)
+            }
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -605,10 +617,22 @@ struct ReviewView: View {
                 withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
                     isShowingScopePanel = true
                 }
-            } else if !mode.isReinforcement {
+            } else {
                 triggerGestureFeedback()
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                    isShowingContent = true
+
+                if mode.isReinforcement {
+                    removeCurrentPointFromReinforcement(shouldShowToast: true)
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                } else if currentPoint?.isReinforced == true {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        _ = removeCurrentPointFromReinforcement(shouldShowToast: true)
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        isShowingContent = true
+                    }
                     addCurrentPointToReinforcement()
                 }
             }
@@ -700,15 +724,46 @@ struct ReviewView: View {
         knowledgePoints[index].updatedAt = Date()
     }
 
-    private func removeCurrentPointFromReinforcement() {
+    @discardableResult
+    private func removeCurrentPointFromReinforcement(shouldShowToast: Bool = false) -> Bool {
         guard let currentPointID,
               let index = knowledgePoints.firstIndex(where: { $0.id == currentPointID })
         else {
-            return
+            return false
         }
 
+        guard knowledgePoints[index].isReinforced else {
+            return false
+        }
+
+        let title = knowledgePoints[index].title
         knowledgePoints[index].isReinforced = false
         knowledgePoints[index].updatedAt = Date()
+
+        if shouldShowToast {
+            showToast("\(title) 已移除")
+        }
+
+        return true
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
+            }
+        }
     }
 }
 
@@ -766,6 +821,8 @@ private struct ReinforcementCompletionView: View {
 struct ReinforcementView: View {
     @Binding var knowledgePoints: [KnowledgePoint]
     let onStartReview: () -> Void
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
 
     private var reinforcedPoints: [KnowledgePoint] {
         knowledgePoints.filter(\.isReinforced)
@@ -814,6 +871,15 @@ struct ReinforcementView: View {
                     .background(.ultraThinMaterial)
                 }
             }
+
+            if let toastMessage {
+                KikariaToast(message: toastMessage)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, reinforcedPoints.isEmpty ? 34 : 118)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
         }
         .navigationTitle("重点集锦")
         .navigationBarTitleDisplayMode(.inline)
@@ -827,6 +893,27 @@ struct ReinforcementView: View {
         withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
             knowledgePoints[index].isReinforced = false
             knowledgePoints[index].updatedAt = Date()
+        }
+
+        showToast("\(point.title) 已移除")
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
+            }
         }
     }
 }
@@ -866,6 +953,18 @@ private struct ReinforcementStartButton: View {
 private struct ReinforcementCard: View {
     let point: KnowledgePoint
     let removeAction: () -> Void
+    @GestureState private var dragTranslation: CGSize = .zero
+
+    private var previewOffset: CGFloat {
+        let horizontal = abs(dragTranslation.width)
+        let vertical = abs(dragTranslation.height)
+
+        guard horizontal > vertical * 1.35 else {
+            return 0
+        }
+
+        return min(max(dragTranslation.width * 0.18, -24), 24)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -897,6 +996,51 @@ private struct ReinforcementCard: View {
         }
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
         .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 20, y: 12)
+        .offset(x: previewOffset)
+        .simultaneousGesture(cardSwipeGesture)
+    }
+
+    private var cardSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 30, coordinateSpace: .local)
+            .updating($dragTranslation) { value, state, _ in
+                state = value.translation
+            }
+            .onEnded { value in
+                handleCardSwipe(translation: value.translation)
+            }
+    }
+
+    private func handleCardSwipe(translation: CGSize) {
+        let horizontal = abs(translation.width)
+        let vertical = abs(translation.height)
+        let threshold: CGFloat = 86
+        let dominance: CGFloat = 1.45
+
+        guard horizontal > threshold, horizontal > vertical * dominance else {
+            return
+        }
+
+        removeAction()
+    }
+}
+
+private struct KikariaToast: View {
+    let message: String
+
+    var body: some View {
+        Text(message)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(KikariaTheme.deepText)
+            .multilineTextAlignment(.center)
+            .lineLimit(2)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 13)
+            .background {
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(.white.opacity(0.62))
+            }
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 18, y: 10)
     }
 }
 
