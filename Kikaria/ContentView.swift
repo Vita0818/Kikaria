@@ -47,6 +47,10 @@ struct ContentView: View {
         selectedTags.isEmpty ? "全部范围" : "\(selectedTags.count) 个标签"
     }
 
+    private var selectedScopeCountText: String {
+        selectedTags.isEmpty ? "\(allTags.count)" : "\(selectedTags.count)"
+    }
+
     private var reinforcedCount: Int {
         knowledgePoints.filter(\.isReinforced).count
     }
@@ -102,8 +106,7 @@ struct ContentView: View {
                         } label: {
                             HomeEntryCard(
                                 title: "选择范围",
-                                subtitle: selectedScopeText,
-                                systemImage: "slider.horizontal.3"
+                                countText: selectedScopeCountText
                             )
                         }
                         .buttonStyle(.plain)
@@ -113,8 +116,7 @@ struct ContentView: View {
                         } label: {
                             HomeEntryCard(
                                 title: "重点集锦",
-                                subtitle: "\(reinforcedCount) 个知识点",
-                                systemImage: "sparkles"
+                                countText: "\(reinforcedCount)"
                             )
                         }
                         .buttonStyle(.plain)
@@ -130,6 +132,7 @@ struct ContentView: View {
 
 private struct StartReviewButton: View {
     let scopeText: String
+    @State private var isBreathing = false
 
     var body: some View {
         VStack(spacing: 14) {
@@ -145,8 +148,8 @@ private struct StartReviewButton: View {
                     }
 
                 VStack(spacing: 10) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 36, weight: .semibold))
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 38, weight: .bold))
                         .foregroundStyle(.white)
 
                     Text("开始背诵")
@@ -157,6 +160,12 @@ private struct StartReviewButton: View {
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.white.opacity(0.86))
                 }
+            }
+            .scaleEffect(isBreathing ? 1.025 : 1.0)
+            .offset(y: isBreathing ? -4 : 2)
+            .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true), value: isBreathing)
+            .onAppear {
+                isBreathing = true
             }
 
             Text("Start")
@@ -169,33 +178,27 @@ private struct StartReviewButton: View {
 
 private struct HomeEntryCard: View {
     let title: String
-    let subtitle: String
-    let systemImage: String
+    let countText: String
 
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: systemImage)
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(KikariaTheme.sky)
-                .frame(width: 52, height: 52)
-                .background(KikariaTheme.mist, in: Circle())
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(KikariaTheme.deepText)
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(KikariaTheme.softText)
-            }
+        HStack(spacing: 14) {
+            Text(title)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(KikariaTheme.deepText)
 
             Spacer()
+
+            Text(countText)
+                .font(.title3.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(KikariaTheme.sky)
 
             Image(systemName: "chevron.right")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(KikariaTheme.blueGray)
         }
-        .padding(18)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 22)
         .frame(maxWidth: .infinity)
         .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
@@ -353,6 +356,7 @@ struct ReviewView: View {
 
                         LightTagRow(tags: currentPoint.tags)
                     }
+                    .frame(maxWidth: .infinity)
                     .padding(.top, 14)
 
                     VStack(spacing: 14) {
@@ -601,24 +605,106 @@ private struct LightTagRow: View {
     let tags: [String]
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(tags, id: \.self) { tag in
-                    Text(tag)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(KikariaTheme.softText)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 6)
-                        .background(.white.opacity(0.58), in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(KikariaTheme.cyan.opacity(0.30), lineWidth: 1)
-                        }
-                }
+        CenteredTagFlow(spacing: 8, rowSpacing: 8) {
+            ForEach(tags, id: \.self) { tag in
+                Text(tag)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(KikariaTheme.softText)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                    .background(.white.opacity(0.58), in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .stroke(KikariaTheme.cyan.opacity(0.30), lineWidth: 1)
+                    }
             }
-            .padding(.horizontal, 2)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct CenteredTagFlow: Layout {
+    var spacing: CGFloat
+    var rowSpacing: CGFloat
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        let maxWidth = proposal.width ?? .greatestFiniteMagnitude
+        let rows = makeRows(maxWidth: maxWidth, subviews: subviews)
+        let width = proposal.width ?? rows.map(\.width).max() ?? 0
+        let height = rows.reduce(0) { $0 + $1.height } + rowSpacing * CGFloat(max(rows.count - 1, 0))
+
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let rows = makeRows(maxWidth: bounds.width, subviews: subviews)
+        var y = bounds.minY
+
+        for row in rows {
+            var x = bounds.minX + max((bounds.width - row.width) / 2, 0)
+
+            for item in row.items {
+                subviews[item.index].place(
+                    at: CGPoint(x: x, y: y + (row.height - item.size.height) / 2),
+                    anchor: .topLeading,
+                    proposal: ProposedViewSize(width: item.size.width, height: item.size.height)
+                )
+                x += item.size.width + spacing
+            }
+
+            y += row.height + rowSpacing
         }
     }
+
+    private func makeRows(maxWidth: CGFloat, subviews: Subviews) -> [TagFlowRow] {
+        let availableWidth = maxWidth.isFinite ? maxWidth : .greatestFiniteMagnitude
+        var rows: [TagFlowRow] = []
+        var current = TagFlowRow()
+
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let nextWidth = current.items.isEmpty ? size.width : current.width + spacing + size.width
+
+            if nextWidth > availableWidth && !current.items.isEmpty {
+                rows.append(current)
+                current = TagFlowRow()
+            }
+
+            if !current.items.isEmpty {
+                current.width += spacing
+            }
+
+            current.items.append(TagFlowItem(index: index, size: size))
+            current.width += size.width
+            current.height = max(current.height, size.height)
+        }
+
+        if !current.items.isEmpty {
+            rows.append(current)
+        }
+
+        return rows
+    }
+}
+
+private struct TagFlowRow {
+    var items: [TagFlowItem] = []
+    var width: CGFloat = 0
+    var height: CGFloat = 0
+}
+
+private struct TagFlowItem {
+    let index: Int
+    let size: CGSize
 }
 
 private struct SoftEmptyState: View {
