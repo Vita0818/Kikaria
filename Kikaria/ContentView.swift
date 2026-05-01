@@ -915,7 +915,7 @@ private struct StartReviewButton: View {
             }
 
             orbitDegrees = 0
-            withAnimation(.linear(duration: 32).repeatForever(autoreverses: false)) {
+            withAnimation(.linear(duration: 80).repeatForever(autoreverses: false)) {
                 orbitDegrees = 360
             }
         }
