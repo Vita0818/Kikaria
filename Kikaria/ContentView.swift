@@ -43,7 +43,7 @@ private enum AppRoute: Hashable {
 }
 
 enum ReviewMode {
-    case normal(selectedTags: Set<String>)
+    case normal
     case reinforcement
 
     var isReinforcement: Bool {
@@ -135,7 +135,11 @@ struct ContentView: View {
                 case .review:
                     ReviewView(
                         knowledgePoints: $knowledgePoints,
-                        mode: .normal(selectedTags: selectedTags)
+                        selectedTags: $selectedTags,
+                        mode: .normal,
+                        onOpenScope: {
+                            navigationPath.append(.scope)
+                        }
                     )
                 case .reinforcement:
                     ReinforcementView(
@@ -147,6 +151,7 @@ struct ContentView: View {
                 case .reinforcementReview:
                     ReviewView(
                         knowledgePoints: $knowledgePoints,
+                        selectedTags: .constant([]),
                         mode: .reinforcement,
                         onReturnHome: {
                             navigationPath.removeAll()
@@ -380,16 +385,20 @@ private struct ScopeTagChip: View {
 struct ReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var knowledgePoints: [KnowledgePoint]
+    @Binding var selectedTags: Set<String>
     let mode: ReviewMode
+    var onOpenScope: (() -> Void)?
     var onReturnHome: (() -> Void)?
 
     @State private var currentPointID: KnowledgePoint.ID?
     @State private var isShowingHint = false
     @State private var isShowingContent = false
+    @State private var pointHistory: [KnowledgePoint.ID] = []
+    @State private var gestureFeedback = false
 
     private var matchingPoints: [KnowledgePoint] {
         switch mode {
-        case .normal(let selectedTags):
+        case .normal:
             if selectedTags.isEmpty {
                 return knowledgePoints
             }
@@ -530,33 +539,122 @@ struct ReviewView: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, 28)
                 }
+                .scaleEffect(gestureFeedback ? 0.985 : 1.0)
             } else {
                 ProgressView()
             }
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .simultaneousGesture(reviewDragGesture)
         .onAppear {
             if currentPointID == nil {
-                chooseRandomPoint()
+                chooseRandomPoint(rememberCurrent: false)
+            }
+        }
+        .onChange(of: selectedTags) {
+            if !mode.isReinforcement {
+                pointHistory.removeAll()
+                chooseRandomPoint(rememberCurrent: false)
             }
         }
     }
 
-    private func chooseRandomPoint() {
+    private var reviewDragGesture: some Gesture {
+        DragGesture(minimumDistance: 28, coordinateSpace: .local)
+            .onEnded { value in
+                handleDragGesture(translation: value.translation, startLocation: value.startLocation)
+            }
+    }
+
+    private func handleDragGesture(translation: CGSize, startLocation: CGPoint) {
+        let horizontal = abs(translation.width)
+        let vertical = abs(translation.height)
+        let threshold: CGFloat = 68
+        let dominance: CGFloat = 1.35
+
+        if horizontal > threshold && horizontal > vertical * dominance {
+            if translation.width > 0 {
+                guard !mode.isReinforcement, startLocation.x > 34 else {
+                    return
+                }
+
+                triggerGestureFeedback()
+                onOpenScope?()
+            } else if !mode.isReinforcement {
+                triggerGestureFeedback()
+                addCurrentPointToReinforcement()
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                    chooseRandomPoint()
+                }
+            }
+        } else if vertical > threshold && vertical > horizontal * dominance {
+            if translation.height < 0 {
+                guard !isShowingContent else {
+                    return
+                }
+
+                triggerGestureFeedback()
+                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                    isShowingContent = true
+                }
+            } else {
+                triggerGestureFeedback()
+                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                    goBackOrChooseRandom()
+                }
+            }
+        }
+    }
+
+    private func triggerGestureFeedback() {
+        withAnimation(.easeInOut(duration: 0.12)) {
+            gestureFeedback = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+            withAnimation(.easeInOut(duration: 0.16)) {
+                gestureFeedback = false
+            }
+        }
+    }
+
+    private func chooseRandomPoint(rememberCurrent: Bool = true) {
         guard !matchingPoints.isEmpty else {
             currentPointID = nil
+            resetRevealState()
             return
+        }
+
+        let previousID = currentPointID
+        if rememberCurrent, let previousID {
+            pointHistory.append(previousID)
         }
 
         let candidates: [KnowledgePoint]
         if matchingPoints.count > 1 {
-            candidates = matchingPoints.filter { $0.id != currentPointID }
+            candidates = matchingPoints.filter { $0.id != previousID }
         } else {
             candidates = matchingPoints
         }
 
         currentPointID = candidates.randomElement()?.id
+        resetRevealState()
+    }
+
+    private func goBackOrChooseRandom() {
+        while let previousID = pointHistory.popLast() {
+            if matchingPoints.contains(where: { $0.id == previousID }) {
+                currentPointID = previousID
+                resetRevealState()
+                return
+            }
+        }
+
+        chooseRandomPoint(rememberCurrent: false)
+    }
+
+    private func resetRevealState() {
         isShowingHint = false
         isShowingContent = false
     }
@@ -668,15 +766,18 @@ struct ReinforcementView: View {
                             }
                         }
                         .padding(.horizontal, 22)
-                        .padding(.bottom, 116)
+                        .padding(.bottom, 150)
                     }
 
-                    Button(action: onStartReview) {
-                        ReinforcementStartButton(count: reinforcedPoints.count)
+                    VStack(spacing: 0) {
+                        Button(action: onStartReview) {
+                            ReinforcementStartButton(count: reinforcedPoints.count)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.top, 18)
                     .padding(.horizontal, 22)
-                    .padding(.bottom, 18)
+                    .padding(.bottom, 20)
                     .background(.ultraThinMaterial)
                 }
             }
