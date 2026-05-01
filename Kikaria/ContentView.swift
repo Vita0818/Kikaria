@@ -136,10 +136,7 @@ struct ContentView: View {
                     ReviewView(
                         knowledgePoints: $knowledgePoints,
                         selectedTags: $selectedTags,
-                        mode: .normal,
-                        onOpenScope: {
-                            navigationPath.append(.scope)
-                        }
+                        mode: .normal
                     )
                 case .reinforcement:
                     ReinforcementView(
@@ -287,6 +284,7 @@ struct ScopeSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTags: Set<String>
     let allTags: [String]
+    var onDone: (() -> Void)? = nil
 
     private let columns = [
         GridItem(.adaptive(minimum: 132), spacing: 12)
@@ -330,7 +328,11 @@ struct ScopeSelectionView: View {
                 }
 
                 Button {
-                    dismiss()
+                    if let onDone {
+                        onDone()
+                    } else {
+                        dismiss()
+                    }
                 } label: {
                     Text("完成")
                         .font(.headline)
@@ -387,7 +389,6 @@ struct ReviewView: View {
     @Binding var knowledgePoints: [KnowledgePoint]
     @Binding var selectedTags: Set<String>
     let mode: ReviewMode
-    var onOpenScope: (() -> Void)?
     var onReturnHome: (() -> Void)?
 
     @State private var currentPointID: KnowledgePoint.ID?
@@ -395,6 +396,11 @@ struct ReviewView: View {
     @State private var isShowingContent = false
     @State private var pointHistory: [KnowledgePoint.ID] = []
     @State private var gestureFeedback = false
+    @State private var isShowingScopePanel = false
+
+    private var allTags: [String] {
+        Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
+    }
 
     private var matchingPoints: [KnowledgePoint] {
         switch mode {
@@ -514,14 +520,12 @@ struct ReviewView: View {
                                 }
                             } else {
                                 ReviewActionButton(
-                                    title: "加入重点集锦",
-                                    systemImage: "plus.circle.fill",
-                                    isPrimary: true
+                                    title: currentPoint.isReinforced ? "已添加至集锦" : "加入重点集锦",
+                                    systemImage: currentPoint.isReinforced ? "checkmark.circle.fill" : "plus.circle.fill",
+                                    isPrimary: !currentPoint.isReinforced,
+                                    isEnabled: !currentPoint.isReinforced
                                 ) {
                                     addCurrentPointToReinforcement()
-                                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                        chooseRandomPoint()
-                                    }
                                 }
                             }
 
@@ -542,6 +546,20 @@ struct ReviewView: View {
                 .scaleEffect(gestureFeedback ? 0.985 : 1.0)
             } else {
                 ProgressView()
+            }
+
+            if isShowingScopePanel {
+                ScopeSelectionView(
+                    selectedTags: $selectedTags,
+                    allTags: allTags,
+                    onDone: {
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                            isShowingScopePanel = false
+                        }
+                    }
+                )
+                .transition(.move(edge: .leading).combined(with: .opacity))
+                .zIndex(4)
             }
         }
         .navigationTitle("")
@@ -568,6 +586,10 @@ struct ReviewView: View {
     }
 
     private func handleDragGesture(translation: CGSize, startLocation: CGPoint) {
+        guard !isShowingScopePanel else {
+            return
+        }
+
         let horizontal = abs(translation.width)
         let vertical = abs(translation.height)
         let threshold: CGFloat = 68
@@ -580,23 +602,27 @@ struct ReviewView: View {
                 }
 
                 triggerGestureFeedback()
-                onOpenScope?()
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                    isShowingScopePanel = true
+                }
             } else if !mode.isReinforcement {
                 triggerGestureFeedback()
-                addCurrentPointToReinforcement()
                 withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                    chooseRandomPoint()
+                    isShowingContent = true
+                    addCurrentPointToReinforcement()
                 }
             }
         } else if vertical > threshold && vertical > horizontal * dominance {
             if translation.height < 0 {
-                guard !isShowingContent else {
-                    return
-                }
-
                 triggerGestureFeedback()
-                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                    isShowingContent = true
+                if isShowingContent {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                        isShowingContent = true
+                    }
                 }
             } else {
                 triggerGestureFeedback()
@@ -666,6 +692,10 @@ struct ReviewView: View {
             return
         }
 
+        guard !knowledgePoints[index].isReinforced else {
+            return
+        }
+
         knowledgePoints[index].isReinforced = true
         knowledgePoints[index].updatedAt = Date()
     }
@@ -686,6 +716,7 @@ private struct ReviewActionButton: View {
     let title: String
     let systemImage: String
     let isPrimary: Bool
+    var isEnabled = true
     let action: () -> Void
 
     var body: some View {
@@ -702,6 +733,8 @@ private struct ReviewActionButton: View {
                 .shadow(color: KikariaTheme.sky.opacity(isPrimary ? 0.22 : 0.10), radius: 16, y: 9)
         }
         .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.82)
     }
 }
 
