@@ -35,16 +35,25 @@ private enum KikariaTheme {
     )
 }
 
+enum ReviewMode {
+    case normal(selectedTags: Set<String>)
+    case reinforcement
+
+    var isReinforcement: Bool {
+        if case .reinforcement = self {
+            return true
+        }
+
+        return false
+    }
+}
+
 struct ContentView: View {
     @State private var knowledgePoints = KnowledgePoint.samples
     @State private var selectedTags = Set<String>()
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
-    }
-
-    private var selectedScopeText: String {
-        selectedTags.isEmpty ? "全部范围" : "\(selectedTags.count) 个标签"
     }
 
     private var selectedScopeCountText: String {
@@ -63,15 +72,9 @@ struct ContentView: View {
 
                 VStack(spacing: 0) {
                     HStack(alignment: .center) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Kikaria")
-                                .font(.system(size: 34, weight: .bold, design: .rounded))
-                                .foregroundStyle(KikariaTheme.deepText)
-
-                            Text("轻量背诵空间")
-                                .font(.subheadline)
-                                .foregroundStyle(KikariaTheme.softText)
-                        }
+                        Text("Kikaria")
+                            .font(.system(size: 39, weight: .semibold, design: .serif))
+                            .foregroundStyle(KikariaTheme.deepText)
 
                         Spacer()
 
@@ -87,10 +90,10 @@ struct ContentView: View {
                     NavigationLink {
                         ReviewView(
                             knowledgePoints: $knowledgePoints,
-                            selectedTags: selectedTags
+                            mode: .normal(selectedTags: selectedTags)
                         )
                     } label: {
-                        StartReviewButton(scopeText: selectedScopeText)
+                        StartReviewButton()
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("开始背诵")
@@ -131,48 +134,89 @@ struct ContentView: View {
 }
 
 private struct StartReviewButton: View {
-    let scopeText: String
     @State private var isBreathing = false
 
     var body: some View {
-        VStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(KikariaTheme.actionGradient)
-                    .frame(width: 196, height: 196)
-                    .shadow(color: KikariaTheme.sky.opacity(0.28), radius: 26, x: 0, y: 18)
-                    .overlay {
-                        Circle()
-                            .stroke(.white.opacity(0.55), lineWidth: 1.5)
-                            .padding(3)
-                    }
+        ZStack {
+            SoftBubble(
+                size: 82,
+                colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
+                opacity: 0.48
+            )
+            .scaleEffect(isBreathing ? 1.04 : 0.98)
+            .offset(x: -88, y: isBreathing ? -70 : -62)
 
-                VStack(spacing: 10) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 38, weight: .bold))
-                        .foregroundStyle(.white)
+            SoftBubble(
+                size: 54,
+                colors: [Color(red: 0.75, green: 0.78, blue: 1.0), KikariaTheme.mist],
+                opacity: 0.44
+            )
+            .scaleEffect(isBreathing ? 0.98 : 1.05)
+            .offset(x: 96, y: isBreathing ? -50 : -58)
 
-                    Text("开始背诵")
-                        .font(.system(size: 25, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+            SoftBubble(
+                size: 68,
+                colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
+                opacity: 0.38
+            )
+            .scaleEffect(isBreathing ? 1.035 : 0.985)
+            .offset(x: 86, y: isBreathing ? 82 : 72)
 
-                    Text(scopeText)
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.white.opacity(0.86))
+            SoftBubble(
+                size: 42,
+                colors: [KikariaTheme.sky, Color.white],
+                opacity: 0.34
+            )
+            .scaleEffect(isBreathing ? 0.98 : 1.06)
+            .offset(x: -106, y: isBreathing ? 62 : 72)
+
+            Circle()
+                .fill(KikariaTheme.actionGradient)
+                .frame(width: 190, height: 190)
+                .background(.ultraThinMaterial, in: Circle())
+                .shadow(color: KikariaTheme.sky.opacity(0.28), radius: 28, x: 0, y: 18)
+                .overlay {
+                    Circle()
+                        .fill(.white.opacity(0.16))
+                        .padding(1)
                 }
-            }
-            .scaleEffect(isBreathing ? 1.025 : 1.0)
-            .offset(y: isBreathing ? -4 : 2)
-            .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true), value: isBreathing)
-            .onAppear {
-                isBreathing = true
-            }
 
-            Text("Start")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(KikariaTheme.softText)
-                .textCase(.uppercase)
+            Image(systemName: "arrow.up")
+                .font(.system(size: 70, weight: .regular))
+                .foregroundStyle(.white.opacity(0.96))
+                .shadow(color: KikariaTheme.deepText.opacity(0.10), radius: 8, y: 4)
         }
+        .frame(width: 272, height: 260)
+        .scaleEffect(isBreathing ? 1.018 : 0.995)
+        .offset(y: isBreathing ? -4 : 2)
+        .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: isBreathing)
+        .onAppear {
+            isBreathing = true
+        }
+    }
+}
+
+private struct SoftBubble: View {
+    let size: CGFloat
+    let colors: [Color]
+    let opacity: Double
+
+    var body: some View {
+        Circle()
+            .fill(
+                LinearGradient(
+                    colors: colors.map { $0.opacity(opacity) },
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: size, height: size)
+            .background(.ultraThinMaterial, in: Circle())
+            .overlay {
+                Circle()
+                    .stroke(.white.opacity(0.36), lineWidth: 1)
+            }
+            .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 14, y: 8)
     }
 }
 
@@ -200,7 +244,11 @@ private struct HomeEntryCard: View {
         .padding(.horizontal, 22)
         .padding(.vertical, 22)
         .frame(maxWidth: .infinity)
-        .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.white.opacity(0.46))
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
     }
 }
@@ -305,20 +353,27 @@ private struct ScopeTagChip: View {
 }
 
 struct ReviewView: View {
+    @Environment(\.dismiss) private var dismiss
     @Binding var knowledgePoints: [KnowledgePoint]
-    let selectedTags: Set<String>
+    let mode: ReviewMode
+    var onReturnHome: (() -> Void)?
 
     @State private var currentPointID: KnowledgePoint.ID?
     @State private var isShowingHint = false
     @State private var isShowingContent = false
 
     private var matchingPoints: [KnowledgePoint] {
-        if selectedTags.isEmpty {
-            return knowledgePoints
-        }
+        switch mode {
+        case .normal(let selectedTags):
+            if selectedTags.isEmpty {
+                return knowledgePoints
+            }
 
-        return knowledgePoints.filter { point in
-            point.tags.contains { selectedTags.contains($0) }
+            return knowledgePoints.filter { point in
+                point.tags.contains { selectedTags.contains($0) }
+            }
+        case .reinforcement:
+            return knowledgePoints.filter(\.isReinforced)
         }
     }
 
@@ -336,19 +391,30 @@ struct ReviewView: View {
                 .ignoresSafeArea()
 
             if matchingPoints.isEmpty {
-                SoftEmptyState(
-                    title: "暂无知识点",
-                    subtitle: "请返回后调整选择范围。",
-                    systemImage: "tag.slash"
-                )
-                .padding(24)
+                if mode.isReinforcement {
+                    ReinforcementCompletionView {
+                        if let onReturnHome {
+                            onReturnHome()
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .padding(24)
+                } else {
+                    SoftEmptyState(
+                        title: "暂无知识点",
+                        subtitle: "请返回后调整选择范围。",
+                        systemImage: "tag.slash"
+                    )
+                    .padding(24)
+                }
             } else if let currentPoint {
                 VStack(spacing: 0) {
                     Spacer(minLength: 58)
 
                     VStack(spacing: 18) {
                         Text(currentPoint.title)
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .font(.system(size: 40, weight: .semibold, design: .serif))
                             .foregroundStyle(KikariaTheme.deepText)
                             .multilineTextAlignment(.center)
                             .minimumScaleFactor(0.72)
@@ -401,14 +467,27 @@ struct ReviewView: View {
                             }
                             .transition(.opacity.combined(with: .scale(scale: 0.96)))
                         } else {
-                            ReviewActionButton(
-                                title: "加入重点集锦",
-                                systemImage: "plus.circle.fill",
-                                isPrimary: true
-                            ) {
-                                addCurrentPointToReinforcement()
-                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                    chooseRandomPoint()
+                            if mode.isReinforcement {
+                                ReviewActionButton(
+                                    title: "移出重点集锦",
+                                    systemImage: "minus.circle.fill",
+                                    isPrimary: true
+                                ) {
+                                    removeCurrentPointFromReinforcement()
+                                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                        chooseRandomPoint()
+                                    }
+                                }
+                            } else {
+                                ReviewActionButton(
+                                    title: "加入重点集锦",
+                                    systemImage: "plus.circle.fill",
+                                    isPrimary: true
+                                ) {
+                                    addCurrentPointToReinforcement()
+                                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                        chooseRandomPoint()
+                                    }
                                 }
                             }
 
@@ -467,6 +546,17 @@ struct ReviewView: View {
         knowledgePoints[index].isReinforced = true
         knowledgePoints[index].updatedAt = Date()
     }
+
+    private func removeCurrentPointFromReinforcement() {
+        guard let currentPointID,
+              let index = knowledgePoints.firstIndex(where: { $0.id == currentPointID })
+        else {
+            return
+        }
+
+        knowledgePoints[index].isReinforced = false
+        knowledgePoints[index].updatedAt = Date()
+    }
 }
 
 private struct ReviewActionButton: View {
@@ -492,7 +582,68 @@ private struct ReviewActionButton: View {
     }
 }
 
+private struct ReinforcementCompletionView: View {
+    let returnHome: () -> Void
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                SoftBubble(
+                    size: 96,
+                    colors: [Color(red: 0.70, green: 0.93, blue: 0.75), KikariaTheme.cyan],
+                    opacity: 0.40
+                )
+                .offset(x: -62, y: -38)
+
+                SoftBubble(
+                    size: 68,
+                    colors: [KikariaTheme.sky, Color(red: 0.78, green: 0.80, blue: 1.0)],
+                    opacity: 0.34
+                )
+                .offset(x: 70, y: 46)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 74, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.36, green: 0.76, blue: 0.46), .white.opacity(0.96))
+                    .shadow(color: Color.green.opacity(0.16), radius: 16, y: 8)
+            }
+            .frame(height: 138)
+
+            VStack(spacing: 8) {
+                Text("重点集锦已清空")
+                    .font(.system(size: 26, weight: .semibold, design: .serif))
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                Text("恭喜，今日重点已完成。")
+                    .font(.subheadline)
+                    .foregroundStyle(KikariaTheme.softText)
+            }
+
+            Button(action: returnHome) {
+                Text("返回首页")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 17)
+                    .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .shadow(color: KikariaTheme.sky.opacity(0.20), radius: 16, y: 8)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 6)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 34, style: .continuous)
+                .fill(.white.opacity(0.50))
+        }
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 34, style: .continuous))
+        .shadow(color: KikariaTheme.sky.opacity(0.14), radius: 22, y: 12)
+    }
+}
+
 struct ReinforcementView: View {
+    @Environment(\.dismiss) private var dismiss
     @Binding var knowledgePoints: [KnowledgePoint]
 
     private var reinforcedPoints: [KnowledgePoint] {
@@ -512,21 +663,39 @@ struct ReinforcementView: View {
                 )
                 .padding(24)
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        Text("重点集锦")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundStyle(KikariaTheme.deepText)
-                            .padding(.top, 18)
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            Text("重点集锦")
+                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .padding(.top, 18)
 
-                        ForEach(reinforcedPoints) { point in
-                            ReinforcementCard(point: point) {
-                                removeFromReinforcement(point)
+                            ForEach(reinforcedPoints) { point in
+                                ReinforcementCard(point: point) {
+                                    removeFromReinforcement(point)
+                                }
                             }
                         }
+                        .padding(.horizontal, 22)
+                        .padding(.bottom, 116)
                     }
+
+                    NavigationLink {
+                        ReviewView(
+                            knowledgePoints: $knowledgePoints,
+                            mode: .reinforcement,
+                            onReturnHome: {
+                                dismiss()
+                            }
+                        )
+                    } label: {
+                        ReinforcementStartButton(count: reinforcedPoints.count)
+                    }
+                    .buttonStyle(.plain)
                     .padding(.horizontal, 22)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 18)
+                    .background(.ultraThinMaterial)
                 }
             }
         }
@@ -546,6 +715,38 @@ struct ReinforcementView: View {
     }
 }
 
+private struct ReinforcementStartButton: View {
+    let count: Int
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Text("开始重点背诵")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(KikariaTheme.deepText)
+
+            Spacer()
+
+            Text("\(count)")
+                .font(.title3.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(KikariaTheme.sky)
+
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KikariaTheme.blueGray)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 22)
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.white.opacity(0.54))
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: KikariaTheme.sky.opacity(0.16), radius: 20, y: 10)
+    }
+}
+
 private struct ReinforcementCard: View {
     let point: KnowledgePoint
     let removeAction: () -> Void
@@ -553,7 +754,7 @@ private struct ReinforcementCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(point.title)
-                .font(.title3.bold())
+                .font(.system(size: 22, weight: .semibold, design: .serif))
                 .foregroundStyle(KikariaTheme.deepText)
 
             LightTagRow(tags: point.tags)
@@ -574,7 +775,11 @@ private struct ReinforcementCard: View {
             .tint(.red.opacity(0.82))
         }
         .padding(18)
-        .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(.white.opacity(0.48))
+        }
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
         .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 20, y: 12)
     }
 }
@@ -590,7 +795,7 @@ private struct FloatingInfoCard: View {
                 .foregroundStyle(KikariaTheme.sky)
 
             Text(text)
-                .font(.body)
+                .font(.system(.body, design: .serif))
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineSpacing(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
