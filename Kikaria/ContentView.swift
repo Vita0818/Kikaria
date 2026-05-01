@@ -35,6 +35,13 @@ private enum KikariaTheme {
     )
 }
 
+private enum AppRoute: Hashable {
+    case scope
+    case review
+    case reinforcement
+    case reinforcementReview
+}
+
 enum ReviewMode {
     case normal(selectedTags: Set<String>)
     case reinforcement
@@ -51,6 +58,7 @@ enum ReviewMode {
 struct ContentView: View {
     @State private var knowledgePoints = KnowledgePoint.samples
     @State private var selectedTags = Set<String>()
+    @State private var navigationPath: [AppRoute] = []
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
@@ -65,7 +73,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ZStack {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
@@ -87,12 +95,7 @@ struct ContentView: View {
 
                     Spacer(minLength: 32)
 
-                    NavigationLink {
-                        ReviewView(
-                            knowledgePoints: $knowledgePoints,
-                            mode: .normal(selectedTags: selectedTags)
-                        )
-                    } label: {
+                    NavigationLink(value: AppRoute.review) {
                         StartReviewButton()
                     }
                     .buttonStyle(.plain)
@@ -101,12 +104,7 @@ struct ContentView: View {
                     Spacer(minLength: 42)
 
                     VStack(spacing: 16) {
-                        NavigationLink {
-                            ScopeSelectionView(
-                                selectedTags: $selectedTags,
-                                allTags: allTags
-                            )
-                        } label: {
+                        NavigationLink(value: AppRoute.scope) {
                             HomeEntryCard(
                                 title: "选择范围",
                                 countText: selectedScopeCountText
@@ -114,9 +112,7 @@ struct ContentView: View {
                         }
                         .buttonStyle(.plain)
 
-                        NavigationLink {
-                            ReinforcementView(knowledgePoints: $knowledgePoints)
-                        } label: {
+                        NavigationLink(value: AppRoute.reinforcement) {
                             HomeEntryCard(
                                 title: "重点集锦",
                                 countText: "\(reinforcedCount)"
@@ -129,6 +125,35 @@ struct ContentView: View {
                 .padding(.horizontal, 24)
             }
             .navigationBarHidden(true)
+            .navigationDestination(for: AppRoute.self) { route in
+                switch route {
+                case .scope:
+                    ScopeSelectionView(
+                        selectedTags: $selectedTags,
+                        allTags: allTags
+                    )
+                case .review:
+                    ReviewView(
+                        knowledgePoints: $knowledgePoints,
+                        mode: .normal(selectedTags: selectedTags)
+                    )
+                case .reinforcement:
+                    ReinforcementView(
+                        knowledgePoints: $knowledgePoints,
+                        onStartReview: {
+                            navigationPath.append(.reinforcementReview)
+                        }
+                    )
+                case .reinforcementReview:
+                    ReviewView(
+                        knowledgePoints: $knowledgePoints,
+                        mode: .reinforcement,
+                        onReturnHome: {
+                            navigationPath.removeAll()
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -586,65 +611,30 @@ private struct ReinforcementCompletionView: View {
     let returnHome: () -> Void
 
     var body: some View {
-        VStack(spacing: 18) {
-            ZStack {
-                SoftBubble(
-                    size: 96,
-                    colors: [Color(red: 0.70, green: 0.93, blue: 0.75), KikariaTheme.cyan],
-                    opacity: 0.40
-                )
-                .offset(x: -62, y: -38)
-
-                SoftBubble(
-                    size: 68,
-                    colors: [KikariaTheme.sky, Color(red: 0.78, green: 0.80, blue: 1.0)],
-                    opacity: 0.34
-                )
-                .offset(x: 70, y: 46)
-
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 74, weight: .semibold))
-                    .foregroundStyle(Color(red: 0.36, green: 0.76, blue: 0.46), .white.opacity(0.96))
-                    .shadow(color: Color.green.opacity(0.16), radius: 16, y: 8)
-            }
-            .frame(height: 138)
-
-            VStack(spacing: 8) {
-                Text("重点集锦已清空")
-                    .font(.system(size: 26, weight: .semibold, design: .serif))
-                    .foregroundStyle(KikariaTheme.deepText)
-
-                Text("恭喜，今日重点已完成。")
-                    .font(.subheadline)
-                    .foregroundStyle(KikariaTheme.softText)
-            }
+        VStack(spacing: 28) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 86, weight: .semibold))
+                .foregroundStyle(Color(red: 0.36, green: 0.76, blue: 0.46), .white.opacity(0.96))
+                .shadow(color: Color.green.opacity(0.16), radius: 16, y: 8)
 
             Button(action: returnHome) {
                 Text("返回首页")
                     .font(.headline)
                     .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 17)
-                    .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .padding(.horizontal, 42)
+                    .padding(.vertical, 16)
+                    .background(KikariaTheme.actionGradient, in: Capsule())
                     .shadow(color: KikariaTheme.sky.opacity(0.20), radius: 16, y: 8)
             }
             .buttonStyle(.plain)
-            .padding(.top, 6)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .fill(.white.opacity(0.50))
-        }
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 34, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.14), radius: 22, y: 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
 struct ReinforcementView: View {
-    @Environment(\.dismiss) private var dismiss
     @Binding var knowledgePoints: [KnowledgePoint]
+    let onStartReview: () -> Void
 
     private var reinforcedPoints: [KnowledgePoint] {
         knowledgePoints.filter(\.isReinforced)
@@ -681,15 +671,7 @@ struct ReinforcementView: View {
                         .padding(.bottom, 116)
                     }
 
-                    NavigationLink {
-                        ReviewView(
-                            knowledgePoints: $knowledgePoints,
-                            mode: .reinforcement,
-                            onReturnHome: {
-                                dismiss()
-                            }
-                        )
-                    } label: {
+                    Button(action: onStartReview) {
                         ReinforcementStartButton(count: reinforcedPoints.count)
                     }
                     .buttonStyle(.plain)
