@@ -68,7 +68,6 @@ private enum AppRoute: Hashable {
     case settings
     case editProfile
     case markdownEditor
-    case dailyGoal
 }
 
 enum ReviewMode {
@@ -108,12 +107,18 @@ private struct UserProfile {
     var avatarImageData: Data?
 }
 
+struct DailyReviewRecord {
+    var date: Date
+    var count: Int
+}
+
 struct ContentView: View {
     @State private var knowledgePoints = KnowledgePoint.samples
     @State private var markdownText = KnowledgePoint.defaultMarkdownText
     @State private var userProfile = UserProfile()
     @State private var selectedTags = Set<String>()
     @State private var navigationPath: [AppRoute] = []
+    @State private var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord] = [:]
     @AppStorage("dailyLearningGoal") private var dailyGoal = 20
 
     private var allTags: [String] {
@@ -212,6 +217,7 @@ struct ContentView: View {
                     ReviewView(
                         knowledgePoints: $knowledgePoints,
                         selectedTags: $selectedTags,
+                        dailyReviewRecords: $dailyReviewRecords,
                         mode: .normal
                     )
                 case .reinforcement:
@@ -225,6 +231,7 @@ struct ContentView: View {
                     ReviewView(
                         knowledgePoints: $knowledgePoints,
                         selectedTags: .constant([]),
+                        dailyReviewRecords: $dailyReviewRecords,
                         mode: .reinforcement,
                         onReturnHome: {
                             navigationPath.removeAll()
@@ -241,6 +248,7 @@ struct ContentView: View {
                     ReviewView(
                         knowledgePoints: $knowledgePoints,
                         selectedTags: .constant([]),
+                        dailyReviewRecords: $dailyReviewRecords,
                         mode: .mastered,
                         onReturnHome: {
                             navigationPath.removeAll()
@@ -249,15 +257,12 @@ struct ContentView: View {
                 case .settings:
                     SettingsView(
                         profile: userProfile,
-                        dailyGoal: dailyGoal,
+                        dailyGoal: $dailyGoal,
                         onClose: {
                             navigationPath.removeAll()
                         },
                         onEditProfile: {
                             navigationPath.append(.editProfile)
-                        },
-                        onOpenDailyGoal: {
-                            navigationPath.append(.dailyGoal)
                         },
                         onOpenMarkdownEditor: {
                             navigationPath.append(.markdownEditor)
@@ -269,10 +274,9 @@ struct ContentView: View {
                     MarkdownEditorView(
                         markdownText: $markdownText,
                         knowledgePoints: $knowledgePoints,
-                        selectedTags: $selectedTags
+                        selectedTags: $selectedTags,
+                        dailyReviewRecords: $dailyReviewRecords
                     )
-                case .dailyGoal:
-                    DailyGoalSettingsView(dailyGoal: $dailyGoal)
                 }
             }
         }
@@ -309,11 +313,11 @@ private struct ProfileAvatarView: View {
 
 private struct SettingsView: View {
     let profile: UserProfile
-    let dailyGoal: Int
+    @Binding var dailyGoal: Int
     let onClose: () -> Void
     let onEditProfile: () -> Void
-    let onOpenDailyGoal: () -> Void
     let onOpenMarkdownEditor: () -> Void
+    @State private var isShowingDailyGoalPicker = false
 
     var body: some View {
         ZStack {
@@ -384,9 +388,12 @@ private struct SettingsView: View {
                                 title: "每日学习目标",
                                 subtitle: "设置每天计划掌握的数量",
                                 systemImage: "target",
-                                valueText: "\(dailyGoal)"
+                                valueText: "\(dailyGoal)",
+                                showsChevron: false
                             ) {
-                                onOpenDailyGoal()
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                                    isShowingDailyGoalPicker.toggle()
+                                }
                             }
 
                             SettingsOptionRow(
@@ -402,6 +409,32 @@ private struct SettingsView: View {
                     .padding(.bottom, 34)
                 }
             }
+
+            if isShowingDailyGoalPicker {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            isShowingDailyGoalPicker = false
+                        }
+                    }
+                    .transition(.opacity)
+
+                VStack {
+                    Spacer()
+                        .frame(height: 352)
+
+                    DailyGoalPickerBubble(dailyGoal: $dailyGoal) {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                            isShowingDailyGoalPicker = false
+                        }
+                    }
+                    .padding(.horizontal, 34)
+                    .transition(.scale(scale: 0.94, anchor: .topTrailing).combined(with: .opacity))
+
+                    Spacer()
+                }
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
@@ -413,6 +446,7 @@ private struct SettingsOptionRow: View {
     let subtitle: String
     let systemImage: String
     var valueText: String? = nil
+    var showsChevron = true
     let action: () -> Void
 
     var body: some View {
@@ -443,9 +477,11 @@ private struct SettingsOptionRow: View {
                         .foregroundStyle(KikariaTheme.sky)
                 }
 
-                Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(KikariaTheme.blueGray)
+                if showsChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(KikariaTheme.blueGray)
+                }
             }
             .padding(18)
             .frame(maxWidth: .infinity)
@@ -460,90 +496,54 @@ private struct SettingsOptionRow: View {
     }
 }
 
-private struct DailyGoalSettingsView: View {
-    @Environment(\.dismiss) private var dismiss
+private struct DailyGoalPickerBubble: View {
     @Binding var dailyGoal: Int
-    @State private var draftGoal: Int
-
-    init(dailyGoal: Binding<Int>) {
-        _dailyGoal = dailyGoal
-        _draftGoal = State(initialValue: dailyGoal.wrappedValue)
-    }
+    let onDone: () -> Void
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        VStack(spacing: 12) {
+            HStack {
+                Text("每日学习目标")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(KikariaTheme.deepText)
 
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(KikariaTheme.deepText)
-                            .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.58), in: Circle())
-                            .background(.ultraThinMaterial, in: Circle())
-                    }
-                    .buttonStyle(.plain)
+                Spacer()
 
-                    Spacer()
-
-                    Text("每日学习目标")
-                        .font(.headline)
-                        .foregroundStyle(KikariaTheme.deepText)
-
-                    Spacer()
-
-                    Button("完成") {
-                        dailyGoal = draftGoal
-                        dismiss()
-                    }
-                    .font(.headline)
+                Text("\(dailyGoal)")
+                    .font(.headline.weight(.semibold))
+                    .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
-                    .frame(width: 42, alignment: .trailing)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 18)
-                .padding(.bottom, 18)
-
-                Spacer(minLength: 36)
-
-                VStack(spacing: 22) {
-                    Text("\(draftGoal)")
-                        .font(.system(size: 52, weight: .semibold, design: .serif))
-                        .monospacedDigit()
-                        .foregroundStyle(KikariaTheme.deepText)
-
-                    Picker("每日学习目标", selection: $draftGoal) {
-                        ForEach(1...100, id: \.self) { goal in
-                            Text("\(goal) 个")
-                                .tag(goal)
-                        }
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(height: 188)
-                    .clipped()
-
-                    Text("每日计划掌握的知识点数量")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(KikariaTheme.softText)
-                }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 28)
-                .frame(maxWidth: .infinity)
-                .background(.white.opacity(0.52), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-                .shadow(color: KikariaTheme.sky.opacity(0.13), radius: 24, y: 14)
-                .padding(.horizontal, 24)
-
-                Spacer(minLength: 56)
             }
+
+            Picker("每日学习目标", selection: $dailyGoal) {
+                ForEach(1...100, id: \.self) { goal in
+                    Text("\(goal) 个")
+                        .tag(goal)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(height: 126)
+            .clipped()
+
+            Button(action: onDone) {
+                Text("完成")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(KikariaTheme.actionGradient, in: Capsule())
+            }
+            .buttonStyle(.plain)
         }
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .padding(18)
+        .frame(maxWidth: 318)
+        .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(.white.opacity(0.38), lineWidth: 1)
+        }
+        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 24, y: 14)
     }
 }
 
@@ -708,6 +708,7 @@ private struct MarkdownEditorView: View {
     @Binding var markdownText: String
     @Binding var knowledgePoints: [KnowledgePoint]
     @Binding var selectedTags: Set<String>
+    @Binding var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord]
     @State private var draftText: String
     @State private var errorMessage: String?
     @State private var toastMessage: String?
@@ -716,11 +717,13 @@ private struct MarkdownEditorView: View {
     init(
         markdownText: Binding<String>,
         knowledgePoints: Binding<[KnowledgePoint]>,
-        selectedTags: Binding<Set<String>>
+        selectedTags: Binding<Set<String>>,
+        dailyReviewRecords: Binding<[KnowledgePoint.ID: DailyReviewRecord]>
     ) {
         _markdownText = markdownText
         _knowledgePoints = knowledgePoints
         _selectedTags = selectedTags
+        _dailyReviewRecords = dailyReviewRecords
         _draftText = State(initialValue: markdownText.wrappedValue)
     }
 
@@ -789,12 +792,8 @@ private struct MarkdownEditorView: View {
             }
 
             if let toastMessage {
-                KikariaToast(message: toastMessage)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 34)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .allowsHitTesting(false)
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -809,6 +808,7 @@ private struct MarkdownEditorView: View {
                 markdownText = draftText
                 knowledgePoints = parsedPoints
                 selectedTags.removeAll()
+                dailyReviewRecords.removeAll()
                 errorMessage = nil
             }
 
@@ -844,50 +844,57 @@ private struct StartReviewButton: View {
     let dailyGoal: Int
     let masteredCount: Int
     @State private var isBreathing = false
+    @State private var orbitDegrees = 0.0
 
     var body: some View {
         ZStack {
-            MetricBubble(
-                value: dailyGoal,
-                label: "目标",
-                size: 92,
-                colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
-                opacity: 0.48
-            )
-            .scaleEffect(isBreathing ? 1.04 : 0.98)
-            .offset(x: -92, y: isBreathing ? -72 : -64)
+            ZStack {
+                MetricBubble(
+                    value: dailyGoal,
+                    label: "目标",
+                    size: 92,
+                    colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
+                    opacity: 0.48
+                )
+                .rotationEffect(.degrees(-orbitDegrees))
+                .scaleEffect(isBreathing ? 1.035 : 0.985)
+                .offset(x: -96, y: -68)
 
-            SoftBubble(
-                size: 54,
-                colors: [Color(red: 0.75, green: 0.78, blue: 1.0), KikariaTheme.mist],
-                opacity: 0.44
-            )
-            .scaleEffect(isBreathing ? 0.98 : 1.05)
-            .offset(x: 96, y: isBreathing ? -50 : -58)
+                SoftBubble(
+                    size: 54,
+                    colors: [Color(red: 0.75, green: 0.78, blue: 1.0), KikariaTheme.mist],
+                    opacity: 0.44
+                )
+                .scaleEffect(isBreathing ? 0.98 : 1.05)
+                .offset(x: 102, y: -56)
 
-            MetricBubble(
-                value: masteredCount,
-                label: "已掌握",
-                size: 78,
-                colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
-                opacity: 0.38
-            )
-            .scaleEffect(isBreathing ? 1.035 : 0.985)
-            .offset(x: 90, y: isBreathing ? 84 : 74)
+                MetricBubble(
+                    value: masteredCount,
+                    label: "已掌握",
+                    size: 78,
+                    colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
+                    opacity: 0.38
+                )
+                .rotationEffect(.degrees(-orbitDegrees))
+                .scaleEffect(isBreathing ? 1.035 : 0.985)
+                .offset(x: 92, y: 80)
 
-            SoftBubble(
-                size: 42,
-                colors: [KikariaTheme.sky, Color.white],
-                opacity: 0.34
-            )
-            .scaleEffect(isBreathing ? 0.98 : 1.06)
-            .offset(x: -106, y: isBreathing ? 62 : 72)
+                SoftBubble(
+                    size: 42,
+                    colors: [KikariaTheme.sky, Color.white],
+                    opacity: 0.34
+                )
+                .scaleEffect(isBreathing ? 0.98 : 1.06)
+                .offset(x: -110, y: 68)
+            }
+            .rotationEffect(.degrees(orbitDegrees))
 
             Circle()
                 .fill(KikariaTheme.actionGradient)
                 .frame(width: 190, height: 190)
                 .background(.ultraThinMaterial, in: Circle())
                 .shadow(color: KikariaTheme.sky.opacity(0.28), radius: 28, x: 0, y: 18)
+                .scaleEffect(isBreathing ? 1.018 : 0.992)
                 .overlay {
                     Circle()
                         .fill(.white.opacity(0.16))
@@ -900,11 +907,17 @@ private struct StartReviewButton: View {
                 .shadow(color: KikariaTheme.deepText.opacity(0.10), radius: 8, y: 4)
         }
         .frame(width: 272, height: 260)
-        .scaleEffect(isBreathing ? 1.018 : 0.995)
-        .offset(y: isBreathing ? -4 : 2)
-        .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: isBreathing)
+        .scaleEffect(isBreathing ? 1.012 : 0.996)
+        .offset(y: isBreathing ? -5 : 2)
         .onAppear {
-            isBreathing = true
+            withAnimation(.easeInOut(duration: 5.4).repeatForever(autoreverses: true)) {
+                isBreathing = true
+            }
+
+            orbitDegrees = 0
+            withAnimation(.linear(duration: 32).repeatForever(autoreverses: false)) {
+                orbitDegrees = 360
+            }
         }
     }
 }
@@ -1101,6 +1114,7 @@ struct ReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var knowledgePoints: [KnowledgePoint]
     @Binding var selectedTags: Set<String>
+    @Binding var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord]
     let mode: ReviewMode
     var onReturnHome: (() -> Void)?
 
@@ -1142,6 +1156,14 @@ struct ReviewView: View {
         return knowledgePoints.first { $0.id == currentPointID }
     }
 
+    private var currentTodayReviewCount: Int {
+        guard let currentPointID else {
+            return 0
+        }
+
+        return todayReviewCount(for: currentPointID)
+    }
+
     var body: some View {
         ZStack {
             KikariaTheme.pageGradient
@@ -1178,6 +1200,11 @@ struct ReviewView: View {
                             .padding(.horizontal, 22)
 
                         LightTagRow(tags: currentPoint.tags)
+
+                        if isShowingContent {
+                            TodayReviewCountPill(count: currentTodayReviewCount)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, 14)
@@ -1219,7 +1246,7 @@ struct ReviewView: View {
                                 isPrimary: true
                             ) {
                                 withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                                    isShowingContent = true
+                                    revealContent()
                                 }
                             }
                             .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -1299,12 +1326,8 @@ struct ReviewView: View {
             }
 
             if let toastMessage {
-                KikariaToast(message: toastMessage)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 34)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .allowsHitTesting(false)
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(5)
             }
         }
@@ -1364,7 +1387,7 @@ struct ReviewView: View {
                     }
                 } else {
                     withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                        isShowingContent = true
+                        revealContent()
                     }
                 }
             } else {
@@ -1396,7 +1419,7 @@ struct ReviewView: View {
             }
         } else {
             withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                isShowingContent = true
+                revealContent()
             }
             addCurrentPointToReinforcement()
             assert(currentPoint?.isMastered == wasMastered)
@@ -1469,6 +1492,38 @@ struct ReviewView: View {
     private func resetRevealState() {
         isShowingHint = false
         isShowingContent = false
+    }
+
+    private func revealContent() {
+        if !isShowingContent, let currentPointID {
+            incrementTodayReviewCount(for: currentPointID)
+        }
+
+        isShowingContent = true
+    }
+
+    private func todayReviewCount(for pointID: KnowledgePoint.ID) -> Int {
+        guard let record = dailyReviewRecords[pointID],
+              Calendar.current.isDate(record.date, inSameDayAs: Date())
+        else {
+            return 0
+        }
+
+        return record.count
+    }
+
+    private func incrementTodayReviewCount(for pointID: KnowledgePoint.ID) {
+        let now = Date()
+
+        if let record = dailyReviewRecords[pointID],
+           Calendar.current.isDate(record.date, inSameDayAs: now) {
+            dailyReviewRecords[pointID] = DailyReviewRecord(
+                date: now,
+                count: record.count + 1
+            )
+        } else {
+            dailyReviewRecords[pointID] = DailyReviewRecord(date: now, count: 1)
+        }
     }
 
     private func addCurrentPointToReinforcement() {
@@ -1750,12 +1805,8 @@ struct ReinforcementView: View {
             }
 
             if let toastMessage {
-                KikariaToast(message: toastMessage)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, reinforcedPoints.isEmpty ? 34 : 118)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .allowsHitTesting(false)
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .navigationTitle("重点集锦")
@@ -1855,12 +1906,8 @@ struct MasteredView: View {
             }
 
             if let toastMessage {
-                KikariaToast(message: toastMessage)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, masteredPoints.isEmpty ? 34 : 118)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .allowsHitTesting(false)
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .navigationTitle("已掌握")
@@ -2061,6 +2108,22 @@ private struct KikariaToast: View {
     }
 }
 
+private struct KikariaToastLayer: View {
+    let message: String
+
+    var body: some View {
+        VStack {
+            KikariaToast(message: message)
+                .padding(.horizontal, 24)
+                .padding(.top, 76)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .allowsHitTesting(false)
+    }
+}
+
 private struct FloatingInfoCard: View {
     let title: String
     let text: String
@@ -2102,6 +2165,27 @@ private struct LightTagRow: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+private struct TodayReviewCountPill: View {
+    let count: Int
+
+    var body: some View {
+        Text("该知识点今日复习 \(count) 次")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(KikariaTheme.deepText.opacity(0.78))
+            .monospacedDigit()
+            .padding(.horizontal, 18)
+            .padding(.vertical, 8)
+            .background(.white.opacity(0.54), in: Capsule())
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(KikariaTheme.cyan.opacity(0.32), lineWidth: 1)
+            }
+            .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 12, y: 6)
+            .accessibilityLabel("该知识点今日复习 \(count) 次")
     }
 }
 
