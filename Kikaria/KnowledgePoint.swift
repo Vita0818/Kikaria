@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct KnowledgePoint: Identifiable, Equatable {
+struct KnowledgePoint: Identifiable, Equatable, Codable {
     let id: UUID
     var title: String
     var tags: [String]
@@ -121,6 +121,23 @@ extension KnowledgePoint {
         return points
     }
 
+    static func markdownText(from points: [KnowledgePoint]) -> String {
+        points.map { point in
+            """
+            # \(point.title)
+
+            tags: \(point.tags.joined(separator: ", "))
+
+            hint:
+            \(point.hint)
+
+            content:
+            \(point.content)
+            """
+        }
+        .joined(separator: "\n\n---\n\n")
+    }
+
     private static func splitMarkdownIntoChunks(_ markdown: String) -> [String] {
         var chunks: [String] = []
         var currentLines: [String] = []
@@ -219,13 +236,14 @@ extension KnowledgePoint {
     }
 }
 
-struct KnowledgePreset: Identifiable, Equatable {
-    let id: String
-    let name: String
-    let subtitle: String
-    let description: String
-    let category: String
-    let markdownText: String
+struct KnowledgePreset: Identifiable, Equatable, Codable {
+    var id: String
+    var name: String
+    var subtitle: String
+    var description: String
+    var category: String
+    var markdownText: String
+    var isBuiltIn: Bool
 
     var knowledgePointCount: Int {
         (try? KnowledgePoint.parseMarkdown(markdownText).count) ?? 0
@@ -244,7 +262,8 @@ struct KnowledgePreset: Identifiable, Equatable {
             subtitle: "微积分、线性代数基础概念",
             description: "覆盖极限、导数、矩阵和基础概率概念，适合作为 Kikaria 默认示例。",
             category: "数学",
-            markdownText: KnowledgePoint.defaultMarkdownText
+            markdownText: KnowledgePoint.defaultMarkdownText,
+            isBuiltIn: true
         ),
         KnowledgePreset(
             id: "college-english",
@@ -298,7 +317,8 @@ struct KnowledgePreset: Identifiable, Equatable {
 
             content:
             To take something into account means to include it as an important factor in your thinking.
-            """
+            """,
+            isBuiltIn: true
         ),
         KnowledgePreset(
             id: "anatomy",
@@ -352,7 +372,8 @@ struct KnowledgePreset: Identifiable, Equatable {
 
             content:
             The diaphragm is a dome-shaped muscle below the lungs. When it contracts, the chest cavity expands and air is drawn into the lungs.
-            """
+            """,
+            isBuiltIn: true
         ),
         KnowledgePreset(
             id: "template",
@@ -394,7 +415,8 @@ struct KnowledgePreset: Identifiable, Equatable {
 
             content:
             Add the complete answer or solution process.
-            """
+            """,
+            isBuiltIn: true
         )
     ]
 }

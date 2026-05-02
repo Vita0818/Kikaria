@@ -8,6 +8,7 @@
 import PhotosUI
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 private enum KikariaTheme {
     static let sky = Color(red: 0.39, green: 0.73, blue: 0.96)
@@ -69,6 +70,9 @@ private enum AppRoute: Hashable {
     case editProfile
     case markdownEditor
     case presetSelection
+    case newPreset
+    case editPreset(String)
+    case editKnowledgePoint(String, UUID?)
 }
 
 enum ReviewMode {
@@ -108,21 +112,54 @@ private struct UserProfile {
     var avatarImageData: Data?
 }
 
-struct DailyReviewRecord {
+struct DailyReviewRecord: Codable, Equatable {
     var date: Date
     var count: Int
 }
 
-private struct PresetStudyState {
+private struct PresetStudyState: Codable {
     let presetId: String
     var knowledgePoints: [KnowledgePoint]
     var markdownText: String
     var selectedTags: Set<String>
     var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord]
     var dailyGoal: Int
+    var countdownDate: Date?
+}
+
+private struct PresetLibrarySnapshot: Codable {
+    var presets: [KnowledgePreset]
+    var presetStates: [String: PresetStudyState]
+    var currentPresetID: String
+}
+
+private enum PresetCreationOutcome {
+    case success(KnowledgePreset)
+    case failure(String)
+}
+
+private func countdownDays(until targetDate: Date?) -> Int? {
+    guard let targetDate else {
+        return nil
+    }
+
+    let calendar = Calendar.current
+    let today = calendar.startOfDay(for: Date())
+    let target = calendar.startOfDay(for: targetDate)
+    let dayCount = calendar.dateComponents([.day], from: today, to: target).day ?? 0
+    return max(0, dayCount)
+}
+
+private func countdownText(for targetDate: Date?) -> String {
+    guard let days = countdownDays(until: targetDate) else {
+        return "--"
+    }
+
+    return "\(days) 天"
 }
 
 struct ContentView: View {
+    @State private var presets = KnowledgePreset.all
     @State private var knowledgePoints = KnowledgePoint.samples
     @State private var markdownText = KnowledgePreset.defaultPreset.markdownText
     @State private var userProfile = UserProfile()
@@ -132,9 +169,11 @@ struct ContentView: View {
     @State private var presetStates: [String: PresetStudyState] = [:]
     @State private var currentPresetID = KnowledgePreset.defaultPresetID
     @State private var dailyGoal = 20
+    @State private var countdownDate: Date?
     @State private var hasLoadedInitialPresetState = false
+    @State private var isApplyingPresetState = false
     @AppStorage("dailyLearningGoal") private var legacyDailyGoal = 20
-    @AppStorage("presetDailyLearningGoals") private var encodedPresetDailyGoals = ""
+    @AppStorage("presetLibraryJSON") private var encodedPresetLibrary = ""
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
@@ -152,8 +191,16 @@ struct ContentView: View {
         knowledgePoints.filter(\.isMastered).count
     }
 
+    private var countdownDayCount: Int? {
+        countdownDays(until: countdownDate)
+    }
+
     private var currentPreset: KnowledgePreset {
-        KnowledgePreset.all.first { $0.id == currentPresetID } ?? KnowledgePreset.defaultPreset
+        presets.first { $0.id == currentPresetID } ?? KnowledgePreset.defaultPreset
+    }
+
+    private var currentPresetShortName: String {
+        shortPresetName(for: currentPreset.name)
     }
 
     var body: some View {
@@ -187,7 +234,9 @@ struct ContentView: View {
                     NavigationLink(value: AppRoute.review) {
                         StartReviewButton(
                             dailyGoal: dailyGoal,
-                            masteredCount: masteredCount
+                            masteredCount: masteredCount,
+                            countdownDays: countdownDayCount,
+                            presetShortName: currentPresetShortName
                         )
                     }
                     .buttonStyle(.plain)
@@ -277,6 +326,7 @@ struct ContentView: View {
                     SettingsView(
                         profile: userProfile,
                         dailyGoal: dailyGoalBinding,
+                        countdownDate: countdownDateBinding,
                         currentPresetName: currentPreset.name,
                         onClose: {
                             navigationPath.removeAll()
@@ -299,14 +349,75 @@ struct ContentView: View {
                     )
                 case .presetSelection:
                     PresetSelectionView(
-                        presets: KnowledgePreset.all,
+                        presets: presets,
                         currentPresetID: $currentPresetID,
-                        switchPreset: switchToPreset
+                        switchPreset: switchToPreset,
+                        onUploadNewPreset: {
+                            navigationPath.append(.newPreset)
+                        },
+                        onEditPreset: { preset in
+                            navigationPath.append(.editPreset(preset.id))
+                        }
                     )
+                case .newPreset:
+                    NewPresetView(createPreset: createPreset)
+                case .editPreset(let presetID):
+                    if let preset = presets.first(where: { $0.id == presetID }),
+                       let state = studyState(for: preset) {
+                        EditPresetView(
+                            preset: preset,
+                            knowledgePoints: state.knowledgePoints,
+                            onSavePreset: updatePresetMetadata,
+                            onAddPoint: {
+                                navigationPath.append(.editKnowledgePoint(presetID, nil))
+                            },
+                            onEditPoint: { pointID in
+                                navigationPath.append(.editKnowledgePoint(presetID, pointID))
+                            },
+                            onDeletePoint: deleteKnowledgePoint,
+                            onDeletePreset: deletePreset
+                        )
+                    } else {
+                        SoftEmptyState(
+                            title: "预设不存在",
+                            subtitle: "请返回后重新选择预设。",
+                            systemImage: "questionmark.folder"
+                        )
+                        .padding(24)
+                    }
+                case .editKnowledgePoint(let presetID, let pointID):
+                    if let editorContext = knowledgePointEditorContext(presetID: presetID, pointID: pointID) {
+                        EditKnowledgePointView(
+                            presetName: editorContext.presetName,
+                            point: editorContext.point,
+                            onSave: { point in
+                                upsertKnowledgePoint(point, inPresetID: presetID)
+                            }
+                        )
+                    } else {
+                        SoftEmptyState(
+                            title: "知识点不存在",
+                            subtitle: "请返回后重新选择知识点。",
+                            systemImage: "doc.text.magnifyingglass"
+                        )
+                        .padding(24)
+                    }
                 }
             }
             .onAppear {
                 loadInitialPresetStateIfNeeded()
+            }
+            .onChange(of: knowledgePoints) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: selectedTags) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: dailyReviewRecords) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: markdownText) { _ in
+                persistCurrentStudyStateIfReady()
             }
         }
     }
@@ -320,12 +431,22 @@ struct ContentView: View {
         )
     }
 
+    private var countdownDateBinding: Binding<Date?> {
+        Binding(
+            get: { countdownDate },
+            set: { newValue in
+                updateCountdownDate(newValue)
+            }
+        )
+    }
+
     private func loadInitialPresetStateIfNeeded() {
         guard !hasLoadedInitialPresetState else {
             return
         }
 
         hasLoadedInitialPresetState = true
+        loadPersistedPresetLibrary()
 
         guard let state = studyState(for: currentPreset) else {
             return
@@ -350,13 +471,14 @@ struct ContentView: View {
             restorePresetState(targetState)
         }
 
+        persistLibrary()
         return true
     }
 
     private func saveCurrentPresetState() {
         let state = currentPresetStateSnapshot()
         presetStates[currentPresetID] = state
-        persistDailyGoal(state.dailyGoal, forPresetID: currentPresetID)
+        persistLibrary()
     }
 
     private func studyState(for preset: KnowledgePreset) -> PresetStudyState? {
@@ -378,7 +500,8 @@ struct ContentView: View {
             markdownText: preset.markdownText,
             selectedTags: [],
             dailyReviewRecords: [:],
-            dailyGoal: dailyGoal(forPresetID: preset.id)
+            dailyGoal: dailyGoal(forPresetID: preset.id),
+            countdownDate: nil
         )
     }
 
@@ -389,17 +512,26 @@ struct ContentView: View {
             markdownText: markdownText,
             selectedTags: selectedTags,
             dailyReviewRecords: dailyReviewRecords,
-            dailyGoal: clampedDailyGoal(dailyGoal)
+            dailyGoal: clampedDailyGoal(dailyGoal),
+            countdownDate: countdownDate
         )
     }
 
     private func restorePresetState(_ state: PresetStudyState) {
+        isApplyingPresetState = true
         currentPresetID = state.presetId
         knowledgePoints = state.knowledgePoints
         markdownText = state.markdownText
         selectedTags = validSelectedTags(from: state.selectedTags, in: state.knowledgePoints)
         dailyReviewRecords = state.dailyReviewRecords
         dailyGoal = clampedDailyGoal(state.dailyGoal)
+        countdownDate = state.countdownDate
+
+        DispatchQueue.main.async {
+            isApplyingPresetState = false
+            presetStates[state.presetId] = currentPresetStateSnapshot()
+            persistLibrary()
+        }
     }
 
     private func validSelectedTags(from tags: Set<String>, in points: [KnowledgePoint]) -> Set<String> {
@@ -410,12 +542,18 @@ struct ContentView: View {
     private func updateDailyGoal(_ newValue: Int) {
         let goal = clampedDailyGoal(newValue)
         dailyGoal = goal
-        persistDailyGoal(goal, forPresetID: currentPresetID)
         presetStates[currentPresetID] = currentPresetStateSnapshot()
+        persistLibrary()
+    }
+
+    private func updateCountdownDate(_ newValue: Date?) {
+        countdownDate = newValue
+        presetStates[currentPresetID] = currentPresetStateSnapshot()
+        persistLibrary()
     }
 
     private func dailyGoal(forPresetID presetID: String) -> Int {
-        if let goal = decodedPresetDailyGoals()[presetID] {
+        if let goal = presetStates[presetID]?.dailyGoal {
             return clampedDailyGoal(goal)
         }
 
@@ -426,33 +564,239 @@ struct ContentView: View {
         return 20
     }
 
-    private func persistDailyGoal(_ goal: Int, forPresetID presetID: String) {
-        let clampedGoal = clampedDailyGoal(goal)
-        var goals = decodedPresetDailyGoals()
-        goals[presetID] = clampedGoal
-
-        if let data = try? JSONEncoder().encode(goals),
-           let encoded = String(data: data, encoding: .utf8) {
-            encodedPresetDailyGoals = encoded
+    private func persistCurrentStudyStateIfReady() {
+        guard hasLoadedInitialPresetState, !isApplyingPresetState else {
+            return
         }
 
-        if presetID == KnowledgePreset.defaultPresetID {
-            legacyDailyGoal = clampedGoal
+        presetStates[currentPresetID] = currentPresetStateSnapshot()
+        persistLibrary()
+    }
+
+    private func loadPersistedPresetLibrary() {
+        guard let data = encodedPresetLibrary.data(using: .utf8),
+              let snapshot = try? JSONDecoder().decode(PresetLibrarySnapshot.self, from: data),
+              !snapshot.presets.isEmpty
+        else {
+            presets = KnowledgePreset.all
+            currentPresetID = KnowledgePreset.defaultPresetID
+            return
+        }
+
+        presets = mergedPresets(with: snapshot.presets)
+        presetStates = snapshot.presetStates
+
+        if presets.contains(where: { $0.id == snapshot.currentPresetID }) {
+            currentPresetID = snapshot.currentPresetID
+        } else {
+            currentPresetID = presets.first?.id ?? KnowledgePreset.defaultPresetID
         }
     }
 
-    private func decodedPresetDailyGoals() -> [String: Int] {
-        guard let data = encodedPresetDailyGoals.data(using: .utf8),
-              let goals = try? JSONDecoder().decode([String: Int].self, from: data)
-        else {
-            return [:]
+    private func mergedPresets(with storedPresets: [KnowledgePreset]) -> [KnowledgePreset] {
+        var merged = storedPresets
+
+        for builtInPreset in KnowledgePreset.all where !merged.contains(where: { $0.id == builtInPreset.id }) {
+            merged.append(builtInPreset)
         }
 
-        return goals
+        return merged
+    }
+
+    private func persistLibrary() {
+        var states = presetStates
+
+        if hasLoadedInitialPresetState {
+            states[currentPresetID] = currentPresetStateSnapshot()
+        }
+
+        let snapshot = PresetLibrarySnapshot(
+            presets: presets,
+            presetStates: states,
+            currentPresetID: currentPresetID
+        )
+
+        if let data = try? JSONEncoder().encode(snapshot),
+           let encoded = String(data: data, encoding: .utf8) {
+            encodedPresetLibrary = encoded
+        }
+
+        if currentPresetID == KnowledgePreset.defaultPresetID {
+            legacyDailyGoal = clampedDailyGoal(dailyGoal)
+        }
+    }
+
+    private func createPreset(name: String, category: String, description: String, markdownText: String) -> PresetCreationOutcome {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            return .failure("请填写预设名称。")
+        }
+
+        let trimmedMarkdown = markdownText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsedPoints = try? KnowledgePoint.parseMarkdown(trimmedMarkdown) else {
+            return .failure("没有解析到有效知识点。请检查 # 标题、tags、hint: 和 content:。")
+        }
+
+        saveCurrentPresetState()
+
+        let preset = KnowledgePreset(
+            id: "user-\(UUID().uuidString)",
+            name: trimmedName,
+            subtitle: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义知识点" : description.trimmingCharacters(in: .whitespacesAndNewlines),
+            description: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义上传的知识点预设。" : description.trimmingCharacters(in: .whitespacesAndNewlines),
+            category: category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义" : category.trimmingCharacters(in: .whitespacesAndNewlines),
+            markdownText: trimmedMarkdown,
+            isBuiltIn: false
+        )
+
+        let state = PresetStudyState(
+            presetId: preset.id,
+            knowledgePoints: parsedPoints,
+            markdownText: trimmedMarkdown,
+            selectedTags: [],
+            dailyReviewRecords: [:],
+            dailyGoal: 20,
+            countdownDate: nil
+        )
+
+        presets.append(preset)
+        presetStates[preset.id] = state
+        restorePresetState(state)
+        persistLibrary()
+
+        return .success(preset)
+    }
+
+    private func updatePresetMetadata(presetID: String, name: String, category: String, description: String) {
+        guard let index = presets.firstIndex(where: { $0.id == presetID }) else {
+            return
+        }
+
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        presets[index].name = trimmedName.isEmpty ? presets[index].name : trimmedName
+        presets[index].category = trimmedCategory.isEmpty ? "自定义" : trimmedCategory
+        presets[index].subtitle = trimmedDescription.isEmpty ? presets[index].subtitle : trimmedDescription
+        presets[index].description = trimmedDescription.isEmpty ? presets[index].description : trimmedDescription
+        persistLibrary()
+    }
+
+    private func deletePreset(_ presetID: String) {
+        guard let preset = presets.first(where: { $0.id == presetID }),
+              !preset.isBuiltIn,
+              presets.count > 1
+        else {
+            return
+        }
+
+        let wasCurrentPreset = presetID == currentPresetID
+        presets.removeAll { $0.id == presetID }
+        presetStates[presetID] = nil
+
+        if wasCurrentPreset, let nextPreset = presets.first {
+            _ = switchToPreset(nextPreset)
+        } else {
+            persistLibrary()
+        }
+    }
+
+    private func knowledgePointEditorContext(presetID: String, pointID: UUID?) -> (presetName: String, point: KnowledgePoint?)? {
+        guard let preset = presets.first(where: { $0.id == presetID }),
+              let state = studyState(for: preset)
+        else {
+            return nil
+        }
+
+        let point = pointID.flatMap { id in
+            state.knowledgePoints.first { $0.id == id }
+        }
+
+        if pointID != nil, point == nil {
+            return nil
+        }
+
+        return (preset.name, point)
+    }
+
+    private func upsertKnowledgePoint(_ point: KnowledgePoint, inPresetID presetID: String) {
+        guard var state = stateForEditing(presetID: presetID) else {
+            return
+        }
+
+        if let index = state.knowledgePoints.firstIndex(where: { $0.id == point.id }) {
+            state.knowledgePoints[index] = point
+        } else {
+            state.knowledgePoints.append(point)
+        }
+
+        syncEditedState(state)
+    }
+
+    private func deleteKnowledgePoint(_ pointID: UUID, fromPresetID presetID: String) {
+        guard var state = stateForEditing(presetID: presetID) else {
+            return
+        }
+
+        state.knowledgePoints.removeAll { $0.id == pointID }
+        state.dailyReviewRecords[pointID] = nil
+        state.selectedTags = validSelectedTags(from: state.selectedTags, in: state.knowledgePoints)
+        syncEditedState(state)
+    }
+
+    private func stateForEditing(presetID: String) -> PresetStudyState? {
+        if presetID == currentPresetID {
+            return currentPresetStateSnapshot()
+        }
+
+        guard let preset = presets.first(where: { $0.id == presetID }) else {
+            return nil
+        }
+
+        return studyState(for: preset)
+    }
+
+    private func syncEditedState(_ state: PresetStudyState) {
+        var editedState = state
+        let generatedMarkdown = KnowledgePoint.markdownText(from: editedState.knowledgePoints)
+        editedState.markdownText = generatedMarkdown
+        presetStates[editedState.presetId] = editedState
+
+        if let presetIndex = presets.firstIndex(where: { $0.id == editedState.presetId }) {
+            presets[presetIndex].markdownText = generatedMarkdown
+        }
+
+        if editedState.presetId == currentPresetID {
+            restorePresetState(editedState)
+        } else {
+            persistLibrary()
+        }
     }
 
     private func clampedDailyGoal(_ goal: Int) -> Int {
         min(max(goal, 1), 100)
+    }
+
+    private func shortPresetName(for name: String) -> String {
+        if name.hasPrefix("高等数学") {
+            return "高数"
+        }
+
+        if name.hasPrefix("大学英语") {
+            return "英语"
+        }
+
+        if name.hasPrefix("解剖学") {
+            return "解剖"
+        }
+
+        if name.hasPrefix("示例模板") {
+            return "模板"
+        }
+
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedName.isEmpty ? "预设" : String(trimmedName.prefix(3))
     }
 }
 
@@ -487,11 +831,14 @@ private struct ProfileAvatarView: View {
 private struct SettingsView: View {
     let profile: UserProfile
     @Binding var dailyGoal: Int
+    @Binding var countdownDate: Date?
     let currentPresetName: String
     let onClose: () -> Void
     let onEditProfile: () -> Void
     let onOpenPresetSelection: () -> Void
     @State private var isShowingDailyGoalPicker = false
+    @State private var isShowingCountdownPicker = false
+    @State private var countdownDraftDate = Date()
 
     var body: some View {
         ZStack {
@@ -558,22 +905,29 @@ private struct SettingsView: View {
                         .padding(.vertical, 22)
 
                         VStack(spacing: 12) {
-                            SettingsOptionRow(
+                            SettingsListRow(
                                 title: "每日学习目标",
-                                subtitle: "设置每天计划掌握的数量",
-                                systemImage: "target",
-                                valueText: "\(dailyGoal)",
-                                showsChevron: false
+                                valueText: "\(dailyGoal)"
                             ) {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                                    isShowingCountdownPicker = false
                                     isShowingDailyGoalPicker.toggle()
                                 }
                             }
 
-                            SettingsOptionRow(
+                            SettingsListRow(
+                                title: "倒数日",
+                                valueText: countdownDate.map { "\(countdownDays(until: $0) ?? 0)天" } ?? "未设置"
+                            ) {
+                                countdownDraftDate = countdownDate ?? Date()
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                                    isShowingDailyGoalPicker = false
+                                    isShowingCountdownPicker.toggle()
+                                }
+                            }
+
+                            SettingsListRow(
                                 title: "切换预设",
-                                subtitle: "选择内置知识点集合",
-                                systemImage: "square.stack.3d.up",
                                 valueText: currentPresetName
                             ) {
                                 onOpenPresetSelection()
@@ -610,9 +964,76 @@ private struct SettingsView: View {
                     Spacer()
                 }
             }
+
+            if isShowingCountdownPicker {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            isShowingCountdownPicker = false
+                        }
+                    }
+                    .transition(.opacity)
+
+                VStack {
+                    Spacer()
+                        .frame(height: 430)
+
+                    CountdownDatePickerBubble(selectedDate: $countdownDraftDate) {
+                        countdownDate = nil
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                            isShowingCountdownPicker = false
+                        }
+                    } onDone: {
+                        countdownDate = countdownDraftDate
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                            isShowingCountdownPicker = false
+                        }
+                    }
+                    .padding(.horizontal, 34)
+                    .transition(.scale(scale: 0.94, anchor: .topTrailing).combined(with: .opacity))
+
+                    Spacer()
+                }
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+private struct SettingsListRow: View {
+    let title: String
+    let valueText: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                Spacer()
+
+                Text(valueText)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(KikariaTheme.sky)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+
+                Image(systemName: "chevron.right")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(KikariaTheme.blueGray)
+            }
+            .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 9)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -724,10 +1145,72 @@ private struct DailyGoalPickerBubble: View {
     }
 }
 
+private struct CountdownDatePickerBubble: View {
+    @Binding var selectedDate: Date
+    let onClear: () -> Void
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("倒数日")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                Spacer()
+
+                Text(countdownText(for: selectedDate))
+                    .font(.headline.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(KikariaTheme.sky)
+            }
+
+            DatePicker("倒数日", selection: $selectedDate, displayedComponents: .date)
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .frame(height: 142)
+                .clipped()
+
+            HStack(spacing: 10) {
+                Button(action: onClear) {
+                    Text("清除")
+                        .font(.headline)
+                        .foregroundStyle(KikariaTheme.deepText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(.white.opacity(0.62), in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onDone) {
+                    Text("完成")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(KikariaTheme.actionGradient, in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: 326)
+        .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(.white.opacity(0.38), lineWidth: 1)
+        }
+        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 24, y: 14)
+    }
+}
+
 private struct PresetSelectionView: View {
     let presets: [KnowledgePreset]
     @Binding var currentPresetID: String
     let switchPreset: (KnowledgePreset) -> Bool
+    let onUploadNewPreset: () -> Void
+    let onEditPreset: (KnowledgePreset) -> Void
     @State private var pendingPreset: KnowledgePreset?
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
@@ -751,19 +1234,33 @@ private struct PresetSelectionView: View {
                     .padding(.top, 18)
                     .padding(.bottom, 6)
 
-                    ForEach(presets) { preset in
-                        Button {
-                            if preset.id != currentPresetID {
-                                pendingPreset = preset
-                            }
-                        } label: {
-                            PresetCard(
-                                preset: preset,
-                                isCurrent: preset.id == currentPresetID
-                            )
-                        }
-                        .buttonStyle(.plain)
+                    Button(action: onUploadNewPreset) {
+                        Label("上传新预设", systemImage: "square.and.arrow.up")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .shadow(color: KikariaTheme.sky.opacity(0.20), radius: 18, y: 9)
                     }
+                    .buttonStyle(.plain)
+                    .padding(.bottom, 4)
+
+                    ForEach(presets) { preset in
+                        PresetCard(
+                            preset: preset,
+                            isCurrent: preset.id == currentPresetID,
+                            onSelect: {
+                                if preset.id != currentPresetID {
+                                    pendingPreset = preset
+                                }
+                            },
+                            onEdit: {
+                                onEditPreset(preset)
+                            }
+                        )
+                        .buttonStyle(.plain)
+                        }
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 34)
@@ -837,6 +1334,8 @@ private struct PresetSelectionView: View {
 private struct PresetCard: View {
     let preset: KnowledgePreset
     let isCurrent: Bool
+    let onSelect: () -> Void
+    let onEdit: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -869,7 +1368,18 @@ private struct PresetCard: View {
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .trailing, spacing: 10) {
+                    Button(action: onEdit) {
+                        Label("编辑", systemImage: "pencil")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(.white.opacity(0.56), in: Capsule())
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+
                     Text("\(preset.knowledgePointCount)")
                         .font(.system(size: 26, weight: .semibold, design: .serif))
                         .monospacedDigit()
@@ -889,6 +1399,8 @@ private struct PresetCard: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity)
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .onTapGesture(perform: onSelect)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
                 .fill(.white.opacity(isCurrent ? 0.64 : 0.50))
@@ -899,6 +1411,527 @@ private struct PresetCard: View {
                 .stroke(isCurrent ? KikariaTheme.sky.opacity(0.62) : .white.opacity(0.26), lineWidth: isCurrent ? 1.6 : 1)
         }
         .shadow(color: KikariaTheme.sky.opacity(isCurrent ? 0.17 : 0.10), radius: 20, y: 11)
+    }
+}
+
+private struct NewPresetView: View {
+    @Environment(\.dismiss) private var dismiss
+    let createPreset: (String, String, String, String) -> PresetCreationOutcome
+    @State private var name = ""
+    @State private var category = ""
+    @State private var description = ""
+    @State private var markdownText = ""
+    @State private var errorMessage: String?
+    @State private var isImportingFile = false
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
+
+    private var allowedContentTypes: [UTType] {
+        var types: [UTType] = [.plainText, .text]
+
+        if let markdownType = UTType(filenameExtension: "md") {
+            types.insert(markdownType, at: 0)
+        }
+
+        return types
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.58), in: Circle())
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text("上传新预设")
+                        .font(.headline)
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Button("保存") {
+                        savePreset()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(KikariaTheme.sky)
+                    .frame(width: 42, alignment: .trailing)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 16)
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ProfileTextField(title: "预设名称", text: $name)
+                        ProfileTextField(title: "分类", text: $category)
+                        ProfileTextField(title: "简短描述", text: $description)
+
+                        Button {
+                            isImportingFile = true
+                        } label: {
+                            Label("选择 .md / .txt 文件", systemImage: "doc.badge.plus")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Markdown 文本")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(KikariaTheme.softText)
+
+                            TextEditor(text: $markdownText)
+                                .font(.system(.body, design: .serif))
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .scrollContentBackground(.hidden)
+                                .padding(14)
+                                .frame(minHeight: 260)
+                                .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                                .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 14, y: 8)
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(14)
+                                .background(.white.opacity(0.64), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 32)
+                }
+            }
+
+            if let toastMessage {
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .fileImporter(isPresented: $isImportingFile, allowedContentTypes: allowedContentTypes, allowsMultipleSelection: false) { result in
+            importMarkdownFile(result)
+        }
+    }
+
+    private func importMarkdownFile(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else {
+                return
+            }
+
+            let canAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if canAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            do {
+                markdownText = try String(contentsOf: url, encoding: .utf8)
+                errorMessage = nil
+            } catch {
+                errorMessage = "文件读取失败，请确认它是 UTF-8 文本。"
+            }
+        case .failure:
+            errorMessage = "文件选择失败，请重试。"
+        }
+    }
+
+    private func savePreset() {
+        switch createPreset(name, category, description, markdownText) {
+        case .success(let preset):
+            showToast("已创建「\(preset.name)」")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                dismiss()
+            }
+        case .failure(let message):
+            withAnimation(.easeInOut(duration: 0.2)) {
+                errorMessage = message
+            }
+        }
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
+            }
+        }
+    }
+}
+
+private struct EditPresetView: View {
+    @Environment(\.dismiss) private var dismiss
+    let preset: KnowledgePreset
+    let knowledgePoints: [KnowledgePoint]
+    let onSavePreset: (String, String, String, String) -> Void
+    let onAddPoint: () -> Void
+    let onEditPoint: (UUID) -> Void
+    let onDeletePoint: (UUID, String) -> Void
+    let onDeletePreset: (String) -> Void
+    @State private var name: String
+    @State private var category: String
+    @State private var description: String
+    @State private var pendingDeletePoint: KnowledgePoint?
+    @State private var isConfirmingPresetDelete = false
+
+    init(
+        preset: KnowledgePreset,
+        knowledgePoints: [KnowledgePoint],
+        onSavePreset: @escaping (String, String, String, String) -> Void,
+        onAddPoint: @escaping () -> Void,
+        onEditPoint: @escaping (UUID) -> Void,
+        onDeletePoint: @escaping (UUID, String) -> Void,
+        onDeletePreset: @escaping (String) -> Void
+    ) {
+        self.preset = preset
+        self.knowledgePoints = knowledgePoints
+        self.onSavePreset = onSavePreset
+        self.onAddPoint = onAddPoint
+        self.onEditPoint = onEditPoint
+        self.onDeletePoint = onDeletePoint
+        self.onDeletePreset = onDeletePreset
+        _name = State(initialValue: preset.name)
+        _category = State(initialValue: preset.category)
+        _description = State(initialValue: preset.description)
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.58), in: Circle())
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text("编辑预设")
+                        .font(.headline)
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Button("保存") {
+                        onSavePreset(preset.id, name, category, description)
+                        dismiss()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(KikariaTheme.sky)
+                    .frame(width: 42, alignment: .trailing)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 16)
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        ProfileTextField(title: "预设名称", text: $name)
+                        ProfileTextField(title: "分类", text: $category)
+                        ProfileTextField(title: "简短描述", text: $description)
+
+                        Button(action: onAddPoint) {
+                            Label("添加知识点", systemImage: "plus.circle.fill")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+
+                        VStack(spacing: 12) {
+                            ForEach(knowledgePoints) { point in
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(point.title)
+                                            .font(.headline)
+                                            .foregroundStyle(KikariaTheme.deepText)
+
+                                        Text(point.tags.joined(separator: ", "))
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(KikariaTheme.softText)
+                                            .lineLimit(2)
+                                    }
+
+                                    Spacer()
+
+                                    Button {
+                                        onEditPoint(point.id)
+                                    } label: {
+                                        Image(systemName: "pencil")
+                                            .font(.headline.weight(.semibold))
+                                            .foregroundStyle(KikariaTheme.sky)
+                                            .frame(width: 34, height: 34)
+                                            .background(.white.opacity(0.58), in: Circle())
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Button {
+                                        pendingDeletePoint = point
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.headline.weight(.semibold))
+                                            .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                            .frame(width: 34, height: 34)
+                                            .background(.white.opacity(0.58), in: Circle())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(16)
+                                .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            }
+                        }
+
+                        if !preset.isBuiltIn {
+                            Button(role: .destructive) {
+                                isConfirmingPresetDelete = true
+                            } label: {
+                                Text("删除此预设")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 15)
+                                    .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 6)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 34)
+                }
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .alert("删除知识点？", isPresented: isConfirmingPointDelete) {
+            Button("取消", role: .cancel) {
+                pendingDeletePoint = nil
+            }
+
+            Button("删除", role: .destructive) {
+                if let pendingDeletePoint {
+                    onDeletePoint(pendingDeletePoint.id, preset.id)
+                }
+
+                pendingDeletePoint = nil
+            }
+        } message: {
+            Text("删除后，该知识点的重点集锦、已掌握和今日复习次数也会一并移除。")
+        }
+        .alert("删除预设？", isPresented: $isConfirmingPresetDelete) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                onDeletePreset(preset.id)
+                dismiss()
+            }
+        } message: {
+            Text("此操作会删除该自定义预设和它的学习状态。")
+        }
+    }
+
+    private var isConfirmingPointDelete: Binding<Bool> {
+        Binding(
+            get: { pendingDeletePoint != nil },
+            set: { isPresented in
+                if !isPresented {
+                    pendingDeletePoint = nil
+                }
+            }
+        )
+    }
+}
+
+private struct EditKnowledgePointView: View {
+    @Environment(\.dismiss) private var dismiss
+    let presetName: String
+    let point: KnowledgePoint?
+    let onSave: (KnowledgePoint) -> Void
+    @State private var title: String
+    @State private var tagsText: String
+    @State private var hint: String
+    @State private var content: String
+    @State private var errorMessage: String?
+
+    init(presetName: String, point: KnowledgePoint?, onSave: @escaping (KnowledgePoint) -> Void) {
+        self.presetName = presetName
+        self.point = point
+        self.onSave = onSave
+        _title = State(initialValue: point?.title ?? "")
+        _tagsText = State(initialValue: point?.tags.joined(separator: ", ") ?? "")
+        _hint = State(initialValue: point?.hint ?? "")
+        _content = State(initialValue: point?.content ?? "")
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.58), in: Circle())
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text(point == nil ? "添加知识点" : "编辑知识点")
+                        .font(.headline)
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Button("保存") {
+                        savePoint()
+                    }
+                    .font(.headline)
+                    .foregroundStyle(KikariaTheme.sky)
+                    .frame(width: 42, alignment: .trailing)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 16)
+
+                ScrollView {
+                    VStack(spacing: 16) {
+                        Text(presetName)
+                            .font(.system(size: 26, weight: .semibold, design: .serif))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        ProfileTextField(title: "标题", text: $title)
+                        ProfileTextField(title: "标签，用逗号分隔", text: $tagsText)
+
+                        EditableLongTextField(title: "提示", text: $hint, minHeight: 150)
+                        EditableLongTextField(title: "答案", text: $content, minHeight: 220)
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(14)
+                                .background(.white.opacity(0.64), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 34)
+                }
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private func savePoint() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedHint = hint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tags = tagsText
+            .split(whereSeparator: { $0 == "," || $0 == "，" })
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard !trimmedTitle.isEmpty, !trimmedHint.isEmpty, !trimmedContent.isEmpty else {
+            errorMessage = "标题、提示和答案都不能为空。"
+            return
+        }
+
+        let now = Date()
+        let savedPoint = KnowledgePoint(
+            id: point?.id ?? UUID(),
+            title: trimmedTitle,
+            tags: tags,
+            hint: trimmedHint,
+            content: trimmedContent,
+            isReinforced: point?.isReinforced ?? false,
+            isMastered: point?.isMastered ?? false,
+            createdAt: point?.createdAt ?? now,
+            updatedAt: now
+        )
+
+        onSave(savedPoint)
+        dismiss()
+    }
+}
+
+private struct EditableLongTextField: View {
+    let title: String
+    @Binding var text: String
+    let minHeight: CGFloat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KikariaTheme.softText)
+
+            TextEditor(text: $text)
+                .font(.system(.body, design: .serif))
+                .foregroundStyle(KikariaTheme.deepText)
+                .scrollContentBackground(.hidden)
+                .padding(14)
+                .frame(minHeight: minHeight)
+                .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .shadow(color: KikariaTheme.sky.opacity(0.08), radius: 12, y: 7)
+        }
     }
 }
 
@@ -1198,6 +2231,8 @@ private struct MarkdownEditorView: View {
 private struct StartReviewButton: View {
     let dailyGoal: Int
     let masteredCount: Int
+    let countdownDays: Int?
+    let presetShortName: String
     @State private var isBreathing = false
     @State private var hasStartedBreathingAnimation = false
     private let orbitDuration: TimeInterval = 150
@@ -1209,7 +2244,7 @@ private struct StartReviewButton: View {
             ZStack {
                 ZStack {
                     MetricBubble(
-                        value: dailyGoal,
+                        valueText: "\(dailyGoal)",
                         label: "目标",
                         size: 92,
                         colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
@@ -1219,16 +2254,19 @@ private struct StartReviewButton: View {
                     .scaleEffect(isBreathing ? 1.035 : 0.985)
                     .offset(x: -96, y: -68)
 
-                    SoftBubble(
-                        size: 54,
+                    MetricBubble(
+                        valueText: presetShortName,
+                        label: "预设",
+                        size: 80,
                         colors: [Color(red: 0.75, green: 0.78, blue: 1.0), KikariaTheme.mist],
-                        opacity: 0.44
+                        opacity: 0.42
                     )
-                    .scaleEffect(isBreathing ? 0.98 : 1.05)
+                    .rotationEffect(.degrees(-orbitDegrees))
+                    .scaleEffect(isBreathing ? 0.985 : 1.04)
                     .offset(x: 102, y: -56)
 
                     MetricBubble(
-                        value: masteredCount,
+                        valueText: "\(masteredCount)",
                         label: "已掌握",
                         size: 78,
                         colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
@@ -1238,13 +2276,16 @@ private struct StartReviewButton: View {
                     .scaleEffect(isBreathing ? 1.035 : 0.985)
                     .offset(x: 92, y: 80)
 
-                    SoftBubble(
-                        size: 42,
+                    MetricBubble(
+                        valueText: countdownDays.map(String.init) ?? "--",
+                        label: "倒数",
+                        size: 74,
                         colors: [KikariaTheme.sky, Color.white],
-                        opacity: 0.34
+                        opacity: 0.36
                     )
-                    .scaleEffect(isBreathing ? 0.98 : 1.06)
-                    .offset(x: -110, y: 68)
+                    .rotationEffect(.degrees(-orbitDegrees))
+                    .scaleEffect(isBreathing ? 0.99 : 1.045)
+                    .offset(x: -106, y: 78)
                 }
                 .rotationEffect(.degrees(orbitDegrees))
 
@@ -1313,7 +2354,7 @@ private struct SoftBubble: View {
 }
 
 private struct MetricBubble: View {
-    let value: Int
+    let valueText: String
     let label: String
     let size: CGFloat
     let colors: [Color]
@@ -1324,7 +2365,7 @@ private struct MetricBubble: View {
             SoftBubble(size: size, colors: colors, opacity: opacity)
 
             VStack(spacing: 2) {
-                Text("\(value)")
+                Text(valueText)
                     .font(.system(size: size > 84 ? 24 : 21, weight: .semibold, design: .serif))
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.deepText.opacity(0.86))
@@ -1335,7 +2376,7 @@ private struct MetricBubble: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label) \(value)")
+        .accessibilityLabel("\(label) \(valueText)")
     }
 }
 
@@ -1487,7 +2528,9 @@ struct ReviewView: View {
     @State private var currentPointID: KnowledgePoint.ID?
     @State private var isShowingHint = false
     @State private var isShowingContent = false
-    @State private var pointHistory: [KnowledgePoint.ID] = []
+    @State private var reviewQueue: [KnowledgePoint.ID] = []
+    @State private var reviewQueueIndex = 0
+    @State private var lastQueuePointID: KnowledgePoint.ID?
     @State private var gestureFeedback = false
     @State private var isShowingScopePanel = false
     @State private var toastMessage: String?
@@ -1520,6 +2563,10 @@ struct ReviewView: View {
         }
 
         return knowledgePoints.first { $0.id == currentPointID }
+    }
+
+    private var matchingPointIDs: [KnowledgePoint.ID] {
+        matchingPoints.map(\.id)
     }
 
     private var currentTodayReviewCount: Int {
@@ -1702,13 +2749,12 @@ struct ReviewView: View {
         .simultaneousGesture(reviewDragGesture)
         .onAppear {
             if currentPointID == nil {
-                chooseRandomPoint(rememberCurrent: false)
+                rebuildReviewQueue(avoiding: lastQueuePointID)
             }
         }
         .onChange(of: selectedTags) { _ in
             if mode.isNormal {
-                pointHistory.removeAll()
-                chooseRandomPoint(rememberCurrent: false)
+                rebuildReviewQueue(avoiding: currentPointID)
             }
         }
     }
@@ -1823,39 +2869,103 @@ struct ReviewView: View {
         }
     }
 
-    private func chooseRandomPoint(rememberCurrent: Bool = true) {
-        guard !matchingPoints.isEmpty else {
+    private func chooseRandomPoint() {
+        moveToNextInQueue()
+    }
+
+    private func rebuildReviewQueue(avoiding avoidedFirstID: KnowledgePoint.ID? = nil) {
+        var shuffledIDs = matchingPointIDs.shuffled()
+
+        guard !shuffledIDs.isEmpty else {
+            reviewQueue = []
+            reviewQueueIndex = 0
             currentPointID = nil
             resetRevealState()
             return
         }
 
-        let previousID = currentPointID
-        if rememberCurrent, let previousID {
-            pointHistory.append(previousID)
+        if let avoidedFirstID,
+           shuffledIDs.count > 1,
+           shuffledIDs.first == avoidedFirstID,
+           let swapIndex = shuffledIDs.firstIndex(where: { $0 != avoidedFirstID }) {
+            shuffledIDs.swapAt(0, swapIndex)
         }
 
-        let candidates: [KnowledgePoint]
-        if matchingPoints.count > 1 {
-            candidates = matchingPoints.filter { $0.id != previousID }
+        reviewQueue = shuffledIDs
+        setCurrentPointFromQueue(at: 0)
+    }
+
+    private func moveToNextInQueue() {
+        reconcileReviewQueue()
+
+        guard !reviewQueue.isEmpty else {
+            rebuildReviewQueue(avoiding: lastQueuePointID)
+            return
+        }
+
+        let nextIndex: Int
+        if let currentPointID,
+           let currentIndex = reviewQueue.firstIndex(of: currentPointID) {
+            nextIndex = currentIndex + 1
         } else {
-            candidates = matchingPoints
+            nextIndex = reviewQueueIndex
         }
 
-        currentPointID = candidates.randomElement()?.id
-        resetRevealState()
+        if nextIndex < reviewQueue.count {
+            setCurrentPointFromQueue(at: nextIndex)
+        } else {
+            rebuildReviewQueue(avoiding: currentPointID ?? lastQueuePointID)
+        }
     }
 
     private func goBackOrChooseRandom() {
-        while let previousID = pointHistory.popLast() {
-            if matchingPoints.contains(where: { $0.id == previousID }) {
-                currentPointID = previousID
-                resetRevealState()
-                return
-            }
+        moveToPreviousInQueue()
+    }
+
+    private func moveToPreviousInQueue() {
+        reconcileReviewQueue()
+
+        guard !reviewQueue.isEmpty else {
+            rebuildReviewQueue(avoiding: lastQueuePointID)
+            return
         }
 
-        chooseRandomPoint(rememberCurrent: false)
+        if let currentPointID,
+           let currentIndex = reviewQueue.firstIndex(of: currentPointID) {
+            reviewQueueIndex = currentIndex
+        }
+
+        if reviewQueue.count == 1 {
+            setCurrentPointFromQueue(at: 0)
+            return
+        }
+
+        let previousIndex = reviewQueueIndex > 0 ? reviewQueueIndex - 1 : reviewQueue.count - 1
+        setCurrentPointFromQueue(at: previousIndex)
+    }
+
+    private func reconcileReviewQueue() {
+        let validIDs = Set(matchingPointIDs)
+        reviewQueue = reviewQueue.filter { validIDs.contains($0) }
+
+        if let currentPointID,
+           let currentIndex = reviewQueue.firstIndex(of: currentPointID) {
+            reviewQueueIndex = currentIndex
+        } else if reviewQueueIndex >= reviewQueue.count {
+            reviewQueueIndex = max(0, reviewQueue.count - 1)
+        }
+    }
+
+    private func setCurrentPointFromQueue(at index: Int) {
+        guard reviewQueue.indices.contains(index) else {
+            rebuildReviewQueue(avoiding: lastQueuePointID)
+            return
+        }
+
+        reviewQueueIndex = index
+        currentPointID = reviewQueue[index]
+        lastQueuePointID = currentPointID
+        resetRevealState()
     }
 
     private func resetRevealState() {
