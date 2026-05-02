@@ -68,6 +68,7 @@ private enum AppRoute: Hashable {
     case settings
     case editProfile
     case markdownEditor
+    case presetSelection
 }
 
 enum ReviewMode {
@@ -114,11 +115,12 @@ struct DailyReviewRecord {
 
 struct ContentView: View {
     @State private var knowledgePoints = KnowledgePoint.samples
-    @State private var markdownText = KnowledgePoint.defaultMarkdownText
+    @State private var markdownText = KnowledgePreset.defaultPreset.markdownText
     @State private var userProfile = UserProfile()
     @State private var selectedTags = Set<String>()
     @State private var navigationPath: [AppRoute] = []
     @State private var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord] = [:]
+    @State private var currentPresetID = KnowledgePreset.defaultPresetID
     @AppStorage("dailyLearningGoal") private var dailyGoal = 20
 
     private var allTags: [String] {
@@ -135,6 +137,10 @@ struct ContentView: View {
 
     private var masteredCount: Int {
         knowledgePoints.filter(\.isMastered).count
+    }
+
+    private var currentPreset: KnowledgePreset {
+        KnowledgePreset.all.first { $0.id == currentPresetID } ?? KnowledgePreset.defaultPreset
     }
 
     var body: some View {
@@ -258,14 +264,15 @@ struct ContentView: View {
                     SettingsView(
                         profile: userProfile,
                         dailyGoal: $dailyGoal,
+                        currentPresetName: currentPreset.name,
                         onClose: {
                             navigationPath.removeAll()
                         },
                         onEditProfile: {
                             navigationPath.append(.editProfile)
                         },
-                        onOpenMarkdownEditor: {
-                            navigationPath.append(.markdownEditor)
+                        onOpenPresetSelection: {
+                            navigationPath.append(.presetSelection)
                         }
                     )
                 case .editProfile:
@@ -277,9 +284,31 @@ struct ContentView: View {
                         selectedTags: $selectedTags,
                         dailyReviewRecords: $dailyReviewRecords
                     )
+                case .presetSelection:
+                    PresetSelectionView(
+                        presets: KnowledgePreset.all,
+                        currentPresetID: currentPresetID,
+                        applyPreset: applyPreset
+                    )
                 }
             }
         }
+    }
+
+    private func applyPreset(_ preset: KnowledgePreset) -> Bool {
+        guard let parsedPoints = try? KnowledgePoint.parseMarkdown(preset.markdownText) else {
+            return false
+        }
+
+        withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
+            knowledgePoints = parsedPoints
+            markdownText = preset.markdownText
+            currentPresetID = preset.id
+            selectedTags.removeAll()
+            dailyReviewRecords.removeAll()
+        }
+
+        return true
     }
 }
 
@@ -314,9 +343,10 @@ private struct ProfileAvatarView: View {
 private struct SettingsView: View {
     let profile: UserProfile
     @Binding var dailyGoal: Int
+    let currentPresetName: String
     let onClose: () -> Void
     let onEditProfile: () -> Void
-    let onOpenMarkdownEditor: () -> Void
+    let onOpenPresetSelection: () -> Void
     @State private var isShowingDailyGoalPicker = false
 
     var body: some View {
@@ -397,11 +427,12 @@ private struct SettingsView: View {
                             }
 
                             SettingsOptionRow(
-                                title: "知识点上传",
-                                subtitle: "粘贴或编辑 Markdown 文本",
-                                systemImage: "doc.text"
+                                title: "切换预设",
+                                subtitle: "选择内置知识点集合",
+                                systemImage: "square.stack.3d.up",
+                                valueText: currentPresetName
                             ) {
-                                onOpenMarkdownEditor()
+                                onOpenPresetSelection()
                             }
                         }
                     }
@@ -475,6 +506,8 @@ private struct SettingsOptionRow: View {
                         .font(.headline.weight(.semibold))
                         .monospacedDigit()
                         .foregroundStyle(KikariaTheme.sky)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.76)
                 }
 
                 if showsChevron {
@@ -544,6 +577,185 @@ private struct DailyGoalPickerBubble: View {
                 .stroke(.white.opacity(0.38), lineWidth: 1)
         }
         .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 24, y: 14)
+    }
+}
+
+private struct PresetSelectionView: View {
+    @Environment(\.dismiss) private var dismiss
+    let presets: [KnowledgePreset]
+    let currentPresetID: String
+    let applyPreset: (KnowledgePreset) -> Bool
+    @State private var pendingPreset: KnowledgePreset?
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("切换预设")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundStyle(KikariaTheme.deepText)
+
+                        Text("选择一套内置知识点。切换会替换当前学习内容。")
+                            .font(.subheadline)
+                            .foregroundStyle(KikariaTheme.softText)
+                    }
+                    .padding(.top, 18)
+                    .padding(.bottom, 6)
+
+                    ForEach(presets) { preset in
+                        Button {
+                            if preset.id != currentPresetID {
+                                pendingPreset = preset
+                            }
+                        } label: {
+                            PresetCard(
+                                preset: preset,
+                                isCurrent: preset.id == currentPresetID
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 34)
+            }
+
+            if let toastMessage {
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .navigationTitle("切换预设")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("切换预设？", isPresented: isConfirmingPreset) {
+            Button("取消", role: .cancel) {
+                pendingPreset = nil
+            }
+
+            Button("确认切换", role: .destructive) {
+                confirmPresetSwitch()
+            }
+        } message: {
+            Text("切换后将替换当前所有知识点，并清空重点集锦、已掌握状态和今日复习次数。")
+        }
+    }
+
+    private var isConfirmingPreset: Binding<Bool> {
+        Binding(
+            get: { pendingPreset != nil },
+            set: { isPresented in
+                if !isPresented {
+                    pendingPreset = nil
+                }
+            }
+        )
+    }
+
+    private func confirmPresetSwitch() {
+        guard let preset = pendingPreset else {
+            return
+        }
+
+        pendingPreset = nil
+
+        if applyPreset(preset) {
+            showToast("已切换至「\(preset.name)」")
+        } else {
+            showToast("预设解析失败，请稍后再试")
+        }
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
+            }
+        }
+    }
+}
+
+private struct PresetCard: View {
+    let preset: KnowledgePreset
+    let isCurrent: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack(spacing: 8) {
+                        Text(preset.category)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(isCurrent ? .white : KikariaTheme.sky)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(isCurrent ? KikariaTheme.sky : .white.opacity(0.60), in: Capsule())
+                            .background(.ultraThinMaterial, in: Capsule())
+
+                        if isCurrent {
+                            Label("当前使用", systemImage: "checkmark.circle.fill")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(KikariaTheme.masteredGreen)
+                        }
+                    }
+
+                    Text(preset.name)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Text(preset.subtitle)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(KikariaTheme.softText)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(preset.knowledgePointCount)")
+                        .font(.system(size: 26, weight: .semibold, design: .serif))
+                        .monospacedDigit()
+                        .foregroundStyle(KikariaTheme.sky)
+
+                    Text("知识点")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(KikariaTheme.softText)
+                }
+            }
+
+            Text(preset.description)
+                .font(.subheadline)
+                .foregroundStyle(KikariaTheme.softText)
+                .lineSpacing(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.white.opacity(isCurrent ? 0.64 : 0.50))
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(isCurrent ? KikariaTheme.sky.opacity(0.62) : .white.opacity(0.26), lineWidth: isCurrent ? 1.6 : 1)
+        }
+        .shadow(color: KikariaTheme.sky.opacity(isCurrent ? 0.17 : 0.10), radius: 20, y: 11)
     }
 }
 
@@ -642,7 +854,7 @@ private struct EditProfileView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .onChange(of: selectedPhotoItem) {
+        .onChange(of: selectedPhotoItem) { _ in
             loadSelectedAvatar()
         }
     }
@@ -844,81 +1056,92 @@ private struct StartReviewButton: View {
     let dailyGoal: Int
     let masteredCount: Int
     @State private var isBreathing = false
-    @State private var orbitDegrees = 0.0
+    @State private var hasStartedBreathingAnimation = false
+    private let orbitDuration: TimeInterval = 150
 
     var body: some View {
-        ZStack {
+        TimelineView(.animation) { timeline in
+            let orbitDegrees = orbitAngle(for: timeline.date)
+
             ZStack {
-                MetricBubble(
-                    value: dailyGoal,
-                    label: "目标",
-                    size: 92,
-                    colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
-                    opacity: 0.48
-                )
-                .rotationEffect(.degrees(-orbitDegrees))
-                .scaleEffect(isBreathing ? 1.035 : 0.985)
-                .offset(x: -96, y: -68)
+                ZStack {
+                    MetricBubble(
+                        value: dailyGoal,
+                        label: "目标",
+                        size: 92,
+                        colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
+                        opacity: 0.48
+                    )
+                    .rotationEffect(.degrees(-orbitDegrees))
+                    .scaleEffect(isBreathing ? 1.035 : 0.985)
+                    .offset(x: -96, y: -68)
 
-                SoftBubble(
-                    size: 54,
-                    colors: [Color(red: 0.75, green: 0.78, blue: 1.0), KikariaTheme.mist],
-                    opacity: 0.44
-                )
-                .scaleEffect(isBreathing ? 0.98 : 1.05)
-                .offset(x: 102, y: -56)
+                    SoftBubble(
+                        size: 54,
+                        colors: [Color(red: 0.75, green: 0.78, blue: 1.0), KikariaTheme.mist],
+                        opacity: 0.44
+                    )
+                    .scaleEffect(isBreathing ? 0.98 : 1.05)
+                    .offset(x: 102, y: -56)
 
-                MetricBubble(
-                    value: masteredCount,
-                    label: "已掌握",
-                    size: 78,
-                    colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
-                    opacity: 0.38
-                )
-                .rotationEffect(.degrees(-orbitDegrees))
-                .scaleEffect(isBreathing ? 1.035 : 0.985)
-                .offset(x: 92, y: 80)
+                    MetricBubble(
+                        value: masteredCount,
+                        label: "已掌握",
+                        size: 78,
+                        colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
+                        opacity: 0.38
+                    )
+                    .rotationEffect(.degrees(-orbitDegrees))
+                    .scaleEffect(isBreathing ? 1.035 : 0.985)
+                    .offset(x: 92, y: 80)
 
-                SoftBubble(
-                    size: 42,
-                    colors: [KikariaTheme.sky, Color.white],
-                    opacity: 0.34
-                )
-                .scaleEffect(isBreathing ? 0.98 : 1.06)
-                .offset(x: -110, y: 68)
-            }
-            .rotationEffect(.degrees(orbitDegrees))
-
-            Circle()
-                .fill(KikariaTheme.actionGradient)
-                .frame(width: 190, height: 190)
-                .background(.ultraThinMaterial, in: Circle())
-                .shadow(color: KikariaTheme.sky.opacity(0.28), radius: 28, x: 0, y: 18)
-                .scaleEffect(isBreathing ? 1.018 : 0.992)
-                .overlay {
-                    Circle()
-                        .fill(.white.opacity(0.16))
-                        .padding(1)
+                    SoftBubble(
+                        size: 42,
+                        colors: [KikariaTheme.sky, Color.white],
+                        opacity: 0.34
+                    )
+                    .scaleEffect(isBreathing ? 0.98 : 1.06)
+                    .offset(x: -110, y: 68)
                 }
+                .rotationEffect(.degrees(orbitDegrees))
 
-            Image(systemName: "arrow.right")
-                .font(.system(size: 70, weight: .regular))
-                .foregroundStyle(.white.opacity(0.96))
-                .shadow(color: KikariaTheme.deepText.opacity(0.10), radius: 8, y: 4)
+                Circle()
+                    .fill(KikariaTheme.actionGradient)
+                    .frame(width: 190, height: 190)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .shadow(color: KikariaTheme.sky.opacity(0.28), radius: 28, x: 0, y: 18)
+                    .scaleEffect(isBreathing ? 1.018 : 0.992)
+                    .overlay {
+                        Circle()
+                            .fill(.white.opacity(0.16))
+                            .padding(1)
+                    }
+
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 70, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.96))
+                    .shadow(color: KikariaTheme.deepText.opacity(0.10), radius: 8, y: 4)
+            }
         }
         .frame(width: 272, height: 260)
         .scaleEffect(isBreathing ? 1.012 : 0.996)
         .offset(y: isBreathing ? -5 : 2)
         .onAppear {
+            guard !hasStartedBreathingAnimation else {
+                return
+            }
+
+            hasStartedBreathingAnimation = true
             withAnimation(.easeInOut(duration: 5.4).repeatForever(autoreverses: true)) {
                 isBreathing = true
             }
-
-            orbitDegrees = 0
-            withAnimation(.linear(duration: 150).repeatForever(autoreverses: false)) {
-                orbitDegrees = 360
-            }
         }
+    }
+
+    private func orbitAngle(for date: Date) -> Double {
+        let progress = date.timeIntervalSinceReferenceDate
+            .truncatingRemainder(dividingBy: orbitDuration) / orbitDuration
+        return progress * 360
     }
 }
 
@@ -1339,7 +1562,7 @@ struct ReviewView: View {
                 chooseRandomPoint(rememberCurrent: false)
             }
         }
-        .onChange(of: selectedTags) {
+        .onChange(of: selectedTags) { _ in
             if mode.isNormal {
                 pointHistory.removeAll()
                 chooseRandomPoint(rememberCurrent: false)
@@ -1359,13 +1582,16 @@ struct ReviewView: View {
             return
         }
 
-        let horizontal = abs(translation.width)
-        let vertical = abs(translation.height)
-        let threshold: CGFloat = 68
-        let dominance: CGFloat = 1.35
+        let dx = translation.width
+        let dy = translation.height
+        let horizontal = abs(dx)
+        let vertical = abs(dy)
+        let horizontalThreshold: CGFloat = 80
+        let verticalThreshold: CGFloat = 100
+        let dominance: CGFloat = 1.4
 
-        if horizontal > threshold && horizontal > vertical * dominance {
-            if translation.width > 0 {
+        if horizontal > horizontalThreshold && horizontal > vertical * dominance {
+            if dx > 0 {
                 guard mode.isNormal, startLocation.x > 34 else {
                     return
                 }
@@ -1378,8 +1604,8 @@ struct ReviewView: View {
                 triggerGestureFeedback()
                 handleSwipeLeft()
             }
-        } else if vertical > threshold && vertical > horizontal * dominance {
-            if translation.height < 0 {
+        } else if vertical > verticalThreshold && vertical > horizontal * dominance {
+            if dy < 0 {
                 triggerGestureFeedback()
                 if isShowingContent {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {

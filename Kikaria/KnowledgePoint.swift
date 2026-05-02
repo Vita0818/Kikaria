@@ -218,3 +218,183 @@ extension KnowledgePoint {
         }
     }
 }
+
+struct KnowledgePreset: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let subtitle: String
+    let description: String
+    let category: String
+    let markdownText: String
+
+    var knowledgePointCount: Int {
+        (try? KnowledgePoint.parseMarkdown(markdownText).count) ?? 0
+    }
+
+    static let defaultPresetID = "advanced-math"
+
+    static var defaultPreset: KnowledgePreset {
+        all.first { $0.id == defaultPresetID } ?? all[0]
+    }
+
+    static let all: [KnowledgePreset] = [
+        KnowledgePreset(
+            id: "advanced-math",
+            name: "高等数学知识点",
+            subtitle: "微积分、线性代数基础概念",
+            description: "覆盖极限、导数、矩阵和基础概率概念，适合作为 Kikaria 默认示例。",
+            category: "数学",
+            markdownText: KnowledgePoint.defaultMarkdownText
+        ),
+        KnowledgePreset(
+            id: "college-english",
+            name: "大学英语单词",
+            subtitle: "高频词汇与短语",
+            description: "用简短英文词汇卡片练习释义、用法和记忆提示。",
+            category: "英语",
+            markdownText: """
+            # inevitable
+
+            tags: English, Vocabulary, Adjective
+
+            hint:
+            Something that cannot be avoided.
+
+            content:
+            Inevitable means certain to happen and impossible to prevent, as in "Change is inevitable."
+
+            ---
+
+            # concise
+
+            tags: English, Vocabulary, Writing
+
+            hint:
+            Short, clear, and not using unnecessary words.
+
+            content:
+            Concise writing expresses an idea clearly in few words, without losing important meaning.
+
+            ---
+
+            # derive
+
+            tags: English, Vocabulary, Verb
+
+            hint:
+            To get something from a source or origin.
+
+            content:
+            Derive means to obtain or develop something from another thing, such as deriving a word from Latin.
+
+            ---
+
+            # take into account
+
+            tags: English, Phrase, Academic
+
+            hint:
+            To consider something when making a decision.
+
+            content:
+            To take something into account means to include it as an important factor in your thinking.
+            """
+        ),
+        KnowledgePreset(
+            id: "anatomy",
+            name: "解剖学",
+            subtitle: "人体结构与基础术语",
+            description: "包含骨骼、神经和呼吸系统等基础医学概念示例。",
+            category: "医学",
+            markdownText: """
+            # femur
+
+            tags: Anatomy, Bone, Lower Limb
+
+            hint:
+            The longest and strongest bone in the human body.
+
+            content:
+            The femur is the thigh bone. It connects the hip joint to the knee joint and supports body weight during standing and walking.
+
+            ---
+
+            # neuron
+
+            tags: Anatomy, Nervous System, Cell
+
+            hint:
+            A specialized cell that transmits nerve signals.
+
+            content:
+            A neuron is a nerve cell made of a cell body, dendrites, and an axon. It receives, processes, and sends electrical or chemical signals.
+
+            ---
+
+            # alveoli
+
+            tags: Anatomy, Respiratory System, Lung
+
+            hint:
+            Tiny air sacs where gas exchange occurs.
+
+            content:
+            Alveoli are small air sacs in the lungs. Oxygen enters the blood and carbon dioxide leaves the blood across their thin walls.
+
+            ---
+
+            # diaphragm
+
+            tags: Anatomy, Muscle, Breathing
+
+            hint:
+            The main muscle used for breathing.
+
+            content:
+            The diaphragm is a dome-shaped muscle below the lungs. When it contracts, the chest cavity expands and air is drawn into the lungs.
+            """
+        ),
+        KnowledgePreset(
+            id: "template",
+            name: "示例模板",
+            subtitle: "用于后续自定义扩展",
+            description: "提供最小格式样例，方便后续替换为课程或课本内容。",
+            category: "模板",
+            markdownText: """
+            # Concept Title
+
+            tags: Template, Concept
+
+            hint:
+            Write a short clue that helps you recall the concept.
+
+            content:
+            Write the full explanation, formula, definition, or example here.
+
+            ---
+
+            # Keyword Card
+
+            tags: Template, Keyword
+
+            hint:
+            Add a memory cue or related phrase.
+
+            content:
+            Add the meaning, usage, or important details for this keyword.
+
+            ---
+
+            # Question Prompt
+
+            tags: Template, Practice
+
+            hint:
+            Add the first step or a gentle reminder.
+
+            content:
+            Add the complete answer or solution process.
+            """
+        )
+    ]
+}
