@@ -71,6 +71,7 @@ private enum AppRoute: Hashable {
     case markdownEditor
     case presetSelection
     case newPreset
+    case markdownFormatGuide
     case editPreset(String)
     case editKnowledgePoint(String, UUID?)
 }
@@ -200,7 +201,7 @@ struct ContentView: View {
     }
 
     private var currentPresetShortName: String {
-        shortPresetName(for: currentPreset.name)
+        currentPreset.shortName
     }
 
     var body: some View {
@@ -212,7 +213,7 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     HStack(alignment: .center) {
                         Text("Kikaria")
-                            .font(.system(size: 39, weight: .semibold, design: .serif))
+                            .font(KikariaTypography.appTitle())
                             .foregroundStyle(KikariaTheme.deepText)
 
                         Spacer()
@@ -361,6 +362,8 @@ struct ContentView: View {
                     )
                 case .newPreset:
                     NewPresetView(createPreset: createPreset)
+                case .markdownFormatGuide:
+                    MarkdownFormatGuideView()
                 case .editPreset(let presetID):
                     if let preset = presets.first(where: { $0.id == presetID }),
                        let state = studyState(for: preset) {
@@ -626,7 +629,7 @@ struct ContentView: View {
         }
     }
 
-    private func createPreset(name: String, category: String, description: String, markdownText: String) -> PresetCreationOutcome {
+    private func createPreset(name: String, shortName: String, category: String, description: String, markdownText: String) -> PresetCreationOutcome {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
             return .failure("请填写预设名称。")
@@ -642,6 +645,7 @@ struct ContentView: View {
         let preset = KnowledgePreset(
             id: "user-\(UUID().uuidString)",
             name: trimmedName,
+            shortName: shortName,
             subtitle: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义知识点" : description.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义上传的知识点预设。" : description.trimmingCharacters(in: .whitespacesAndNewlines),
             category: category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义" : category.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -667,7 +671,7 @@ struct ContentView: View {
         return .success(preset)
     }
 
-    private func updatePresetMetadata(presetID: String, name: String, category: String, description: String) {
+    private func updatePresetMetadata(presetID: String, name: String, shortName: String, category: String, description: String) {
         guard let index = presets.firstIndex(where: { $0.id == presetID }) else {
             return
         }
@@ -677,6 +681,7 @@ struct ContentView: View {
         let trimmedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
 
         presets[index].name = trimmedName.isEmpty ? presets[index].name : trimmedName
+        presets[index].shortName = KnowledgePreset.normalizedShortName(shortName, fallbackName: presets[index].name)
         presets[index].category = trimmedCategory.isEmpty ? "自定义" : trimmedCategory
         presets[index].subtitle = trimmedDescription.isEmpty ? presets[index].subtitle : trimmedDescription
         presets[index].description = trimmedDescription.isEmpty ? presets[index].description : trimmedDescription
@@ -778,26 +783,6 @@ struct ContentView: View {
         min(max(goal, 1), 100)
     }
 
-    private func shortPresetName(for name: String) -> String {
-        if name.hasPrefix("高等数学") {
-            return "高数"
-        }
-
-        if name.hasPrefix("大学英语") {
-            return "英语"
-        }
-
-        if name.hasPrefix("解剖学") {
-            return "解剖"
-        }
-
-        if name.hasPrefix("示例模板") {
-            return "模板"
-        }
-
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedName.isEmpty ? "预设" : String(trimmedName.prefix(3))
-    }
 }
 
 private struct ProfileAvatarView: View {
@@ -848,7 +833,7 @@ private struct SettingsView: View {
             VStack(spacing: 0) {
                 HStack {
                     Text("设置")
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                        .font(KikariaTypography.chineseTitle(size: 30))
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Spacer()
@@ -880,17 +865,17 @@ private struct SettingsView: View {
 
                             VStack(spacing: 4) {
                                 Text(profile.displayName)
-                                    .font(.system(size: 28, weight: .semibold, design: .serif))
+                                    .font(KikariaTypography.chineseTitle(size: 28, weight: .semibold))
                                     .foregroundStyle(KikariaTheme.deepText)
 
                                 Text("@\(profile.userHandle)")
-                                    .font(.subheadline.weight(.medium))
+                                    .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
                                     .foregroundStyle(KikariaTheme.softText)
                             }
 
                             Button(action: onEditProfile) {
                                 Text("编辑个人资料")
-                                    .font(.headline)
+                                    .font(KikariaTypography.chineseButton(size: 16))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 13)
@@ -1011,13 +996,13 @@ private struct SettingsListRow: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Text(title)
-                    .font(.headline)
+                    .font(KikariaTypography.chineseHeadline(size: 17))
                     .foregroundStyle(KikariaTheme.deepText)
 
                 Spacer()
 
                 Text(valueText)
-                    .font(.headline.weight(.semibold))
+                    .font(KikariaTypography.chineseHeadline(size: 17))
                     .foregroundStyle(KikariaTheme.sky)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -1056,11 +1041,11 @@ private struct SettingsOptionRow: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.headline)
+                        .font(KikariaTypography.chineseHeadline())
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Text(subtitle)
-                        .font(.subheadline)
+                        .font(KikariaTypography.chineseCaption(size: 13))
                         .foregroundStyle(KikariaTheme.softText)
                 }
 
@@ -1068,7 +1053,7 @@ private struct SettingsOptionRow: View {
 
                 if let valueText {
                     Text(valueText)
-                        .font(.headline.weight(.semibold))
+                        .font(KikariaTypography.chineseHeadline())
                         .monospacedDigit()
                         .foregroundStyle(KikariaTheme.sky)
                         .lineLimit(1)
@@ -1102,13 +1087,13 @@ private struct DailyGoalPickerBubble: View {
         VStack(spacing: 12) {
             HStack {
                 Text("每日学习目标")
-                    .font(.headline.weight(.semibold))
+                    .font(KikariaTypography.chineseHeadline())
                     .foregroundStyle(KikariaTheme.deepText)
 
                 Spacer()
 
                 Text("\(dailyGoal)")
-                    .font(.headline.weight(.semibold))
+                    .font(KikariaTypography.number(size: 17))
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
             }
@@ -1116,6 +1101,7 @@ private struct DailyGoalPickerBubble: View {
             Picker("每日学习目标", selection: $dailyGoal) {
                 ForEach(1...100, id: \.self) { goal in
                     Text("\(goal) 个")
+                        .font(KikariaTypography.chineseBody(size: 18))
                         .tag(goal)
                 }
             }
@@ -1125,7 +1111,7 @@ private struct DailyGoalPickerBubble: View {
 
             Button(action: onDone) {
                 Text("完成")
-                    .font(.headline)
+                    .font(KikariaTypography.chineseButton())
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -1154,13 +1140,13 @@ private struct CountdownDatePickerBubble: View {
         VStack(spacing: 12) {
             HStack {
                 Text("倒数日")
-                    .font(.headline.weight(.semibold))
+                    .font(KikariaTypography.chineseHeadline())
                     .foregroundStyle(KikariaTheme.deepText)
 
                 Spacer()
 
                 Text(countdownText(for: selectedDate))
-                    .font(.headline.weight(.semibold))
+                    .font(KikariaTypography.chineseHeadline())
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
             }
@@ -1174,7 +1160,7 @@ private struct CountdownDatePickerBubble: View {
             HStack(spacing: 10) {
                 Button(action: onClear) {
                     Text("清除")
-                        .font(.headline)
+                        .font(KikariaTypography.chineseButton())
                         .foregroundStyle(KikariaTheme.deepText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -1184,7 +1170,7 @@ private struct CountdownDatePickerBubble: View {
 
                 Button(action: onDone) {
                     Text("完成")
-                        .font(.headline)
+                        .font(KikariaTypography.chineseButton())
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -1222,29 +1208,28 @@ private struct PresetSelectionView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("切换预设")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundStyle(KikariaTheme.deepText)
-
-                        Text("选择一套内置知识点。每套预设会保留自己的学习进度。")
-                            .font(.subheadline)
-                            .foregroundStyle(KikariaTheme.softText)
-                    }
-                    .padding(.top, 18)
-                    .padding(.bottom, 6)
+                    Text("切换预设")
+                        .font(KikariaTypography.chineseTitle())
+                        .foregroundStyle(KikariaTheme.deepText)
+                        .padding(.top, 18)
+                        .padding(.bottom, 2)
 
                     Button(action: onUploadNewPreset) {
-                        Label("上传新预设", systemImage: "square.and.arrow.up")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                            .shadow(color: KikariaTheme.sky.opacity(0.20), radius: 18, y: 9)
+                        HStack {
+                            Text("上传新预设")
+                                .font(KikariaTypography.chineseButton())
+                            Spacer()
+                            Image(systemName: "plus")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20)
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 16, y: 8)
                     }
                     .buttonStyle(.plain)
-                    .padding(.bottom, 4)
+                    .padding(.bottom, 2)
 
                     ForEach(presets) { preset in
                         PresetCard(
@@ -1260,7 +1245,7 @@ private struct PresetSelectionView: View {
                             }
                         )
                         .buttonStyle(.plain)
-                        }
+                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 34)
@@ -1338,86 +1323,83 @@ private struct PresetCard: View {
     let onEdit: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 7) {
+                VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Text(preset.category)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(isCurrent ? .white : KikariaTheme.sky)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(isCurrent ? KikariaTheme.sky : .white.opacity(0.60), in: Capsule())
-                            .background(.ultraThinMaterial, in: Capsule())
+                        Text(preset.name)
+                            .font(KikariaTypography.chineseHeadline(size: 20))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
 
                         if isCurrent {
-                            Label("当前使用", systemImage: "checkmark.circle.fill")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(KikariaTheme.masteredGreen)
+                            Text("当前")
+                                .font(KikariaTypography.tag(size: 11, weight: .bold))
+                                .foregroundStyle(KikariaTheme.sky)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(.white.opacity(0.62), in: Capsule())
+                                .background(.ultraThinMaterial, in: Capsule())
                         }
                     }
 
-                    Text(preset.name)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(KikariaTheme.deepText)
+                    HStack(spacing: 9) {
+                        Text(preset.shortName)
+                            .font(KikariaTypography.tag(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(KikariaTheme.sky.opacity(0.86), in: Capsule())
 
-                    Text(preset.subtitle)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(KikariaTheme.softText)
+                        Text("\(preset.knowledgePointCount) 个知识点")
+                            .font(KikariaTypography.tag(size: 12, weight: .semibold))
+                            .foregroundStyle(KikariaTheme.softText)
+                    }
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 10) {
-                    Button(action: onEdit) {
-                        Label("编辑", systemImage: "pencil")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(KikariaTheme.deepText)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(.white.opacity(0.56), in: Capsule())
-                            .background(.ultraThinMaterial, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-
-                    Text("\(preset.knowledgePointCount)")
-                        .font(.system(size: 26, weight: .semibold, design: .serif))
-                        .monospacedDigit()
-                        .foregroundStyle(KikariaTheme.sky)
-
-                    Text("知识点")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(KikariaTheme.softText)
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(KikariaTheme.deepText)
+                        .frame(width: 34, height: 34)
+                        .background(.white.opacity(0.56), in: Circle())
+                        .background(.ultraThinMaterial, in: Circle())
                 }
+                .buttonStyle(.plain)
             }
 
             Text(preset.description)
-                .font(.subheadline)
+                .font(KikariaTypography.chineseBody(size: 14))
                 .foregroundStyle(KikariaTheme.softText)
+                .lineLimit(2)
                 .lineSpacing(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(20)
+        .padding(18)
         .frame(maxWidth: .infinity)
-        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onTapGesture(perform: onSelect)
         .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(.white.opacity(isCurrent ? 0.64 : 0.50))
         }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(isCurrent ? KikariaTheme.sky.opacity(0.62) : .white.opacity(0.26), lineWidth: isCurrent ? 1.6 : 1)
         }
-        .shadow(color: KikariaTheme.sky.opacity(isCurrent ? 0.17 : 0.10), radius: 20, y: 11)
+        .shadow(color: KikariaTheme.sky.opacity(isCurrent ? 0.15 : 0.09), radius: 18, y: 10)
     }
 }
 
 private struct NewPresetView: View {
     @Environment(\.dismiss) private var dismiss
-    let createPreset: (String, String, String, String) -> PresetCreationOutcome
+    let createPreset: (String, String, String, String, String) -> PresetCreationOutcome
     @State private var name = ""
+    @State private var shortName = ""
     @State private var category = ""
     @State private var description = ""
     @State private var markdownText = ""
@@ -1458,7 +1440,7 @@ private struct NewPresetView: View {
                     Spacer()
 
                     Text("上传新预设")
-                        .font(.headline)
+                        .font(KikariaTypography.chineseHeadline())
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Spacer()
@@ -1466,7 +1448,7 @@ private struct NewPresetView: View {
                     Button("保存") {
                         savePreset()
                     }
-                    .font(.headline)
+                    .font(KikariaTypography.chineseButton())
                     .foregroundStyle(KikariaTheme.sky)
                     .frame(width: 42, alignment: .trailing)
                 }
@@ -1477,6 +1459,7 @@ private struct NewPresetView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         ProfileTextField(title: "预设名称", text: $name)
+                        ProfileTextField(title: "短名称（最多 3 字）", text: $shortName)
                         ProfileTextField(title: "分类", text: $category)
                         ProfileTextField(title: "简短描述", text: $description)
 
@@ -1484,7 +1467,7 @@ private struct NewPresetView: View {
                             isImportingFile = true
                         } label: {
                             Label("选择 .md / .txt 文件", systemImage: "doc.badge.plus")
-                                .font(.headline.weight(.semibold))
+                                .font(KikariaTypography.chineseButton())
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 15)
@@ -1494,9 +1477,24 @@ private struct NewPresetView: View {
                         .buttonStyle(.plain)
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Markdown 文本")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(KikariaTheme.softText)
+                            HStack(alignment: .center) {
+                                Text("Markdown 文本")
+                                    .font(KikariaTypography.chineseHeadline(size: 14))
+                                    .foregroundStyle(KikariaTheme.softText)
+
+                                Spacer()
+
+                                NavigationLink(value: AppRoute.markdownFormatGuide) {
+                                    Text("如何编写 Markdown 预设？")
+                                        .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                                        .foregroundStyle(KikariaTheme.sky)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 7)
+                                        .background(.white.opacity(0.58), in: Capsule())
+                                        .background(.ultraThinMaterial, in: Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
 
                             TextEditor(text: $markdownText)
                                 .font(.system(.body, design: .serif))
@@ -1511,7 +1509,7 @@ private struct NewPresetView: View {
 
                         if let errorMessage {
                             Text(errorMessage)
-                                .font(.subheadline.weight(.semibold))
+                                .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
                                 .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(14)
@@ -1530,6 +1528,12 @@ private struct NewPresetView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .onChange(of: shortName) { newValue in
+            let limited = String(newValue.prefix(3))
+            if limited != newValue {
+                shortName = limited
+            }
+        }
         .fileImporter(isPresented: $isImportingFile, allowedContentTypes: allowedContentTypes, allowsMultipleSelection: false) { result in
             importMarkdownFile(result)
         }
@@ -1561,7 +1565,7 @@ private struct NewPresetView: View {
     }
 
     private func savePreset() {
-        switch createPreset(name, category, description, markdownText) {
+        switch createPreset(name, shortName, category, description, markdownText) {
         case .success(let preset):
             showToast("已创建「\(preset.name)」")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
@@ -1594,16 +1598,306 @@ private struct NewPresetView: View {
     }
 }
 
+private struct MarkdownFormatGuideView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
+
+    private static let formatTemplate = """
+    # 知识点名称
+
+    tags: 标签1, 标签2, 标签3
+
+    hint:
+    这里写提示，可以是一句话，也可以是几行文字。
+
+    content:
+    这里写完整答案或背诵内容，可以是一段或多段文字。
+
+    ---
+    """
+
+    private static let completeExample = """
+    # 极限的保号性
+
+    tags: 高等数学, 极限, 基础
+
+    hint:
+    当函数极限大于 0 时，函数值在充分靠近该点时也大于 0。
+
+    content:
+    若 lim f(x) = A，且 A > 0，则存在某个去心邻域，使得在该邻域内 f(x) > 0。
+
+    ---
+
+    # 罗尔定理
+
+    tags: 高等数学, 中值定理
+
+    hint:
+    闭区间连续，开区间可导，两端函数值相等。
+
+    content:
+    若函数 f(x) 在 [a,b] 上连续，在 (a,b) 内可导，且 f(a)=f(b)，则至少存在一点 ξ∈(a,b)，使得 f'(ξ)=0。
+    """
+
+    private static let aiPrompt = """
+    请你把我提供的学习资料整理成 Kikaria 背诵 App 支持的结构化 Markdown 知识点。
+
+    格式必须严格遵守：
+
+    # 知识点名称
+
+    tags: 标签1, 标签2, 标签3
+
+    hint:
+    用简洁语言给出背诵提示，不要直接泄露完整答案。
+
+    content:
+    写出完整、准确、适合背诵的知识点内容。
+
+    ---
+
+    要求：
+    1. 每个知识点之间必须用单独一行 --- 分隔。
+    2. 每个知识点都必须包含标题、tags、hint、content 四部分。
+    3. tags 后的标签用逗号分隔。
+    4. hint 要简短，适合作为回忆提示。
+    5. content 要完整、准确、适合直接背诵。
+    6. 不要生成多余解释。
+    7. 不要使用表格。
+    8. 不要把多个知识点混在一起。
+    9. 如果原资料太长，请拆分成多个小知识点。
+    10. 输出结果只保留 Markdown 内容，不要添加寒暄或说明。
+
+    下面是需要整理的资料：
+
+    【在这里粘贴课本、讲义、笔记或 OCR 文本】
+    """
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 42, height: 42)
+                            .background(.white.opacity(0.58), in: Circle())
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text("Markdown 格式说明")
+                        .font(KikariaTypography.chineseHeadline())
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Color.clear
+                        .frame(width: 42, height: 42)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 12)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        MarkdownGuideCard {
+                            Text("Kikaria 使用结构化 Markdown 来导入知识点。每个知识点由标题、标签、提示和答案组成。多个知识点之间使用 --- 分隔。")
+                                .font(KikariaTypography.chineseBody(size: 15))
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .lineSpacing(5)
+                        }
+
+                        MarkdownGuideCard(title: "格式规则") {
+                            MarkdownCodeBlock(text: Self.formatTemplate)
+
+                            Text("多个知识点之间用一行 --- 分隔。")
+                                .font(KikariaTypography.chineseBody(size: 14, weight: .medium))
+                                .foregroundStyle(KikariaTheme.softText)
+                        }
+
+                        MarkdownGuideCard(title: "规则说明") {
+                            VStack(alignment: .leading, spacing: 9) {
+                                MarkdownRuleText("标题必须以 # 开头。")
+                                MarkdownRuleText("tags: 后面写标签，多个标签用英文逗号或中文逗号分隔。")
+                                MarkdownRuleText("hint: 后面写提示。")
+                                MarkdownRuleText("content: 后面写完整内容。")
+                                MarkdownRuleText("每个知识点之间用单独一行 --- 分隔。")
+                                MarkdownRuleText("建议每个知识点不要太长，适合一次背诵。")
+                                MarkdownRuleText("标签可以用于后续选择背诵范围。")
+                            }
+                        }
+
+                        MarkdownGuideCard(title: "完整示例") {
+                            MarkdownCodeBlock(text: Self.completeExample)
+                        }
+
+                        MarkdownGuideCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .center) {
+                                    Text("给 AI 助手的 Prompt")
+                                        .font(KikariaTypography.chineseHeadline(size: 18))
+                                        .foregroundStyle(KikariaTheme.deepText)
+
+                                    Spacer()
+
+                                    Button {
+                                        copyPrompt()
+                                    } label: {
+                                        Label("复制 Prompt", systemImage: "doc.on.doc")
+                                            .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(KikariaTheme.actionGradient, in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+
+                                Text("你可以把下面这段 prompt 复制给 AI 助手，并附上你的课本、讲义、笔记或照片识别出的文本，让 AI 帮你整理成 Kikaria 支持的 Markdown 格式。")
+                                    .font(KikariaTypography.chineseBody(size: 14))
+                                    .foregroundStyle(KikariaTheme.softText)
+                                    .lineSpacing(4)
+
+                                MarkdownCodeBlock(text: Self.aiPrompt)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 34)
+                }
+            }
+
+            if let toastMessage {
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private func copyPrompt() {
+        UIPasteboard.general.string = Self.aiPrompt
+        showToast("Prompt 已复制")
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
+            }
+        }
+    }
+}
+
+private struct MarkdownGuideCard<Content: View>: View {
+    var title: String?
+    @ViewBuilder var content: Content
+
+    init(title: String? = nil, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let title {
+                Text(title)
+                    .font(KikariaTypography.chineseHeadline(size: 18))
+                    .foregroundStyle(KikariaTheme.deepText)
+            }
+
+            content
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(.white.opacity(0.28), lineWidth: 1)
+        }
+        .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 8)
+    }
+}
+
+private struct MarkdownCodeBlock: View {
+    let text: String
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            Text(text)
+                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                .foregroundStyle(KikariaTheme.deepText)
+                .lineSpacing(4)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+        }
+        .background(.white.opacity(0.70), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(KikariaTheme.sky.opacity(0.12), lineWidth: 1)
+        }
+    }
+}
+
+private struct MarkdownRuleText: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Circle()
+                .fill(KikariaTheme.sky.opacity(0.72))
+                .frame(width: 5, height: 5)
+                .padding(.top, 8)
+
+            Text(text)
+                .font(KikariaTypography.chineseBody(size: 14))
+                .foregroundStyle(KikariaTheme.deepText)
+                .lineSpacing(4)
+        }
+    }
+}
+
 private struct EditPresetView: View {
     @Environment(\.dismiss) private var dismiss
     let preset: KnowledgePreset
     let knowledgePoints: [KnowledgePoint]
-    let onSavePreset: (String, String, String, String) -> Void
+    let onSavePreset: (String, String, String, String, String) -> Void
     let onAddPoint: () -> Void
     let onEditPoint: (UUID) -> Void
     let onDeletePoint: (UUID, String) -> Void
     let onDeletePreset: (String) -> Void
     @State private var name: String
+    @State private var shortName: String
     @State private var category: String
     @State private var description: String
     @State private var pendingDeletePoint: KnowledgePoint?
@@ -1612,7 +1906,7 @@ private struct EditPresetView: View {
     init(
         preset: KnowledgePreset,
         knowledgePoints: [KnowledgePoint],
-        onSavePreset: @escaping (String, String, String, String) -> Void,
+        onSavePreset: @escaping (String, String, String, String, String) -> Void,
         onAddPoint: @escaping () -> Void,
         onEditPoint: @escaping (UUID) -> Void,
         onDeletePoint: @escaping (UUID, String) -> Void,
@@ -1626,6 +1920,7 @@ private struct EditPresetView: View {
         self.onDeletePoint = onDeletePoint
         self.onDeletePreset = onDeletePreset
         _name = State(initialValue: preset.name)
+        _shortName = State(initialValue: preset.shortName)
         _category = State(initialValue: preset.category)
         _description = State(initialValue: preset.description)
     }
@@ -1652,16 +1947,16 @@ private struct EditPresetView: View {
                     Spacer()
 
                     Text("编辑预设")
-                        .font(.headline)
+                        .font(KikariaTypography.chineseHeadline())
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Spacer()
 
                     Button("保存") {
-                        onSavePreset(preset.id, name, category, description)
+                        onSavePreset(preset.id, name, shortName, category, description)
                         dismiss()
                     }
-                    .font(.headline)
+                    .font(KikariaTypography.chineseButton())
                     .foregroundStyle(KikariaTheme.sky)
                     .frame(width: 42, alignment: .trailing)
                 }
@@ -1672,12 +1967,13 @@ private struct EditPresetView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         ProfileTextField(title: "预设名称", text: $name)
+                        ProfileTextField(title: "短名称（最多 3 字）", text: $shortName)
                         ProfileTextField(title: "分类", text: $category)
                         ProfileTextField(title: "简短描述", text: $description)
 
                         Button(action: onAddPoint) {
                             Label("添加知识点", systemImage: "plus.circle.fill")
-                                .font(.headline.weight(.semibold))
+                                .font(KikariaTypography.chineseButton())
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 15)
@@ -1690,11 +1986,11 @@ private struct EditPresetView: View {
                                 HStack(spacing: 12) {
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text(point.title)
-                                            .font(.headline)
+                                            .font(KikariaTypography.chineseHeadline(size: 16))
                                             .foregroundStyle(KikariaTheme.deepText)
 
                                         Text(point.tags.joined(separator: ", "))
-                                            .font(.caption.weight(.semibold))
+                                            .font(KikariaTypography.tag(size: 12))
                                             .foregroundStyle(KikariaTheme.softText)
                                             .lineLimit(2)
                                     }
@@ -1734,7 +2030,7 @@ private struct EditPresetView: View {
                                 isConfirmingPresetDelete = true
                             } label: {
                                 Text("删除此预设")
-                                    .font(.headline.weight(.semibold))
+                                    .font(KikariaTypography.chineseButton())
                                     .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 15)
@@ -1751,6 +2047,12 @@ private struct EditPresetView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .onChange(of: shortName) { newValue in
+            let limited = String(newValue.prefix(3))
+            if limited != newValue {
+                shortName = limited
+            }
+        }
         .alert("删除知识点？", isPresented: isConfirmingPointDelete) {
             Button("取消", role: .cancel) {
                 pendingDeletePoint = nil
@@ -1832,7 +2134,7 @@ private struct EditKnowledgePointView: View {
                     Spacer()
 
                     Text(point == nil ? "添加知识点" : "编辑知识点")
-                        .font(.headline)
+                        .font(KikariaTypography.chineseHeadline())
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Spacer()
@@ -1840,7 +2142,7 @@ private struct EditKnowledgePointView: View {
                     Button("保存") {
                         savePoint()
                     }
-                    .font(.headline)
+                    .font(KikariaTypography.chineseButton())
                     .foregroundStyle(KikariaTheme.sky)
                     .frame(width: 42, alignment: .trailing)
                 }
@@ -1851,7 +2153,7 @@ private struct EditKnowledgePointView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         Text(presetName)
-                            .font(.system(size: 26, weight: .semibold, design: .serif))
+                            .font(KikariaTypography.chineseTitle(size: 26, weight: .semibold))
                             .foregroundStyle(KikariaTheme.deepText)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -1863,7 +2165,7 @@ private struct EditKnowledgePointView: View {
 
                         if let errorMessage {
                             Text(errorMessage)
-                                .font(.subheadline.weight(.semibold))
+                                .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
                                 .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(14)
@@ -1919,7 +2221,7 @@ private struct EditableLongTextField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(KikariaTypography.chineseHeadline(size: 14))
                 .foregroundStyle(KikariaTheme.softText)
 
             TextEditor(text: $text)
@@ -1970,7 +2272,7 @@ private struct EditProfileView: View {
                     Spacer()
 
                     Text("编辑个人资料")
-                        .font(.headline)
+                        .font(KikariaTypography.chineseHeadline())
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Spacer()
@@ -1978,7 +2280,7 @@ private struct EditProfileView: View {
                     Button("保存") {
                         saveProfile()
                     }
-                    .font(.headline)
+                    .font(KikariaTypography.chineseButton())
                     .foregroundStyle(KikariaTheme.sky)
                     .frame(width: 42, alignment: .trailing)
                 }
@@ -2000,7 +2302,7 @@ private struct EditProfileView: View {
                                 matching: .images
                             ) {
                                 Label("更换头像", systemImage: "photo")
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(KikariaTypography.chineseButton(size: 14))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.horizontal, 18)
                                     .padding(.vertical, 11)
@@ -2074,11 +2376,11 @@ private struct ProfileTextField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(KikariaTypography.chineseHeadline(size: 14))
                 .foregroundStyle(KikariaTheme.softText)
 
             TextField(title, text: $text)
-                .font(.body)
+                .font(KikariaTypography.chineseBody(size: 16))
                 .foregroundStyle(KikariaTheme.deepText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -2137,7 +2439,7 @@ private struct MarkdownEditorView: View {
                     Spacer()
 
                     Text("知识点上传")
-                        .font(.headline)
+                        .font(KikariaTypography.chineseHeadline())
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Spacer()
@@ -2145,7 +2447,7 @@ private struct MarkdownEditorView: View {
                     Button("应用") {
                         applyMarkdown()
                     }
-                    .font(.headline)
+                    .font(KikariaTypography.chineseButton())
                     .foregroundStyle(KikariaTheme.sky)
                     .frame(width: 42, alignment: .trailing)
                 }
@@ -2166,7 +2468,7 @@ private struct MarkdownEditorView: View {
 
                     if let errorMessage {
                         Text(errorMessage)
-                            .font(.subheadline.weight(.semibold))
+                            .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
                             .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -2366,12 +2668,12 @@ private struct MetricBubble: View {
 
             VStack(spacing: 2) {
                 Text(valueText)
-                    .font(.system(size: size > 84 ? 24 : 21, weight: .semibold, design: .serif))
+                    .font(KikariaTypography.chineseHeadline(size: size > 84 ? 24 : 21))
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.deepText.opacity(0.86))
 
                 Text(label)
-                    .font(.caption2.weight(.semibold))
+                    .font(KikariaTypography.chineseCaption(size: 11, weight: .semibold))
                     .foregroundStyle(KikariaTheme.softText)
             }
         }
@@ -2387,13 +2689,13 @@ private struct HomeEntryCard: View {
     var body: some View {
         HStack(spacing: 14) {
             Text(title)
-                .font(.title3.weight(.semibold))
+                .font(KikariaTypography.chineseHeadline(size: 20))
                 .foregroundStyle(KikariaTheme.deepText)
 
             Spacer()
 
             Text(countText)
-                .font(.title3.weight(.bold))
+                .font(KikariaTypography.number(size: 20, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.sky)
 
@@ -2433,11 +2735,11 @@ struct ScopeSelectionView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("选择范围")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .font(KikariaTypography.chineseTitle())
                                 .foregroundStyle(KikariaTheme.deepText)
 
                             Text(selectedTags.isEmpty ? "未选择标签时，会默认使用全部知识点。" : "已选择 \(selectedTags.count) 个标签。")
-                                .font(.subheadline)
+                                .font(KikariaTypography.chineseBody(size: 15))
                                 .foregroundStyle(KikariaTheme.softText)
                         }
                         .padding(.top, 16)
@@ -2468,7 +2770,7 @@ struct ScopeSelectionView: View {
                     }
                 } label: {
                     Text("完成")
-                        .font(.headline)
+                        .font(KikariaTypography.chineseButton())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .foregroundStyle(.white)
@@ -2499,7 +2801,7 @@ private struct ScopeTagChip: View {
 
     var body: some View {
         Text(title)
-            .font(.subheadline.weight(.semibold))
+            .font(KikariaTypography.tag(size: 13))
             .foregroundStyle(isSelected ? .white : KikariaTheme.deepText)
             .lineLimit(2)
             .minimumScaleFactor(0.82)
@@ -3148,7 +3450,7 @@ private struct ReviewActionButton: View {
     var body: some View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
-                .font(.headline)
+                .font(KikariaTypography.chineseButton())
                 .foregroundStyle(isPrimary ? .white : KikariaTheme.deepText)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 19)
@@ -3176,7 +3478,7 @@ private struct MasteredReviewButton: View {
                     .foregroundStyle(isMastered ? KikariaTheme.masteredGreen.opacity(0.9) : .white)
 
                 Text(isMastered ? "已设定为掌握" : "加入已掌握")
-                    .font(.headline)
+                    .font(KikariaTypography.chineseButton())
             }
             .foregroundStyle(isMastered ? KikariaTheme.softText : .white)
             .frame(maxWidth: .infinity)
@@ -3216,7 +3518,7 @@ private struct ReinforcementCompletionView: View {
 
             Button(action: returnHome) {
                 Text("返回首页")
-                    .font(.headline)
+                    .font(KikariaTypography.chineseButton())
                     .foregroundStyle(.white)
                     .padding(.horizontal, 42)
                     .padding(.vertical, 16)
@@ -3256,7 +3558,7 @@ struct ReinforcementView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
                             Text("重点集锦")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .font(KikariaTypography.chineseTitle())
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .padding(.top, 18)
 
@@ -3352,7 +3654,7 @@ struct MasteredView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
                             Text("已掌握")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                                .font(KikariaTypography.chineseTitle())
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .padding(.top, 18)
 
@@ -3432,13 +3734,13 @@ private struct ReinforcementStartButton: View {
     var body: some View {
         HStack(spacing: 14) {
             Text("开始重点背诵")
-                .font(.title3.weight(.semibold))
+                .font(KikariaTypography.chineseHeadline(size: 20))
                 .foregroundStyle(KikariaTheme.deepText)
 
             Spacer()
 
             Text("\(count)")
-                .font(.title3.weight(.bold))
+                .font(KikariaTypography.number(size: 20, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.sky)
 
@@ -3464,13 +3766,13 @@ private struct MasteredStartButton: View {
     var body: some View {
         HStack(spacing: 14) {
             Text("开始已掌握复习")
-                .font(.title3.weight(.semibold))
+                .font(KikariaTypography.chineseHeadline(size: 20))
                 .foregroundStyle(KikariaTheme.deepText)
 
             Spacer()
 
             Text("\(count)")
-                .font(.title3.weight(.bold))
+                .font(KikariaTypography.number(size: 20, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.masteredGreen)
 
@@ -3525,7 +3827,7 @@ private struct ReinforcementCard: View {
 
             Button(role: .destructive, action: removeAction) {
                 Label(removeTitle, systemImage: removeSystemImage)
-                    .font(.subheadline.weight(.semibold))
+                    .font(KikariaTypography.chineseButton(size: 14))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             }
@@ -3572,7 +3874,7 @@ private struct KikariaToast: View {
 
     var body: some View {
         Text(message)
-            .font(.subheadline.weight(.semibold))
+            .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
             .foregroundStyle(KikariaTheme.deepText)
             .multilineTextAlignment(.center)
             .lineLimit(2)
@@ -3610,7 +3912,7 @@ private struct FloatingInfoCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.subheadline.weight(.bold))
+                .font(KikariaTypography.chineseHeadline(size: 14, weight: .bold))
                 .foregroundStyle(KikariaTheme.sky)
 
             Text(text)
@@ -3632,7 +3934,7 @@ private struct LightTagRow: View {
         CenteredTagFlow(spacing: 8, rowSpacing: 8) {
             ForEach(tags, id: \.self) { tag in
                 Text(tag)
-                    .font(.caption.weight(.semibold))
+                    .font(KikariaTypography.tag(size: 12))
                     .foregroundStyle(KikariaTheme.softText)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
@@ -3652,7 +3954,7 @@ private struct TodayReviewCountPill: View {
 
     var body: some View {
         Text("该知识点今日复习 \(count) 次")
-            .font(.caption.weight(.semibold))
+            .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
             .foregroundStyle(KikariaTheme.deepText.opacity(0.78))
             .monospacedDigit()
             .padding(.horizontal, 18)
@@ -3764,11 +4066,11 @@ private struct SoftEmptyState: View {
                 .foregroundStyle(KikariaTheme.sky)
 
             Text(title)
-                .font(.title3.bold())
+                .font(KikariaTypography.chineseHeadline(size: 20, weight: .bold))
                 .foregroundStyle(KikariaTheme.deepText)
 
             Text(subtitle)
-                .font(.subheadline)
+                .font(KikariaTypography.chineseBody(size: 15))
                 .foregroundStyle(KikariaTheme.softText)
                 .multilineTextAlignment(.center)
         }

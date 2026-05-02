@@ -239,11 +239,87 @@ extension KnowledgePoint {
 struct KnowledgePreset: Identifiable, Equatable, Codable {
     var id: String
     var name: String
+    var shortName: String
     var subtitle: String
     var description: String
     var category: String
     var markdownText: String
     var isBuiltIn: Bool
+
+    init(
+        id: String,
+        name: String,
+        shortName: String? = nil,
+        subtitle: String,
+        description: String,
+        category: String,
+        markdownText: String,
+        isBuiltIn: Bool
+    ) {
+        self.id = id
+        self.name = name
+        self.shortName = KnowledgePreset.normalizedShortName(shortName, fallbackName: name)
+        self.subtitle = subtitle
+        self.description = description
+        self.category = category
+        self.markdownText = markdownText
+        self.isBuiltIn = isBuiltIn
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case shortName
+        case subtitle
+        case description
+        case category
+        case markdownText
+        case isBuiltIn
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        shortName = KnowledgePreset.normalizedShortName(
+            try container.decodeIfPresent(String.self, forKey: .shortName),
+            fallbackName: name
+        )
+        subtitle = try container.decodeIfPresent(String.self, forKey: .subtitle) ?? ""
+        description = try container.decodeIfPresent(String.self, forKey: .description) ?? subtitle
+        category = try container.decodeIfPresent(String.self, forKey: .category) ?? "自定义"
+        markdownText = try container.decode(String.self, forKey: .markdownText)
+        isBuiltIn = try container.decodeIfPresent(Bool.self, forKey: .isBuiltIn) ?? false
+    }
+
+    static func normalizedShortName(_ shortName: String?, fallbackName: String) -> String {
+        let trimmedShortName = (shortName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let source = trimmedShortName.isEmpty ? generatedShortName(for: fallbackName) : trimmedShortName
+        let normalized = String(source.trimmingCharacters(in: .whitespacesAndNewlines).prefix(3))
+        return normalized.isEmpty ? "预设" : normalized
+    }
+
+    static func generatedShortName(for name: String) -> String {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmedName.hasPrefix("高等数学") {
+            return "高数"
+        }
+
+        if trimmedName.hasPrefix("大学英语") {
+            return "英语"
+        }
+
+        if trimmedName.hasPrefix("解剖学") {
+            return "解剖"
+        }
+
+        if trimmedName.hasPrefix("示例模板") {
+            return "模板"
+        }
+
+        return trimmedName.isEmpty ? "预设" : String(trimmedName.prefix(3))
+    }
 
     var knowledgePointCount: Int {
         (try? KnowledgePoint.parseMarkdown(markdownText).count) ?? 0
@@ -259,6 +335,7 @@ struct KnowledgePreset: Identifiable, Equatable, Codable {
         KnowledgePreset(
             id: "advanced-math",
             name: "高等数学知识点",
+            shortName: "高数",
             subtitle: "微积分、线性代数基础概念",
             description: "覆盖极限、导数、矩阵和基础概率概念，适合作为 Kikaria 默认示例。",
             category: "数学",
@@ -268,6 +345,7 @@ struct KnowledgePreset: Identifiable, Equatable, Codable {
         KnowledgePreset(
             id: "college-english",
             name: "大学英语单词",
+            shortName: "英语",
             subtitle: "高频词汇与短语",
             description: "用简短英文词汇卡片练习释义、用法和记忆提示。",
             category: "英语",
@@ -323,6 +401,7 @@ struct KnowledgePreset: Identifiable, Equatable, Codable {
         KnowledgePreset(
             id: "anatomy",
             name: "解剖学",
+            shortName: "解剖",
             subtitle: "人体结构与基础术语",
             description: "包含骨骼、神经和呼吸系统等基础医学概念示例。",
             category: "医学",
@@ -378,6 +457,7 @@ struct KnowledgePreset: Identifiable, Equatable, Codable {
         KnowledgePreset(
             id: "template",
             name: "示例模板",
+            shortName: "模板",
             subtitle: "用于后续自定义扩展",
             description: "提供最小格式样例，方便后续替换为课程或课本内容。",
             category: "模板",
