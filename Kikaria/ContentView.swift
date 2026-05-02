@@ -113,6 +113,15 @@ struct DailyReviewRecord {
     var count: Int
 }
 
+private struct PresetStudyState {
+    let presetId: String
+    var knowledgePoints: [KnowledgePoint]
+    var markdownText: String
+    var selectedTags: Set<String>
+    var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord]
+    var dailyGoal: Int
+}
+
 struct ContentView: View {
     @State private var knowledgePoints = KnowledgePoint.samples
     @State private var markdownText = KnowledgePreset.defaultPreset.markdownText
@@ -120,8 +129,12 @@ struct ContentView: View {
     @State private var selectedTags = Set<String>()
     @State private var navigationPath: [AppRoute] = []
     @State private var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord] = [:]
+    @State private var presetStates: [String: PresetStudyState] = [:]
     @State private var currentPresetID = KnowledgePreset.defaultPresetID
-    @AppStorage("dailyLearningGoal") private var dailyGoal = 20
+    @State private var dailyGoal = 20
+    @State private var hasLoadedInitialPresetState = false
+    @AppStorage("dailyLearningGoal") private var legacyDailyGoal = 20
+    @AppStorage("presetDailyLearningGoals") private var encodedPresetDailyGoals = ""
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
@@ -263,7 +276,7 @@ struct ContentView: View {
                 case .settings:
                     SettingsView(
                         profile: userProfile,
-                        dailyGoal: $dailyGoal,
+                        dailyGoal: dailyGoalBinding,
                         currentPresetName: currentPreset.name,
                         onClose: {
                             navigationPath.removeAll()
@@ -287,28 +300,159 @@ struct ContentView: View {
                 case .presetSelection:
                     PresetSelectionView(
                         presets: KnowledgePreset.all,
-                        currentPresetID: currentPresetID,
-                        applyPreset: applyPreset
+                        currentPresetID: $currentPresetID,
+                        switchPreset: switchToPreset
                     )
                 }
+            }
+            .onAppear {
+                loadInitialPresetStateIfNeeded()
             }
         }
     }
 
-    private func applyPreset(_ preset: KnowledgePreset) -> Bool {
-        guard let parsedPoints = try? KnowledgePoint.parseMarkdown(preset.markdownText) else {
+    private var dailyGoalBinding: Binding<Int> {
+        Binding(
+            get: { dailyGoal },
+            set: { newValue in
+                updateDailyGoal(newValue)
+            }
+        )
+    }
+
+    private func loadInitialPresetStateIfNeeded() {
+        guard !hasLoadedInitialPresetState else {
+            return
+        }
+
+        hasLoadedInitialPresetState = true
+
+        guard let state = studyState(for: currentPreset) else {
+            return
+        }
+
+        presetStates[currentPresetID] = state
+        restorePresetState(state)
+    }
+
+    private func switchToPreset(_ preset: KnowledgePreset) -> Bool {
+        guard let targetState = studyState(for: preset) else {
             return false
         }
 
+        saveCurrentPresetState()
+
         withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
-            knowledgePoints = parsedPoints
-            markdownText = preset.markdownText
-            currentPresetID = preset.id
-            selectedTags.removeAll()
-            dailyReviewRecords.removeAll()
+            if presetStates[preset.id] == nil {
+                presetStates[preset.id] = targetState
+            }
+
+            restorePresetState(targetState)
         }
 
         return true
+    }
+
+    private func saveCurrentPresetState() {
+        let state = currentPresetStateSnapshot()
+        presetStates[currentPresetID] = state
+        persistDailyGoal(state.dailyGoal, forPresetID: currentPresetID)
+    }
+
+    private func studyState(for preset: KnowledgePreset) -> PresetStudyState? {
+        if let state = presetStates[preset.id] {
+            return state
+        }
+
+        return initialStudyState(for: preset)
+    }
+
+    private func initialStudyState(for preset: KnowledgePreset) -> PresetStudyState? {
+        guard let parsedPoints = try? KnowledgePoint.parseMarkdown(preset.markdownText) else {
+            return nil
+        }
+
+        return PresetStudyState(
+            presetId: preset.id,
+            knowledgePoints: parsedPoints,
+            markdownText: preset.markdownText,
+            selectedTags: [],
+            dailyReviewRecords: [:],
+            dailyGoal: dailyGoal(forPresetID: preset.id)
+        )
+    }
+
+    private func currentPresetStateSnapshot() -> PresetStudyState {
+        PresetStudyState(
+            presetId: currentPresetID,
+            knowledgePoints: knowledgePoints,
+            markdownText: markdownText,
+            selectedTags: selectedTags,
+            dailyReviewRecords: dailyReviewRecords,
+            dailyGoal: clampedDailyGoal(dailyGoal)
+        )
+    }
+
+    private func restorePresetState(_ state: PresetStudyState) {
+        currentPresetID = state.presetId
+        knowledgePoints = state.knowledgePoints
+        markdownText = state.markdownText
+        selectedTags = validSelectedTags(from: state.selectedTags, in: state.knowledgePoints)
+        dailyReviewRecords = state.dailyReviewRecords
+        dailyGoal = clampedDailyGoal(state.dailyGoal)
+    }
+
+    private func validSelectedTags(from tags: Set<String>, in points: [KnowledgePoint]) -> Set<String> {
+        let availableTags = Set(points.flatMap(\.tags))
+        return Set(tags.filter { availableTags.contains($0) })
+    }
+
+    private func updateDailyGoal(_ newValue: Int) {
+        let goal = clampedDailyGoal(newValue)
+        dailyGoal = goal
+        persistDailyGoal(goal, forPresetID: currentPresetID)
+        presetStates[currentPresetID] = currentPresetStateSnapshot()
+    }
+
+    private func dailyGoal(forPresetID presetID: String) -> Int {
+        if let goal = decodedPresetDailyGoals()[presetID] {
+            return clampedDailyGoal(goal)
+        }
+
+        if presetID == KnowledgePreset.defaultPresetID {
+            return clampedDailyGoal(legacyDailyGoal)
+        }
+
+        return 20
+    }
+
+    private func persistDailyGoal(_ goal: Int, forPresetID presetID: String) {
+        let clampedGoal = clampedDailyGoal(goal)
+        var goals = decodedPresetDailyGoals()
+        goals[presetID] = clampedGoal
+
+        if let data = try? JSONEncoder().encode(goals),
+           let encoded = String(data: data, encoding: .utf8) {
+            encodedPresetDailyGoals = encoded
+        }
+
+        if presetID == KnowledgePreset.defaultPresetID {
+            legacyDailyGoal = clampedGoal
+        }
+    }
+
+    private func decodedPresetDailyGoals() -> [String: Int] {
+        guard let data = encodedPresetDailyGoals.data(using: .utf8),
+              let goals = try? JSONDecoder().decode([String: Int].self, from: data)
+        else {
+            return [:]
+        }
+
+        return goals
+    }
+
+    private func clampedDailyGoal(_ goal: Int) -> Int {
+        min(max(goal, 1), 100)
     }
 }
 
@@ -581,10 +725,9 @@ private struct DailyGoalPickerBubble: View {
 }
 
 private struct PresetSelectionView: View {
-    @Environment(\.dismiss) private var dismiss
     let presets: [KnowledgePreset]
-    let currentPresetID: String
-    let applyPreset: (KnowledgePreset) -> Bool
+    @Binding var currentPresetID: String
+    let switchPreset: (KnowledgePreset) -> Bool
     @State private var pendingPreset: KnowledgePreset?
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
@@ -601,7 +744,7 @@ private struct PresetSelectionView: View {
                             .font(.system(size: 32, weight: .bold, design: .rounded))
                             .foregroundStyle(KikariaTheme.deepText)
 
-                        Text("选择一套内置知识点。切换会替换当前学习内容。")
+                        Text("选择一套内置知识点。每套预设会保留自己的学习进度。")
                             .font(.subheadline)
                             .foregroundStyle(KikariaTheme.softText)
                     }
@@ -642,7 +785,7 @@ private struct PresetSelectionView: View {
                 confirmPresetSwitch()
             }
         } message: {
-            Text("切换后将替换当前所有知识点，并清空重点集锦、已掌握状态和今日复习次数。")
+            Text("将切换到另一套知识点。当前预设的学习进度会被保留。")
         }
     }
 
@@ -664,7 +807,7 @@ private struct PresetSelectionView: View {
 
         pendingPreset = nil
 
-        if applyPreset(preset) {
+        if switchPreset(preset) {
             showToast("已切换至「\(preset.name)」")
         } else {
             showToast("预设解析失败，请稍后再试")
