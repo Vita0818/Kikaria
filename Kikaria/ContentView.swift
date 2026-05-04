@@ -475,6 +475,8 @@ struct ContentView: View {
     @State private var isApplyingPresetState = false
     @AppStorage("dailyLearningGoal") private var legacyDailyGoal = 20
     @AppStorage("presetLibraryJSON") private var encodedPresetLibrary = ""
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var isShowingOnboarding = false
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
@@ -580,6 +582,7 @@ struct ContentView: View {
                 case .scope:
                     ScopeSelectionView(
                         selectedTags: $selectedTags,
+                        knowledgePoints: knowledgePoints,
                         allTags: allTags
                     )
                 case .review:
@@ -641,6 +644,9 @@ struct ContentView: View {
                         },
                         onOpenPresetSelection: {
                             navigationPath.append(.presetSelection)
+                        },
+                        onOpenOnboarding: {
+                            isShowingOnboarding = true
                         },
                         onSetNotificationsEnabled: updateNotificationsEnabled,
                         onSendTestNotification: sendDebugTestNotification
@@ -715,6 +721,9 @@ struct ContentView: View {
             }
             .onAppear {
                 loadInitialPresetStateIfNeeded()
+                if !hasCompletedOnboarding {
+                    isShowingOnboarding = true
+                }
             }
             .onChange(of: knowledgePoints) { _ in
                 persistCurrentStudyStateIfReady()
@@ -732,6 +741,13 @@ struct ContentView: View {
                 if phase == .active {
                     rescheduleCurrentNotification()
                 }
+            }
+            .fullScreenCover(isPresented: $isShowingOnboarding) {
+                OnboardingView {
+                    hasCompletedOnboarding = true
+                    isShowingOnboarding = false
+                }
+                .interactiveDismissDisabled(!hasCompletedOnboarding)
             }
         }
     }
@@ -1205,6 +1221,220 @@ struct ContentView: View {
 
 }
 
+private struct OnboardingPage: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let systemImage: String
+}
+
+private struct OnboardingView: View {
+    let onComplete: () -> Void
+    @State private var selectedPage = 0
+
+    private let pages = [
+        OnboardingPage(
+            title: "选择一套预设",
+            subtitle: "从高等数学、英语、医学等预设开始，也可以上传自己的 Markdown 知识点。",
+            systemImage: "books.vertical.fill"
+        ),
+        OnboardingPage(
+            title: "先回忆，再查看",
+            subtitle: "背诵时先看知识点名称，必要时查看提示，再查看答案。",
+            systemImage: "lightbulb.max.fill"
+        ),
+        OnboardingPage(
+            title: "整理你的学习状态",
+            subtitle: "把不熟的内容加入重点集锦，把已经掌握的内容标记为已掌握。",
+            systemImage: "checkmark.seal.fill"
+        )
+    ]
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 28) {
+                HStack {
+                    Text("Kikaria")
+                        .font(KikariaTypography.appTitle(size: 36))
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 24)
+
+                TabView(selection: $selectedPage) {
+                    ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
+                        OnboardingPageCard(page: page)
+                            .tag(index)
+                            .padding(.horizontal, 28)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .always))
+                .indexViewStyle(.page(backgroundDisplayMode: .interactive))
+
+                Button {
+                    if selectedPage < pages.count - 1 {
+                        withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
+                            selectedPage += 1
+                        }
+                    } else {
+                        onComplete()
+                    }
+                } label: {
+                    Text(selectedPage == pages.count - 1 ? "开始使用" : "下一步")
+                        .font(KikariaTypography.chineseButton(size: 18))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 17)
+                        .background(KikariaTheme.actionGradient, in: Capsule())
+                        .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 18, y: 10)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 28)
+                .padding(.bottom, 28)
+            }
+        }
+    }
+}
+
+private struct OnboardingPageCard: View {
+    let page: OnboardingPage
+
+    var body: some View {
+        VStack(spacing: 26) {
+            ZStack {
+                Circle()
+                    .fill(KikariaTheme.actionGradient)
+                    .frame(width: 132, height: 132)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .shadow(color: KikariaTheme.sky.opacity(0.20), radius: 24, y: 14)
+
+                Circle()
+                    .fill(.white.opacity(0.24))
+                    .frame(width: 86, height: 86)
+                    .offset(x: 28, y: -26)
+
+                Image(systemName: page.systemImage)
+                    .font(.system(size: 54, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.96))
+            }
+
+            VStack(spacing: 12) {
+                Text(page.title)
+                    .font(KikariaTypography.chineseTitle(size: 29, weight: .bold))
+                    .foregroundStyle(KikariaTheme.deepText)
+                    .multilineTextAlignment(.center)
+
+                Text(page.subtitle)
+                    .font(KikariaTypography.chineseBody(size: 16, weight: .medium))
+                    .foregroundStyle(KikariaTheme.softText)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(6)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 44)
+        .frame(maxWidth: .infinity, maxHeight: 430)
+        .background(.white.opacity(0.56), in: RoundedRectangle(cornerRadius: 34, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 34, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 34, style: .continuous)
+                .stroke(.white.opacity(0.32), lineWidth: 1)
+        }
+        .shadow(color: KikariaTheme.sky.opacity(0.13), radius: 24, y: 14)
+    }
+}
+
+private extension KnowledgePoint {
+    func matchesSearchQuery(_ query: String) -> Bool {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else {
+            return true
+        }
+
+        let searchableFields = [
+            title,
+            tags.joined(separator: " "),
+            hint,
+            content
+        ]
+
+        return searchableFields.contains { field in
+            field.range(
+                of: trimmedQuery,
+                options: [.caseInsensitive, .diacriticInsensitive]
+            ) != nil
+        }
+    }
+}
+
+private struct KikariaSearchBar: View {
+    @Binding var text: String
+    var placeholder = "搜索知识点"
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(KikariaTheme.blueGray)
+
+            TextField(placeholder, text: $text)
+                .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
+                .foregroundStyle(KikariaTheme.deepText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(KikariaTheme.blueGray.opacity(0.75))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, minHeight: 50)
+        .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(.white.opacity(0.30), lineWidth: 1)
+        }
+        .shadow(color: KikariaTheme.sky.opacity(0.08), radius: 12, y: 7)
+    }
+}
+
+private struct ShareFile: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+private struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private func sanitizedFilename(_ name: String) -> String {
+    let invalidCharacters = CharacterSet(charactersIn: "/\\?%*|\"<>:")
+        .union(.newlines)
+    let components = name.components(separatedBy: invalidCharacters)
+    let sanitized = components.joined(separator: "-")
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    return sanitized.isEmpty ? "预设" : sanitized
+}
+
 private struct ProfileAvatarView: View {
     let systemName: String
     let imageData: Data?
@@ -1245,6 +1475,7 @@ private struct SettingsView: View {
     let onClose: () -> Void
     let onEditProfile: () -> Void
     let onOpenPresetSelection: () -> Void
+    let onOpenOnboarding: () -> Void
     let onSetNotificationsEnabled: (Bool, @escaping (Bool, String?) -> Void) -> Void
     let onSendTestNotification: (@escaping (String) -> Void) -> Void
     @State private var isShowingDailyGoalPicker = false
@@ -1402,6 +1633,13 @@ private struct SettingsView: View {
                                 valueText: currentPresetName
                             ) {
                                 onOpenPresetSelection()
+                            }
+
+                            SettingsListRow(
+                                title: "重新查看新手引导",
+                                valueText: "查看"
+                            ) {
+                                onOpenOnboarding()
                             }
                         }
                     }
@@ -2603,8 +2841,12 @@ private struct EditPresetView: View {
     @State private var shortName: String
     @State private var category: String
     @State private var description: String
+    @State private var searchText = ""
     @State private var pendingDeletePoint: KnowledgePoint?
     @State private var isConfirmingPresetDelete = false
+    @State private var shareFile: ShareFile?
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
 
     init(
         preset: KnowledgePreset,
@@ -2626,6 +2868,10 @@ private struct EditPresetView: View {
         _shortName = State(initialValue: preset.shortName)
         _category = State(initialValue: preset.category)
         _description = State(initialValue: preset.description)
+    }
+
+    private var filteredKnowledgePoints: [KnowledgePoint] {
+        knowledgePoints.filter { $0.matchesSearchQuery(searchText) }
     }
 
     var body: some View {
@@ -2674,6 +2920,17 @@ private struct EditPresetView: View {
                         ProfileTextField(title: "分类", text: $category)
                         ProfileTextField(title: "简短描述", text: $description)
 
+                        Button(action: exportMarkdown) {
+                            Label("导出 Markdown", systemImage: "square.and.arrow.up")
+                                .font(KikariaTypography.chineseButton())
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+
                         Button(action: onAddPoint) {
                             Label("添加知识点", systemImage: "plus.circle.fill")
                                 .font(KikariaTypography.chineseButton())
@@ -2684,47 +2941,58 @@ private struct EditPresetView: View {
                         }
                         .buttonStyle(.plain)
 
+                        KikariaSearchBar(text: $searchText)
+
                         VStack(spacing: 12) {
-                            ForEach(knowledgePoints) { point in
-                                HStack(spacing: 12) {
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        Text(point.title)
-                                            .font(KikariaTypography.chineseHeadline(size: 16))
-                                            .foregroundStyle(KikariaTheme.deepText)
+                            if filteredKnowledgePoints.isEmpty {
+                                SoftEmptyState(
+                                    title: "没有找到相关知识点",
+                                    subtitle: "换个关键词试试看。",
+                                    systemImage: "magnifyingglass"
+                                )
+                                .padding(.vertical, 18)
+                            } else {
+                                ForEach(filteredKnowledgePoints) { point in
+                                    HStack(spacing: 12) {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            Text(point.title)
+                                                .font(KikariaTypography.chineseHeadline(size: 16))
+                                                .foregroundStyle(KikariaTheme.deepText)
 
-                                        Text(point.tags.joined(separator: ", "))
-                                            .font(KikariaTypography.tag(size: 12))
-                                            .foregroundStyle(KikariaTheme.softText)
-                                            .lineLimit(2)
+                                            Text(point.tags.joined(separator: ", "))
+                                                .font(KikariaTypography.tag(size: 12))
+                                                .foregroundStyle(KikariaTheme.softText)
+                                                .lineLimit(2)
+                                        }
+
+                                        Spacer()
+
+                                        Button {
+                                            onEditPoint(point.id)
+                                        } label: {
+                                            Image(systemName: "pencil")
+                                                .font(.headline.weight(.semibold))
+                                                .foregroundStyle(KikariaTheme.sky)
+                                                .frame(width: 34, height: 34)
+                                                .background(.white.opacity(0.58), in: Circle())
+                                        }
+                                        .buttonStyle(.plain)
+
+                                        Button {
+                                            pendingDeletePoint = point
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .font(.headline.weight(.semibold))
+                                                .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                                .frame(width: 34, height: 34)
+                                                .background(.white.opacity(0.58), in: Circle())
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-
-                                    Spacer()
-
-                                    Button {
-                                        onEditPoint(point.id)
-                                    } label: {
-                                        Image(systemName: "pencil")
-                                            .font(.headline.weight(.semibold))
-                                            .foregroundStyle(KikariaTheme.sky)
-                                            .frame(width: 34, height: 34)
-                                            .background(.white.opacity(0.58), in: Circle())
-                                    }
-                                    .buttonStyle(.plain)
-
-                                    Button {
-                                        pendingDeletePoint = point
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .font(.headline.weight(.semibold))
-                                            .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
-                                            .frame(width: 34, height: 34)
-                                            .background(.white.opacity(0.58), in: Circle())
-                                    }
-                                    .buttonStyle(.plain)
+                                    .padding(16)
+                                    .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                                 }
-                                .padding(16)
-                                .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
                             }
                         }
 
@@ -2747,9 +3015,17 @@ private struct EditPresetView: View {
                     .padding(.bottom, 34)
                 }
             }
+
+            if let toastMessage {
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(item: $shareFile) { file in
+            ActivityView(activityItems: [file.url])
+        }
         .onChange(of: shortName) { newValue in
             let limited = String(newValue.prefix(3))
             if limited != newValue {
@@ -2791,6 +3067,38 @@ private struct EditPresetView: View {
                 }
             }
         )
+    }
+
+    private func exportMarkdown() {
+        let markdown = KnowledgePoint.markdownText(from: knowledgePoints)
+        let filename = "Kikaria-\(sanitizedFilename(preset.name)).md"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+
+        do {
+            try markdown.write(to: url, atomically: true, encoding: .utf8)
+            shareFile = ShareFile(url: url)
+        } catch {
+            showToast("导出失败")
+        }
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
+            }
+        }
     }
 }
 
@@ -3421,12 +3729,32 @@ private struct HomeEntryCard: View {
 struct ScopeSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var selectedTags: Set<String>
+    let knowledgePoints: [KnowledgePoint]
     let allTags: [String]
     var onDone: (() -> Void)? = nil
+    @State private var searchText = ""
 
     private let columns = [
         GridItem(.adaptive(minimum: 132), spacing: 12)
     ]
+
+    private var filteredTags: [String] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            return allTags
+        }
+
+        let relevantTags = Set(
+            knowledgePoints
+                .filter { $0.matchesSearchQuery(query) }
+                .flatMap(\.tags)
+        )
+
+        return allTags.filter { tag in
+            tag.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil ||
+                relevantTags.contains(tag)
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -3447,17 +3775,28 @@ struct ScopeSelectionView: View {
                         }
                         .padding(.top, 16)
 
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(allTags, id: \.self) { tag in
-                                Button {
-                                    toggleTag(tag)
-                                } label: {
-                                    ScopeTagChip(
-                                        title: tag,
-                                        isSelected: selectedTags.contains(tag)
-                                    )
+                        KikariaSearchBar(text: $searchText, placeholder: "搜索标签或知识点")
+
+                        if filteredTags.isEmpty {
+                            SoftEmptyState(
+                                title: "没有找到相关标签",
+                                subtitle: "换个关键词试试看。",
+                                systemImage: "magnifyingglass"
+                            )
+                            .padding(.top, 18)
+                        } else {
+                            LazyVGrid(columns: columns, spacing: 12) {
+                                ForEach(filteredTags, id: \.self) { tag in
+                                    Button {
+                                        toggleTag(tag)
+                                    } label: {
+                                        ScopeTagChip(
+                                            title: tag,
+                                            isSelected: selectedTags.contains(tag)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -3732,6 +4071,7 @@ struct ReviewView: View {
             if isShowingScopePanel {
                 ScopeSelectionView(
                     selectedTags: $selectedTags,
+                    knowledgePoints: knowledgePoints,
                     allTags: allTags,
                     onDone: {
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
@@ -4237,11 +4577,16 @@ private struct ReinforcementCompletionView: View {
 struct ReinforcementView: View {
     @Binding var knowledgePoints: [KnowledgePoint]
     let onStartReview: () -> Void
+    @State private var searchText = ""
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
 
     private var reinforcedPoints: [KnowledgePoint] {
         knowledgePoints.filter(\.isReinforced)
+    }
+
+    private var filteredReinforcedPoints: [KnowledgePoint] {
+        reinforcedPoints.filter { $0.matchesSearchQuery(searchText) }
     }
 
     var body: some View {
@@ -4265,9 +4610,20 @@ struct ReinforcementView: View {
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .padding(.top, 18)
 
-                            ForEach(reinforcedPoints) { point in
-                                ReinforcementCard(point: point) {
-                                    removeFromReinforcement(point)
+                            KikariaSearchBar(text: $searchText)
+
+                            if filteredReinforcedPoints.isEmpty {
+                                SoftEmptyState(
+                                    title: "没有找到相关知识点",
+                                    subtitle: "换个关键词试试看。",
+                                    systemImage: "magnifyingglass"
+                                )
+                                .padding(.top, 12)
+                            } else {
+                                ForEach(filteredReinforcedPoints) { point in
+                                    ReinforcementCard(point: point) {
+                                        removeFromReinforcement(point)
+                                    }
                                 }
                             }
                         }
@@ -4333,11 +4689,16 @@ struct ReinforcementView: View {
 struct MasteredView: View {
     @Binding var knowledgePoints: [KnowledgePoint]
     let onStartReview: () -> Void
+    @State private var searchText = ""
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
 
     private var masteredPoints: [KnowledgePoint] {
         knowledgePoints.filter(\.isMastered)
+    }
+
+    private var filteredMasteredPoints: [KnowledgePoint] {
+        masteredPoints.filter { $0.matchesSearchQuery(searchText) }
     }
 
     var body: some View {
@@ -4361,14 +4722,25 @@ struct MasteredView: View {
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .padding(.top, 18)
 
-                            ForEach(masteredPoints) { point in
-                                ReinforcementCard(
-                                    point: point,
-                                    removeTitle: "移出已掌握",
-                                    removeSystemImage: "minus.circle",
-                                    removeTint: KikariaTheme.masteredGreen.opacity(0.86)
-                                ) {
-                                    removeFromMastered(point)
+                            KikariaSearchBar(text: $searchText)
+
+                            if filteredMasteredPoints.isEmpty {
+                                SoftEmptyState(
+                                    title: "没有找到相关知识点",
+                                    subtitle: "换个关键词试试看。",
+                                    systemImage: "magnifyingglass"
+                                )
+                                .padding(.top, 12)
+                            } else {
+                                ForEach(filteredMasteredPoints) { point in
+                                    ReinforcementCard(
+                                        point: point,
+                                        removeTitle: "移出已掌握",
+                                        removeSystemImage: "minus.circle",
+                                        removeTint: KikariaTheme.masteredGreen.opacity(0.86)
+                                    ) {
+                                        removeFromMastered(point)
+                                    }
                                 }
                             }
                         }
