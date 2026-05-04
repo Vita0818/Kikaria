@@ -63,6 +63,8 @@ private enum KikariaTheme {
 private enum AppRoute: Hashable {
     case scope
     case review
+    case todayOverview
+    case reviewHistory
     case reinforcement
     case reinforcementReview
     case mastered
@@ -125,6 +127,7 @@ private struct PresetStudyState: Codable {
     var markdownText: String
     var selectedTags: Set<String>
     var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord]
+    var activityRecords: [StudyActivityRecord]
     var dailyGoal: Int
     var countdownStartDate: Date?
     var countdownEndDate: Date?
@@ -138,6 +141,7 @@ private struct PresetStudyState: Codable {
         markdownText: String,
         selectedTags: Set<String>,
         dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord],
+        activityRecords: [StudyActivityRecord] = [],
         dailyGoal: Int,
         countdownStartDate: Date? = nil,
         countdownEndDate: Date? = nil,
@@ -150,6 +154,7 @@ private struct PresetStudyState: Codable {
         self.markdownText = markdownText
         self.selectedTags = selectedTags
         self.dailyReviewRecords = dailyReviewRecords
+        self.activityRecords = activityRecords
         self.dailyGoal = dailyGoal
         self.countdownStartDate = countdownStartDate
         self.countdownEndDate = countdownEndDate
@@ -164,6 +169,7 @@ private struct PresetStudyState: Codable {
         case markdownText
         case selectedTags
         case dailyReviewRecords
+        case activityRecords
         case dailyGoal
         case countdownDate
         case countdownStartDate
@@ -180,6 +186,7 @@ private struct PresetStudyState: Codable {
         markdownText = try container.decode(String.self, forKey: .markdownText)
         selectedTags = try container.decodeIfPresent(Set<String>.self, forKey: .selectedTags) ?? []
         dailyReviewRecords = try container.decodeIfPresent([KnowledgePoint.ID: DailyReviewRecord].self, forKey: .dailyReviewRecords) ?? [:]
+        activityRecords = try container.decodeIfPresent([StudyActivityRecord].self, forKey: .activityRecords) ?? []
         dailyGoal = try container.decodeIfPresent(Int.self, forKey: .dailyGoal) ?? 20
 
         let legacyCountdownDate = try container.decodeIfPresent(Date.self, forKey: .countdownDate)
@@ -198,6 +205,7 @@ private struct PresetStudyState: Codable {
         try container.encode(markdownText, forKey: .markdownText)
         try container.encode(selectedTags, forKey: .selectedTags)
         try container.encode(dailyReviewRecords, forKey: .dailyReviewRecords)
+        try container.encode(activityRecords, forKey: .activityRecords)
         try container.encode(dailyGoal, forKey: .dailyGoal)
         try container.encodeIfPresent(countdownStartDate, forKey: .countdownStartDate)
         try container.encodeIfPresent(countdownEndDate, forKey: .countdownEndDate)
@@ -463,6 +471,7 @@ struct ContentView: View {
     @State private var selectedTags = Set<String>()
     @State private var navigationPath: [AppRoute] = []
     @State private var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord] = [:]
+    @State private var activityRecords: [StudyActivityRecord] = []
     @State private var presetStates: [String: PresetStudyState] = [:]
     @State private var currentPresetID = KnowledgePreset.defaultPresetID
     @State private var dailyGoal = 20
@@ -502,8 +511,26 @@ struct ContentView: View {
         presets.first { $0.id == currentPresetID } ?? KnowledgePreset.defaultPreset
     }
 
-    private var currentPresetShortName: String {
-        currentPreset.shortName
+    private var currentPresetActivityRecords: [StudyActivityRecord] {
+        activityRecords.filter { $0.presetId == currentPresetID }
+    }
+
+    private var todayReviewedAnswerCount: Int {
+        records(on: Date(), type: .reviewedAnswer).count
+    }
+
+    private var todayMarkedMasteredCount: Int {
+        Set(records(on: Date(), type: .markedMastered).map(\.pointId)).count
+    }
+
+    private var homeDateTitle: String {
+        let date = Date()
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "MMM"
+
+        let day = Calendar.current.component(.day, from: date)
+        return "\(formatter.string(from: date)) \(day)\(ordinalSuffix(for: day))"
     }
 
     var body: some View {
@@ -518,7 +545,7 @@ struct ContentView: View {
                             .font(KikariaTypography.appTitle())
                             .foregroundStyle(KikariaTheme.deepText)
 
-                        Spacer()
+                        Spacer(minLength: 16)
 
                         NavigationLink(value: AppRoute.settings) {
                             ProfileAvatarView(
@@ -538,39 +565,30 @@ struct ContentView: View {
                         StartReviewButton(
                             dailyGoal: dailyGoal,
                             masteredCount: masteredCount,
-                            countdownDays: countdownDayCount,
-                            presetShortName: currentPresetShortName
+                            countdownDays: countdownDayCount
                         )
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("开始背诵")
 
-                    Spacer(minLength: 42)
+                    Spacer(minLength: 30)
 
                     VStack(spacing: 12) {
-                        NavigationLink(value: AppRoute.scope) {
-                            HomeEntryCard(
-                                title: "选择范围",
-                                countText: selectedScopeCountText
+                        NavigationLink(value: AppRoute.todayOverview) {
+                            TodayOverviewHomeProgressButton(
+                                dateText: homeDateTitle,
+                                daysLeftText: "\(countdownDayCount.map(String.init) ?? "--") Days Left",
+                                progressText: "\(todayMarkedMasteredCount)/\(dailyGoal)"
                             )
                         }
                         .buttonStyle(.plain)
 
-                        NavigationLink(value: AppRoute.reinforcement) {
-                            HomeEntryCard(
-                                title: "重点集锦",
-                                countText: "\(reinforcedCount)"
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        NavigationLink(value: AppRoute.mastered) {
-                            HomeEntryCard(
-                                title: "已掌握",
-                                countText: "\(masteredCount)"
-                            )
-                        }
-                        .buttonStyle(.plain)
+                        HomeDashboardGridCard(
+                            scopeCountText: selectedScopeCountText,
+                            reinforcedCount: reinforcedCount,
+                            masteredCount: masteredCount,
+                            presetName: currentPreset.name
+                        )
                     }
                     .padding(.bottom, 12)
                 }
@@ -590,11 +608,28 @@ struct ContentView: View {
                         knowledgePoints: $knowledgePoints,
                         selectedTags: $selectedTags,
                         dailyReviewRecords: $dailyReviewRecords,
-                        mode: .normal
+                        mode: .normal,
+                        onRecordActivity: recordStudyActivity
+                    )
+                case .todayOverview:
+                    TodayOverviewView(
+                        presetName: currentPreset.name,
+                        activityRecords: currentPresetActivityRecords,
+                        knowledgePoints: knowledgePoints,
+                        dailyGoal: dailyGoal,
+                        countdownEndDate: countdownEndDate,
+                        onOpenHistory: {
+                            navigationPath.append(.reviewHistory)
+                        }
+                    )
+                case .reviewHistory:
+                    ReviewHistoryView(
+                        activityRecords: currentPresetActivityRecords
                     )
                 case .reinforcement:
                     ReinforcementView(
                         knowledgePoints: $knowledgePoints,
+                        onRecordActivity: recordStudyActivity,
                         onStartReview: {
                             navigationPath.append(.reinforcementReview)
                         }
@@ -605,6 +640,7 @@ struct ContentView: View {
                         selectedTags: .constant([]),
                         dailyReviewRecords: $dailyReviewRecords,
                         mode: .reinforcement,
+                        onRecordActivity: recordStudyActivity,
                         onReturnHome: {
                             navigationPath.removeAll()
                         }
@@ -612,6 +648,7 @@ struct ContentView: View {
                 case .mastered:
                     MasteredView(
                         knowledgePoints: $knowledgePoints,
+                        onRecordActivity: recordStudyActivity,
                         onStartReview: {
                             navigationPath.append(.masteredReview)
                         }
@@ -622,6 +659,7 @@ struct ContentView: View {
                         selectedTags: .constant([]),
                         dailyReviewRecords: $dailyReviewRecords,
                         mode: .mastered,
+                        onRecordActivity: recordStudyActivity,
                         onReturnHome: {
                             navigationPath.removeAll()
                         }
@@ -732,6 +770,9 @@ struct ContentView: View {
                 persistCurrentStudyStateIfReady()
             }
             .onChange(of: dailyReviewRecords) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: activityRecords) { _ in
                 persistCurrentStudyStateIfReady()
             }
             .onChange(of: markdownText) { _ in
@@ -864,6 +905,7 @@ struct ContentView: View {
             markdownText: preset.markdownText,
             selectedTags: [],
             dailyReviewRecords: [:],
+            activityRecords: [],
             dailyGoal: dailyGoal(forPresetID: preset.id),
             countdownStartDate: nil,
             countdownEndDate: nil
@@ -877,6 +919,7 @@ struct ContentView: View {
             markdownText: markdownText,
             selectedTags: selectedTags,
             dailyReviewRecords: dailyReviewRecords,
+            activityRecords: activityRecords,
             dailyGoal: clampedDailyGoal(dailyGoal),
             countdownStartDate: countdownStartDate,
             countdownEndDate: countdownEndDate,
@@ -893,6 +936,9 @@ struct ContentView: View {
         markdownText = state.markdownText
         selectedTags = validSelectedTags(from: state.selectedTags, in: state.knowledgePoints)
         dailyReviewRecords = state.dailyReviewRecords
+        activityRecords = state.activityRecords.filter { record in
+            state.knowledgePoints.contains { $0.id == record.pointId }
+        }
         dailyGoal = clampedDailyGoal(state.dailyGoal)
         countdownStartDate = state.countdownStartDate
         countdownEndDate = state.countdownEndDate
@@ -905,6 +951,7 @@ struct ContentView: View {
             presetStates[state.presetId] = currentPresetStateSnapshot()
             persistLibrary()
             rescheduleCurrentNotification()
+            updateWidgetSnapshot()
         }
     }
 
@@ -918,6 +965,7 @@ struct ContentView: View {
         dailyGoal = goal
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
+        updateWidgetSnapshot()
     }
 
     private func updateCountdownRange(startDate: Date?, endDate: Date?) {
@@ -926,6 +974,7 @@ struct ContentView: View {
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
         rescheduleCurrentNotification()
+        updateWidgetSnapshot()
     }
 
     private func updateNotificationsEnabled(_ newValue: Bool, completion: @escaping (Bool, String?) -> Void) {
@@ -951,6 +1000,7 @@ struct ContentView: View {
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
         rescheduleCurrentNotification()
+        updateWidgetSnapshot()
     }
 
     private func updateDangerPercent(_ newValue: Int) {
@@ -1039,7 +1089,7 @@ struct ContentView: View {
         }
     }
 
-    private func createPreset(name: String, shortName: String, category: String, description: String, markdownText: String) -> PresetCreationOutcome {
+    private func createPreset(name: String, category: String, description: String, markdownText: String) -> PresetCreationOutcome {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
             return .failure("请填写预设名称。")
@@ -1055,7 +1105,6 @@ struct ContentView: View {
         let preset = KnowledgePreset(
             id: "user-\(UUID().uuidString)",
             name: trimmedName,
-            shortName: shortName,
             subtitle: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义知识点" : description.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义上传的知识点预设。" : description.trimmingCharacters(in: .whitespacesAndNewlines),
             category: category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义" : category.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -1069,6 +1118,7 @@ struct ContentView: View {
             markdownText: trimmedMarkdown,
             selectedTags: [],
             dailyReviewRecords: [:],
+            activityRecords: [],
             dailyGoal: 20,
             countdownStartDate: nil,
             countdownEndDate: nil,
@@ -1085,7 +1135,7 @@ struct ContentView: View {
         return .success(preset)
     }
 
-    private func updatePresetMetadata(presetID: String, name: String, shortName: String, category: String, description: String) {
+    private func updatePresetMetadata(presetID: String, name: String, category: String, description: String) {
         guard let index = presets.firstIndex(where: { $0.id == presetID }) else {
             return
         }
@@ -1095,11 +1145,13 @@ struct ContentView: View {
         let trimmedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
 
         presets[index].name = trimmedName.isEmpty ? presets[index].name : trimmedName
-        presets[index].shortName = KnowledgePreset.normalizedShortName(shortName, fallbackName: presets[index].name)
         presets[index].category = trimmedCategory.isEmpty ? "自定义" : trimmedCategory
         presets[index].subtitle = trimmedDescription.isEmpty ? presets[index].subtitle : trimmedDescription
         presets[index].description = trimmedDescription.isEmpty ? presets[index].description : trimmedDescription
         persistLibrary()
+        if presetID == currentPresetID {
+            updateWidgetSnapshot()
+        }
     }
 
     private func deletePreset(_ presetID: String) {
@@ -1161,6 +1213,7 @@ struct ContentView: View {
 
         state.knowledgePoints.removeAll { $0.id == pointID }
         state.dailyReviewRecords[pointID] = nil
+        state.activityRecords.removeAll { $0.pointId == pointID }
         state.selectedTags = validSelectedTags(from: state.selectedTags, in: state.knowledgePoints)
         syncEditedState(state)
     }
@@ -1192,6 +1245,7 @@ struct ContentView: View {
         } else {
             persistLibrary()
         }
+        updateWidgetSnapshot()
     }
 
     private func clampedDailyGoal(_ goal: Int) -> Int {
@@ -1217,6 +1271,55 @@ struct ContentView: View {
         }
 
         KikariaNotificationManager.rescheduleStudyProgressWarning(for: currentPresetStateSnapshot())
+    }
+
+    private func records(on date: Date, type: StudyActivityType? = nil) -> [StudyActivityRecord] {
+        currentPresetActivityRecords.filter { record in
+            Calendar.current.isDate(record.date, inSameDayAs: date) &&
+                (type == nil || record.type == type)
+        }
+    }
+
+    private func ordinalSuffix(for day: Int) -> String {
+        let lastTwoDigits = day % 100
+        if lastTwoDigits == 11 || lastTwoDigits == 12 || lastTwoDigits == 13 {
+            return "th"
+        }
+
+        switch day % 10 {
+        case 1:
+            return "st"
+        case 2:
+            return "nd"
+        case 3:
+            return "rd"
+        default:
+            return "th"
+        }
+    }
+
+    private func recordStudyActivity(_ type: StudyActivityType, point: KnowledgePoint) {
+        activityRecords.append(
+            StudyActivityRecord(
+                presetId: currentPresetID,
+                type: type,
+                pointId: point.id,
+                pointTitle: point.title
+            )
+        )
+    }
+
+    private func updateWidgetSnapshot() {
+        WidgetDataStore.save(
+            WidgetSnapshot(
+                presetName: currentPreset.name,
+                masteredCount: masteredCount,
+                dailyGoal: dailyGoal,
+                countdownDays: countdownDayCount,
+                todayReviewCount: todayReviewedAnswerCount,
+                lastUpdated: Date()
+            )
+        )
     }
 
 }
@@ -1433,6 +1536,425 @@ private func sanitizedFilename(_ name: String) -> String {
     let sanitized = components.joined(separator: "-")
         .trimmingCharacters(in: .whitespacesAndNewlines)
     return sanitized.isEmpty ? "预设" : sanitized
+}
+
+private struct ActivitySummary {
+    let viewedHintCount: Int
+    let reviewedAnswerCount: Int
+    let markedMasteredCount: Int
+    let addedReinforcementCount: Int
+    let removedMasteredCount: Int
+    let removedReinforcementCount: Int
+
+    var totalCount: Int {
+        viewedHintCount + reviewedAnswerCount + markedMasteredCount + addedReinforcementCount + removedMasteredCount + removedReinforcementCount
+    }
+
+    static func make(from records: [StudyActivityRecord]) -> ActivitySummary {
+        ActivitySummary(
+            viewedHintCount: records.filter { $0.type == .viewedHint }.count,
+            reviewedAnswerCount: records.filter { $0.type == .reviewedAnswer }.count,
+            markedMasteredCount: Set(records.filter { $0.type == .markedMastered }.map(\.pointId)).count,
+            addedReinforcementCount: records.filter { $0.type == .addedReinforcement }.count,
+            removedMasteredCount: records.filter { $0.type == .removedMastered }.count,
+            removedReinforcementCount: records.filter { $0.type == .removedReinforcement }.count
+        )
+    }
+}
+
+private struct TodayOverviewView: View {
+    let presetName: String
+    let activityRecords: [StudyActivityRecord]
+    let knowledgePoints: [KnowledgePoint]
+    let dailyGoal: Int
+    let countdownEndDate: Date?
+    let onOpenHistory: () -> Void
+
+    private var todayRecords: [StudyActivityRecord] {
+        activityRecords.filter { Calendar.current.isDate($0.date, inSameDayAs: Date()) }
+    }
+
+    private var todaySummary: ActivitySummary {
+        ActivitySummary.make(from: todayRecords)
+    }
+
+    private var masteredTotal: Int {
+        knowledgePoints.filter(\.isMastered).count
+    }
+
+    private var remainingToGoal: Int {
+        max(0, dailyGoal - todaySummary.markedMasteredCount)
+    }
+
+    private var progressMessage: String {
+        if todaySummary.markedMasteredCount >= dailyGoal {
+            return "今日目标已经达成，保持这份节奏就很好。"
+        }
+
+        if todaySummary.reviewedAnswerCount > 0 {
+            return "今日已经进入状态，还差 \(remainingToGoal) 个新增掌握达到目标。"
+        }
+
+        return "今天还很安静，可以从一个知识点开始。"
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("今日概览")
+                            .font(KikariaTypography.chineseTitle())
+                            .foregroundStyle(KikariaTheme.deepText)
+
+                        Text(presetName)
+                            .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
+                            .foregroundStyle(KikariaTheme.softText)
+                    }
+                    .padding(.top, 18)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("今日新增已掌握")
+                            .font(KikariaTypography.chineseHeadline(size: 15))
+                            .foregroundStyle(KikariaTheme.softText)
+
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text("\(todaySummary.markedMasteredCount)")
+                                .font(KikariaTypography.number(size: 58, weight: .bold))
+                                .monospacedDigit()
+                                .foregroundStyle(KikariaTheme.masteredDeepGreen)
+
+                            Text("/ \(dailyGoal)")
+                                .font(KikariaTypography.number(size: 24, weight: .semibold))
+                                .foregroundStyle(KikariaTheme.softText)
+                        }
+
+                        Text(progressMessage)
+                            .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
+                            .foregroundStyle(KikariaTheme.deepText.opacity(0.82))
+                    }
+                    .padding(22)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.56), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                    .shadow(color: KikariaTheme.sky.opacity(0.13), radius: 22, y: 12)
+
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                        OverviewMetricCard(title: "查看答案", value: "\(todaySummary.reviewedAnswerCount)", detail: "今日次数")
+                        OverviewMetricCard(title: "总已掌握", value: "\(masteredTotal)", detail: "当前清单")
+                        OverviewMetricCard(title: "查看提示", value: "\(todaySummary.viewedHintCount)", detail: "今日次数")
+                        OverviewMetricCard(title: "倒数", value: countdownText(for: countdownEndDate), detail: "距结束日")
+                    }
+
+                    Button(action: onOpenHistory) {
+                        HStack(spacing: 12) {
+                            Text("复习历史")
+                                .font(KikariaTypography.chineseHeadline(size: 18))
+                                .foregroundStyle(KikariaTheme.deepText)
+
+                            Spacer()
+
+                            Image(systemName: "calendar")
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(KikariaTheme.sky)
+
+                            Image(systemName: "chevron.right")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(KikariaTheme.blueGray)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 19)
+                        .background(.white.opacity(0.56), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                        .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 22)
+                .padding(.bottom, 32)
+            }
+        }
+        .navigationTitle("今日概览")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct OverviewMetricCard: View {
+    let title: String
+    let value: String
+    let detail: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                .foregroundStyle(KikariaTheme.softText)
+
+            Text(value)
+                .font(KikariaTypography.number(size: 25, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(KikariaTheme.deepText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+            Text(detail)
+                .font(KikariaTypography.chineseCaption(size: 12, weight: .medium))
+                .foregroundStyle(KikariaTheme.blueGray)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.50), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: KikariaTheme.sky.opacity(0.08), radius: 14, y: 8)
+    }
+}
+
+private struct ReviewHistoryView: View {
+    let activityRecords: [StudyActivityRecord]
+    @State private var visibleMonth = Date()
+    @State private var selectedDate = Date()
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
+    private let weekdaySymbols = ["一", "二", "三", "四", "五", "六", "日"]
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("复习历史")
+                        .font(KikariaTypography.chineseTitle())
+                        .foregroundStyle(KikariaTheme.deepText)
+                        .padding(.top, 18)
+
+                    VStack(spacing: 18) {
+                        HStack {
+                            Button {
+                                changeMonth(by: -1)
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(KikariaTheme.sky)
+                                    .frame(width: 40, height: 40)
+                                    .background(.white.opacity(0.52), in: Circle())
+                            }
+                            .buttonStyle(.plain)
+
+                            Spacer()
+
+                            Text(monthTitle)
+                                .font(KikariaTypography.chineseHeadline(size: 20))
+                                .foregroundStyle(KikariaTheme.deepText)
+
+                            Spacer()
+
+                            Button {
+                                changeMonth(by: 1)
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .font(.headline.weight(.semibold))
+                                    .foregroundStyle(KikariaTheme.sky)
+                                    .frame(width: 40, height: 40)
+                                    .background(.white.opacity(0.52), in: Circle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        LazyVGrid(columns: columns, spacing: 8) {
+                            ForEach(weekdaySymbols, id: \.self) { symbol in
+                                Text(symbol)
+                                    .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                                    .foregroundStyle(KikariaTheme.softText)
+                                    .frame(maxWidth: .infinity)
+                            }
+
+                            ForEach(Array(monthCells.enumerated()), id: \.offset) { _, date in
+                                HistoryCalendarDayCell(
+                                    date: date,
+                                    count: date.map(recordCount(on:)) ?? 0,
+                                    isToday: date.map { Calendar.current.isDateInToday($0) } ?? false,
+                                    isSelected: date.map { Calendar.current.isDate($0, inSameDayAs: selectedDate) } ?? false
+                                ) {
+                                    if let date {
+                                        selectedDate = date
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(18)
+                    .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+                    .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 20, y: 12)
+
+                    HistoryDaySummaryCard(date: selectedDate, summary: ActivitySummary.make(from: records(on: selectedDate)))
+                }
+                .padding(.horizontal, 22)
+                .padding(.bottom, 32)
+            }
+        }
+        .navigationTitle("复习历史")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var monthTitle: String {
+        let components = Calendar.current.dateComponents([.year, .month], from: visibleMonth)
+        return "\(components.year ?? 0)年 \(components.month ?? 1)月"
+    }
+
+    private var monthCells: [Date?] {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month], from: visibleMonth)
+        guard let monthStart = calendar.date(from: components),
+              let range = calendar.range(of: .day, in: .month, for: monthStart)
+        else {
+            return []
+        }
+
+        let firstWeekday = calendar.component(.weekday, from: monthStart)
+        let leadingBlankCount = (firstWeekday + 5) % 7
+        var cells = Array<Date?>(repeating: nil, count: leadingBlankCount)
+
+        for day in range {
+            cells.append(calendar.date(byAdding: .day, value: day - 1, to: monthStart))
+        }
+
+        while cells.count % 7 != 0 {
+            cells.append(nil)
+        }
+
+        return cells
+    }
+
+    private func changeMonth(by offset: Int) {
+        visibleMonth = Calendar.current.date(byAdding: .month, value: offset, to: visibleMonth) ?? visibleMonth
+    }
+
+    private func records(on date: Date) -> [StudyActivityRecord] {
+        activityRecords.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }
+    }
+
+    private func recordCount(on date: Date) -> Int {
+        records(on: date).count
+    }
+}
+
+private struct HistoryCalendarDayCell: View {
+    let date: Date?
+    let count: Int
+    let isToday: Bool
+    let isSelected: Bool
+    let action: () -> Void
+
+    private var fillColor: Color {
+        switch count {
+        case 0:
+            return .white.opacity(0.42)
+        case 1...2:
+            return KikariaTheme.cyan.opacity(0.42)
+        case 3...5:
+            return KikariaTheme.sky.opacity(0.54)
+        default:
+            return KikariaTheme.masteredGreen.opacity(0.62)
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(date == nil ? Color.clear : fillColor)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(
+                                isSelected ? KikariaTheme.deepText.opacity(0.45) : (isToday ? KikariaTheme.sky.opacity(0.65) : .clear),
+                                lineWidth: isSelected ? 2 : 1.4
+                            )
+                    }
+
+                if let date {
+                    Text("\(Calendar.current.component(.day, from: date))")
+                        .font(KikariaTypography.number(size: 12, weight: .semibold))
+                        .foregroundStyle(KikariaTheme.deepText.opacity(count == 0 ? 0.58 : 0.86))
+                }
+            }
+            .frame(height: 38)
+        }
+        .buttonStyle(.plain)
+        .disabled(date == nil)
+    }
+}
+
+private struct HistoryDaySummaryCard: View {
+    let date: Date
+    let summary: ActivitySummary
+
+    private var title: String {
+        let components = Calendar.current.dateComponents([.month, .day], from: date)
+        return "\(components.month ?? 1)月\(components.day ?? 1)日"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text(title)
+                    .font(KikariaTypography.chineseHeadline(size: 19))
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                Spacer()
+
+                Text("\(summary.totalCount) 条记录")
+                    .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                    .foregroundStyle(KikariaTheme.softText)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                    .background(.white.opacity(0.56), in: Capsule())
+            }
+
+            if summary.totalCount == 0 {
+                Text("这一天还没有学习记录。")
+                    .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
+                    .foregroundStyle(KikariaTheme.softText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(spacing: 9) {
+                    HistorySummaryRow(title: "查看提示", count: summary.viewedHintCount)
+                    HistorySummaryRow(title: "查看答案", count: summary.reviewedAnswerCount)
+                    HistorySummaryRow(title: "新增掌握", count: summary.markedMasteredCount)
+                    HistorySummaryRow(title: "加入重点", count: summary.addedReinforcementCount)
+                }
+            }
+        }
+        .padding(20)
+        .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 18, y: 10)
+    }
+}
+
+private struct HistorySummaryRow: View {
+    let title: String
+    let count: Int
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
+                .foregroundStyle(KikariaTheme.deepText)
+
+            Spacer()
+
+            Text("\(count)")
+                .font(KikariaTypography.number(size: 17, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(KikariaTheme.sky)
+        }
+    }
 }
 
 private struct ProfileAvatarView: View {
@@ -2286,13 +2808,6 @@ private struct PresetCard: View {
                     }
 
                     HStack(spacing: 9) {
-                        Text(preset.shortName)
-                            .font(KikariaTypography.tag(size: 12, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(KikariaTheme.sky.opacity(0.86), in: Capsule())
-
                         Text("\(preset.knowledgePointCount) 个知识点")
                             .font(KikariaTypography.tag(size: 12, weight: .semibold))
                             .foregroundStyle(KikariaTheme.softText)
@@ -2338,9 +2853,8 @@ private struct PresetCard: View {
 
 private struct NewPresetView: View {
     @Environment(\.dismiss) private var dismiss
-    let createPreset: (String, String, String, String, String) -> PresetCreationOutcome
+    let createPreset: (String, String, String, String) -> PresetCreationOutcome
     @State private var name = ""
-    @State private var shortName = ""
     @State private var category = ""
     @State private var description = ""
     @State private var markdownText = ""
@@ -2400,7 +2914,6 @@ private struct NewPresetView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         ProfileTextField(title: "预设名称", text: $name)
-                        ProfileTextField(title: "短名称（最多 3 字）", text: $shortName)
                         ProfileTextField(title: "分类", text: $category)
                         ProfileTextField(title: "简短描述", text: $description)
 
@@ -2469,12 +2982,6 @@ private struct NewPresetView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .onChange(of: shortName) { newValue in
-            let limited = String(newValue.prefix(3))
-            if limited != newValue {
-                shortName = limited
-            }
-        }
         .fileImporter(isPresented: $isImportingFile, allowedContentTypes: allowedContentTypes, allowsMultipleSelection: false) { result in
             importMarkdownFile(result)
         }
@@ -2506,7 +3013,7 @@ private struct NewPresetView: View {
     }
 
     private func savePreset() {
-        switch createPreset(name, shortName, category, description, markdownText) {
+        switch createPreset(name, category, description, markdownText) {
         case .success(let preset):
             showToast("已创建「\(preset.name)」")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
@@ -2832,13 +3339,12 @@ private struct EditPresetView: View {
     @Environment(\.dismiss) private var dismiss
     let preset: KnowledgePreset
     let knowledgePoints: [KnowledgePoint]
-    let onSavePreset: (String, String, String, String, String) -> Void
+    let onSavePreset: (String, String, String, String) -> Void
     let onAddPoint: () -> Void
     let onEditPoint: (UUID) -> Void
     let onDeletePoint: (UUID, String) -> Void
     let onDeletePreset: (String) -> Void
     @State private var name: String
-    @State private var shortName: String
     @State private var category: String
     @State private var description: String
     @State private var searchText = ""
@@ -2851,7 +3357,7 @@ private struct EditPresetView: View {
     init(
         preset: KnowledgePreset,
         knowledgePoints: [KnowledgePoint],
-        onSavePreset: @escaping (String, String, String, String, String) -> Void,
+        onSavePreset: @escaping (String, String, String, String) -> Void,
         onAddPoint: @escaping () -> Void,
         onEditPoint: @escaping (UUID) -> Void,
         onDeletePoint: @escaping (UUID, String) -> Void,
@@ -2865,7 +3371,6 @@ private struct EditPresetView: View {
         self.onDeletePoint = onDeletePoint
         self.onDeletePreset = onDeletePreset
         _name = State(initialValue: preset.name)
-        _shortName = State(initialValue: preset.shortName)
         _category = State(initialValue: preset.category)
         _description = State(initialValue: preset.description)
     }
@@ -2902,7 +3407,7 @@ private struct EditPresetView: View {
                     Spacer()
 
                     Button("保存") {
-                        onSavePreset(preset.id, name, shortName, category, description)
+                        onSavePreset(preset.id, name, category, description)
                         dismiss()
                     }
                     .font(KikariaTypography.chineseButton())
@@ -2916,7 +3421,6 @@ private struct EditPresetView: View {
                 ScrollView {
                     VStack(spacing: 16) {
                         ProfileTextField(title: "预设名称", text: $name)
-                        ProfileTextField(title: "短名称（最多 3 字）", text: $shortName)
                         ProfileTextField(title: "分类", text: $category)
                         ProfileTextField(title: "简短描述", text: $description)
 
@@ -3025,12 +3529,6 @@ private struct EditPresetView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $shareFile) { file in
             ActivityView(activityItems: [file.url])
-        }
-        .onChange(of: shortName) { newValue in
-            let limited = String(newValue.prefix(3))
-            if limited != newValue {
-                shortName = limited
-            }
         }
         .alert("删除知识点？", isPresented: isConfirmingPointDelete) {
             Button("取消", role: .cancel) {
@@ -3545,7 +4043,6 @@ private struct StartReviewButton: View {
     let dailyGoal: Int
     let masteredCount: Int
     let countdownDays: Int?
-    let presetShortName: String
     @State private var isBreathing = false
     @State private var hasStartedBreathingAnimation = false
     private let orbitDuration: TimeInterval = 150
@@ -3556,9 +4053,7 @@ private struct StartReviewButton: View {
 
             ZStack {
                 ZStack {
-                    MetricBubble(
-                        valueText: "\(dailyGoal)",
-                        label: "目标",
+                    DecorativeBubble(
                         size: 92,
                         colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
                         opacity: 0.48
@@ -3567,9 +4062,7 @@ private struct StartReviewButton: View {
                     .scaleEffect(isBreathing ? 1.035 : 0.985)
                     .offset(x: -96, y: -68)
 
-                    MetricBubble(
-                        valueText: presetShortName,
-                        label: "预设",
+                    DecorativeBubble(
                         size: 80,
                         colors: [Color(red: 0.75, green: 0.78, blue: 1.0), KikariaTheme.mist],
                         opacity: 0.42
@@ -3578,9 +4071,7 @@ private struct StartReviewButton: View {
                     .scaleEffect(isBreathing ? 0.985 : 1.04)
                     .offset(x: 102, y: -56)
 
-                    MetricBubble(
-                        valueText: "\(masteredCount)",
-                        label: "已掌握",
+                    DecorativeBubble(
                         size: 78,
                         colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
                         opacity: 0.38
@@ -3589,9 +4080,7 @@ private struct StartReviewButton: View {
                     .scaleEffect(isBreathing ? 1.035 : 0.985)
                     .offset(x: 92, y: 80)
 
-                    MetricBubble(
-                        valueText: countdownDays.map(String.init) ?? "--",
-                        label: "倒数",
+                    DecorativeBubble(
                         size: 74,
                         colors: [KikariaTheme.sky, Color.white],
                         opacity: 0.36
@@ -3666,30 +4155,14 @@ private struct SoftBubble: View {
     }
 }
 
-private struct MetricBubble: View {
-    let valueText: String
-    let label: String
+private struct DecorativeBubble: View {
     let size: CGFloat
     let colors: [Color]
     let opacity: Double
 
     var body: some View {
-        ZStack {
-            SoftBubble(size: size, colors: colors, opacity: opacity)
-
-            VStack(spacing: 2) {
-                Text(valueText)
-                    .font(KikariaTypography.chineseHeadline(size: size > 84 ? 24 : 21))
-                    .monospacedDigit()
-                    .foregroundStyle(KikariaTheme.deepText.opacity(0.86))
-
-                Text(label)
-                    .font(KikariaTypography.chineseCaption(size: 11, weight: .semibold))
-                    .foregroundStyle(KikariaTheme.softText)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label) \(valueText)")
+        SoftBubble(size: size, colors: colors, opacity: opacity)
+            .accessibilityHidden(true)
     }
 }
 
@@ -3723,6 +4196,154 @@ private struct HomeEntryCard: View {
         }
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+    }
+}
+
+private struct TodayOverviewHomeProgressButton: View {
+    let dateText: String
+    let daysLeftText: String
+    let progressText: String
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(dateText)
+                    .font(.system(size: 23, weight: .semibold, design: .serif))
+                    .foregroundStyle(KikariaTheme.deepText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+
+                Text(daysLeftText)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(KikariaTheme.softText)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            Text(progressText)
+                .font(KikariaTypography.number(size: 25, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(KikariaTheme.masteredDeepGreen)
+                .lineLimit(1)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(KikariaTheme.blueGray.opacity(0.52))
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 25, style: .continuous)
+                .fill(.white.opacity(0.48))
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 25, style: .continuous))
+        .shadow(color: KikariaTheme.sky.opacity(0.11), radius: 17, y: 9)
+    }
+}
+
+private struct HomeDashboardGridCard: View {
+    let scopeCountText: String
+    let reinforcedCount: Int
+    let masteredCount: Int
+    let presetName: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                NavigationLink(value: AppRoute.scope) {
+                    HomeDashboardMetricColumn(title: "范围", valueText: scopeCountText, tint: KikariaTheme.sky)
+                }
+                .buttonStyle(.plain)
+
+                HomeDashboardDivider()
+
+                NavigationLink(value: AppRoute.reinforcement) {
+                    HomeDashboardMetricColumn(title: "重点集锦", valueText: "\(reinforcedCount)", tint: KikariaTheme.cyan)
+                }
+                .buttonStyle(.plain)
+
+                HomeDashboardDivider()
+
+                NavigationLink(value: AppRoute.mastered) {
+                    HomeDashboardMetricColumn(title: "已掌握", valueText: "\(masteredCount)", tint: KikariaTheme.masteredGreen)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Rectangle()
+                .fill(KikariaTheme.blueGray.opacity(0.12))
+                .frame(height: 1)
+                .padding(.horizontal, 18)
+
+            NavigationLink(value: AppRoute.presetSelection) {
+                HStack(spacing: 8) {
+                    Text(presetName)
+                        .font(KikariaTypography.chineseHeadline(size: 16))
+                        .foregroundStyle(KikariaTheme.deepText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.74)
+
+                    Text("当前预设")
+                        .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                        .foregroundStyle(KikariaTheme.softText)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(KikariaTheme.blueGray.opacity(0.58))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
+                .background(.white.opacity(0.38), in: Capsule())
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .background {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(.white.opacity(0.47))
+        }
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+    }
+}
+
+private struct HomeDashboardMetricColumn: View {
+    let title: String
+    let valueText: String
+    let tint: Color
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(title)
+                .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                .foregroundStyle(KikariaTheme.softText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Text(valueText)
+                .font(KikariaTypography.number(size: 24, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, minHeight: 82)
+        .contentShape(Rectangle())
+    }
+}
+
+private struct HomeDashboardDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(KikariaTheme.blueGray.opacity(0.16))
+            .frame(width: 1, height: 42)
     }
 }
 
@@ -3867,6 +4488,7 @@ struct ReviewView: View {
     @Binding var selectedTags: Set<String>
     @Binding var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord]
     let mode: ReviewMode
+    let onRecordActivity: (StudyActivityType, KnowledgePoint) -> Void
     var onReturnHome: (() -> Void)?
 
     @State private var currentPointID: KnowledgePoint.ID?
@@ -3991,7 +4613,7 @@ struct ReviewView: View {
                                     isPrimary: false
                                 ) {
                                     withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                                        isShowingHint = true
+                                        revealHint()
                                     }
                                 }
                                 .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -4318,9 +4940,22 @@ struct ReviewView: View {
         isShowingContent = false
     }
 
+    private func revealHint() {
+        if !isShowingHint,
+           let currentPointID,
+           let point = knowledgePoints.first(where: { $0.id == currentPointID }) {
+            onRecordActivity(.viewedHint, point)
+        }
+
+        isShowingHint = true
+    }
+
     private func revealContent() {
-        if !isShowingContent, let currentPointID {
+        if !isShowingContent,
+           let currentPointID,
+           let point = knowledgePoints.first(where: { $0.id == currentPointID }) {
             incrementTodayReviewCount(for: currentPointID)
+            onRecordActivity(.reviewedAnswer, point)
         }
 
         isShowingContent = true
@@ -4365,6 +5000,7 @@ struct ReviewView: View {
         knowledgePoints[index].isReinforced = true
         knowledgePoints[index].updatedAt = Date()
         assert(knowledgePoints[index].isMastered == wasMastered)
+        onRecordActivity(.addedReinforcement, knowledgePoints[index])
     }
 
     private func addCurrentPointToReinforcementAndAdvance() {
@@ -4386,6 +5022,7 @@ struct ReviewView: View {
         knowledgePoints[index].isMastered = true
         knowledgePoints[index].isReinforced = false
         knowledgePoints[index].updatedAt = Date()
+        onRecordActivity(.markedMastered, knowledgePoints[index])
         showToast("\(title) 已掌握")
     }
 
@@ -4406,6 +5043,7 @@ struct ReviewView: View {
         knowledgePoints[index].isReinforced = false
         knowledgePoints[index].updatedAt = Date()
         assert(knowledgePoints[index].isMastered == wasMastered)
+        onRecordActivity(.removedReinforcement, knowledgePoints[index])
 
         if shouldShowToast {
             showToast("\(title) 已移除")
@@ -4431,6 +5069,7 @@ struct ReviewView: View {
         knowledgePoints[index].isMastered = false
         knowledgePoints[index].updatedAt = Date()
         assert(knowledgePoints[index].isReinforced == wasReinforced)
+        onRecordActivity(.removedMastered, knowledgePoints[index])
 
         if shouldShowToast {
             showToast("\(title) 已移出已掌握")
@@ -4576,6 +5215,7 @@ private struct ReinforcementCompletionView: View {
 
 struct ReinforcementView: View {
     @Binding var knowledgePoints: [KnowledgePoint]
+    let onRecordActivity: (StudyActivityType, KnowledgePoint) -> Void
     let onStartReview: () -> Void
     @State private var searchText = ""
     @State private var toastMessage: String?
@@ -4663,6 +5303,7 @@ struct ReinforcementView: View {
             knowledgePoints[index].updatedAt = Date()
         }
 
+        onRecordActivity(.removedReinforcement, point)
         showToast("\(point.title) 已移除")
     }
 
@@ -4688,6 +5329,7 @@ struct ReinforcementView: View {
 
 struct MasteredView: View {
     @Binding var knowledgePoints: [KnowledgePoint]
+    let onRecordActivity: (StudyActivityType, KnowledgePoint) -> Void
     let onStartReview: () -> Void
     @State private var searchText = ""
     @State private var toastMessage: String?
@@ -4780,6 +5422,7 @@ struct MasteredView: View {
             knowledgePoints[index].updatedAt = Date()
         }
 
+        onRecordActivity(.removedMastered, point)
         showToast("\(point.title) 已移出已掌握")
     }
 

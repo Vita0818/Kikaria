@@ -6,8 +6,40 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A10000012FA900000000000D /* KikariaWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A10000012FA9000000000001 /* KikariaWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A10000012FA9000000000010 /* KikariaWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000012FA900000000000E /* KikariaWidget.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000012FA900000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 58D75AFB2FA48E29005294D4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000012FA9000000000006;
+			remoteInfo = KikariaWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A10000012FA900000000000C /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A10000012FA900000000000D /* KikariaWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		58D75B032FA48E29005294D4 /* Kikaria.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kikaria.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000012FA9000000000001 /* KikariaWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KikariaWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000012FA900000000000E /* KikariaWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KikariaWidget.swift; sourceTree = "<group>"; };
+		A10000012FA900000000000F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -26,6 +58,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000012FA9000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -33,6 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				58D75B052FA48E29005294D4 /* Kikaria */,
+				A10000012FA9000000000002 /* KikariaWidget */,
 				58D75B042FA48E29005294D4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +81,18 @@
 			isa = PBXGroup;
 			children = (
 				58D75B032FA48E29005294D4 /* Kikaria.app */,
+				A10000012FA9000000000001 /* KikariaWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A10000012FA9000000000002 /* KikariaWidget */ = {
+			isa = PBXGroup;
+			children = (
+				A10000012FA900000000000E /* KikariaWidget.swift */,
+				A10000012FA900000000000F /* Info.plist */,
+			);
+			path = KikariaWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -55,10 +105,12 @@
 				58D75AFF2FA48E29005294D4 /* Sources */,
 				58D75B002FA48E29005294D4 /* Frameworks */,
 				58D75B012FA48E29005294D4 /* Resources */,
+				A10000012FA900000000000C /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A10000012FA900000000000A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				58D75B052FA48E29005294D4 /* Kikaria */,
@@ -69,6 +121,25 @@
 			productName = Kikaria;
 			productReference = 58D75B032FA48E29005294D4 /* Kikaria.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A10000012FA9000000000006 /* KikariaWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000012FA9000000000009 /* Build configuration list for PBXNativeTarget "KikariaWidget" */;
+			buildPhases = (
+				A10000012FA9000000000004 /* Sources */,
+				A10000012FA9000000000003 /* Frameworks */,
+				A10000012FA9000000000005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KikariaWidget;
+			packageProductDependencies = (
+			);
+			productName = KikariaWidget;
+			productReference = A10000012FA9000000000001 /* KikariaWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +152,9 @@
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					58D75B022FA48E29005294D4 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+					A10000012FA9000000000006 = {
 						CreatedOnToolsVersion = 26.4.1;
 					};
 				};
@@ -100,12 +174,20 @@
 			projectRoot = "";
 			targets = (
 				58D75B022FA48E29005294D4 /* Kikaria */,
+				A10000012FA9000000000006 /* KikariaWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		58D75B012FA48E29005294D4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000012FA9000000000005 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +204,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000012FA9000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000012FA9000000000010 /* KikariaWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A10000012FA900000000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000012FA9000000000006 /* KikariaWidget */;
+			targetProxy = A10000012FA900000000000B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		58D75B0C2FA48E2A005294D4 /* Debug */ = {
@@ -251,6 +349,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Kikaria/Kikaria.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L5ZXXFUZTL;
@@ -285,6 +384,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Kikaria/Kikaria.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L5ZXXFUZTL;
@@ -314,6 +414,66 @@
 			};
 			name = Release;
 		};
+		A10000012FA9000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = KikariaWidget/KikariaWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L5ZXXFUZTL;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KikariaWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Vita0818.Kikaria.KikariaWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A10000012FA9000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = KikariaWidget/KikariaWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = L5ZXXFUZTL;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KikariaWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.Vita0818.Kikaria.KikariaWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -331,6 +491,15 @@
 			buildConfigurations = (
 				58D75B0F2FA48E2A005294D4 /* Debug */,
 				58D75B102FA48E2A005294D4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000012FA9000000000009 /* Build configuration list for PBXNativeTarget "KikariaWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000012FA9000000000007 /* Debug */,
+				A10000012FA9000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
