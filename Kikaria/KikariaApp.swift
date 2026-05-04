@@ -6,9 +6,14 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 @main
 struct KikariaApp: App {
+    init() {
+        UNUserNotificationCenter.current().delegate = KikariaNotificationDelegate.shared
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

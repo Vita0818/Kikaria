@@ -8,6 +8,7 @@
 import PhotosUI
 import SwiftUI
 import UIKit
+import UserNotifications
 import UniformTypeIdentifiers
 
 private enum KikariaTheme {
@@ -125,7 +126,93 @@ private struct PresetStudyState: Codable {
     var selectedTags: Set<String>
     var dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord]
     var dailyGoal: Int
-    var countdownDate: Date?
+    var countdownStartDate: Date?
+    var countdownEndDate: Date?
+    var notificationsEnabled: Bool
+    var notificationTime: Date
+    var dangerPercent: Int
+
+    init(
+        presetId: String,
+        knowledgePoints: [KnowledgePoint],
+        markdownText: String,
+        selectedTags: Set<String>,
+        dailyReviewRecords: [KnowledgePoint.ID: DailyReviewRecord],
+        dailyGoal: Int,
+        countdownStartDate: Date? = nil,
+        countdownEndDate: Date? = nil,
+        notificationsEnabled: Bool = false,
+        notificationTime: Date = PresetStudyState.defaultNotificationTime(),
+        dangerPercent: Int = 80
+    ) {
+        self.presetId = presetId
+        self.knowledgePoints = knowledgePoints
+        self.markdownText = markdownText
+        self.selectedTags = selectedTags
+        self.dailyReviewRecords = dailyReviewRecords
+        self.dailyGoal = dailyGoal
+        self.countdownStartDate = countdownStartDate
+        self.countdownEndDate = countdownEndDate
+        self.notificationsEnabled = notificationsEnabled
+        self.notificationTime = notificationTime
+        self.dangerPercent = min(max(dangerPercent, 1), 100)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case presetId
+        case knowledgePoints
+        case markdownText
+        case selectedTags
+        case dailyReviewRecords
+        case dailyGoal
+        case countdownDate
+        case countdownStartDate
+        case countdownEndDate
+        case notificationsEnabled
+        case notificationTime
+        case dangerPercent
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        presetId = try container.decode(String.self, forKey: .presetId)
+        knowledgePoints = try container.decode([KnowledgePoint].self, forKey: .knowledgePoints)
+        markdownText = try container.decode(String.self, forKey: .markdownText)
+        selectedTags = try container.decodeIfPresent(Set<String>.self, forKey: .selectedTags) ?? []
+        dailyReviewRecords = try container.decodeIfPresent([KnowledgePoint.ID: DailyReviewRecord].self, forKey: .dailyReviewRecords) ?? [:]
+        dailyGoal = try container.decodeIfPresent(Int.self, forKey: .dailyGoal) ?? 20
+
+        let legacyCountdownDate = try container.decodeIfPresent(Date.self, forKey: .countdownDate)
+        countdownStartDate = try container.decodeIfPresent(Date.self, forKey: .countdownStartDate)
+        countdownEndDate = try container.decodeIfPresent(Date.self, forKey: .countdownEndDate) ?? legacyCountdownDate
+
+        notificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? false
+        notificationTime = try container.decodeIfPresent(Date.self, forKey: .notificationTime) ?? PresetStudyState.defaultNotificationTime()
+        dangerPercent = min(max(try container.decodeIfPresent(Int.self, forKey: .dangerPercent) ?? 80, 1), 100)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(presetId, forKey: .presetId)
+        try container.encode(knowledgePoints, forKey: .knowledgePoints)
+        try container.encode(markdownText, forKey: .markdownText)
+        try container.encode(selectedTags, forKey: .selectedTags)
+        try container.encode(dailyReviewRecords, forKey: .dailyReviewRecords)
+        try container.encode(dailyGoal, forKey: .dailyGoal)
+        try container.encodeIfPresent(countdownStartDate, forKey: .countdownStartDate)
+        try container.encodeIfPresent(countdownEndDate, forKey: .countdownEndDate)
+        try container.encode(notificationsEnabled, forKey: .notificationsEnabled)
+        try container.encode(notificationTime, forKey: .notificationTime)
+        try container.encode(dangerPercent, forKey: .dangerPercent)
+    }
+
+    static func defaultNotificationTime() -> Date {
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour = 21
+        components.minute = 0
+        components.second = 0
+        return Calendar.current.date(from: components) ?? Date()
+    }
 }
 
 private struct PresetLibrarySnapshot: Codable {
@@ -159,7 +246,216 @@ private func countdownText(for targetDate: Date?) -> String {
     return "\(days) 天"
 }
 
+private struct StudyProgressWarning {
+    let masteredCount: Int
+    let expectedMasteredCount: Int
+    let dangerPercent: Int
+    let remainingDays: Int?
+
+    var body: String {
+        if let remainingDays {
+            return "距离目标日还剩 \(remainingDays) 天。你已掌握 \(masteredCount) / \(expectedMasteredCount) 个计划知识点，低于 \(dangerPercent)% 安全线。"
+        }
+
+        return "你已掌握 \(masteredCount) / \(expectedMasteredCount) 个计划知识点，低于 \(dangerPercent)% 安全线。"
+    }
+}
+
+final class KikariaNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = KikariaNotificationDelegate()
+
+    private override init() {
+        super.init()
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound, .list])
+    }
+}
+
+private enum KikariaNotificationManager {
+    static func identifier(for presetID: String) -> String {
+        "kikaria.studyProgressWarning.\(presetID)"
+    }
+
+    static func requestAuthorization(completion: @escaping (Bool) -> Void) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            DispatchQueue.main.async {
+                completion(granted)
+            }
+        }
+    }
+
+    static func cancelStudyProgressWarning(for presetID: String) {
+        let identifier = identifier(for: presetID)
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
+    }
+
+    static func rescheduleStudyProgressWarning(for state: PresetStudyState) {
+        let center = UNUserNotificationCenter.current()
+        let identifier = identifier(for: state.presetId)
+        center.removePendingNotificationRequests(withIdentifiers: [identifier])
+
+        guard state.notificationsEnabled else {
+            return
+        }
+
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized ||
+                    settings.authorizationStatus == .provisional ||
+                    settings.authorizationStatus == .ephemeral
+            else {
+                return
+            }
+
+            guard let warning = evaluateStudyProgressWarning(for: state) else {
+                return
+            }
+
+            let content = UNMutableNotificationContent()
+            content.title = "Kikaria 学习提醒"
+            content.body = warning.body
+            content.sound = .default
+
+            let triggerDate = nextTriggerDate(for: state.notificationTime)
+            let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: triggerDate)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+            center.add(request)
+        }
+    }
+
+    static func scheduleDebugTestNotification(completion: @escaping (String) -> Void) {
+        #if DEBUG
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                scheduleAuthorizedDebugTestNotification(completion: completion)
+            case .notDetermined:
+                requestAuthorization { granted in
+                    if granted {
+                        scheduleAuthorizedDebugTestNotification(completion: completion)
+                    } else {
+                        completion("请在系统设置中允许通知")
+                    }
+                }
+            case .denied:
+                DispatchQueue.main.async {
+                    completion("请在系统设置中允许通知")
+                }
+            @unknown default:
+                DispatchQueue.main.async {
+                    completion("通知权限不可用")
+                }
+            }
+        }
+        #endif
+    }
+
+    private static func scheduleAuthorizedDebugTestNotification(completion: @escaping (String) -> Void) {
+        #if DEBUG
+        let center = UNUserNotificationCenter.current()
+        let identifier = "kikaria.test.notification"
+        center.removePendingNotificationRequests(withIdentifiers: [identifier])
+
+        let content = UNMutableNotificationContent()
+        content.title = "Kikaria 测试通知"
+        content.body = "这是一条学习提醒测试。"
+        content.sound = .default
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: identifier,
+            content: content,
+            trigger: trigger
+        )
+        center.add(request) { error in
+            DispatchQueue.main.async {
+                if error == nil {
+                    completion("测试通知将在 5 秒后发送")
+                } else {
+                    completion("测试通知发送失败")
+                }
+            }
+        }
+        #endif
+    }
+
+    static func evaluateStudyProgressWarning(for state: PresetStudyState, now: Date = Date()) -> StudyProgressWarning? {
+        let totalCount = state.knowledgePoints.count
+        let masteredCount = state.knowledgePoints.filter(\.isMastered).count
+        let dangerPercent = min(max(state.dangerPercent, 1), 100)
+
+        guard totalCount > 0,
+              let startDate = state.countdownStartDate,
+              let endDate = state.countdownEndDate
+        else {
+            return nil
+        }
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        let start = calendar.startOfDay(for: startDate)
+        let end = calendar.startOfDay(for: endDate)
+
+        guard start <= end else {
+            return nil
+        }
+
+        if today < start {
+            return nil
+        }
+
+        let expectedProgress: Double
+        if today >= end {
+            expectedProgress = 1
+        } else {
+            let totalDays = max(1, (calendar.dateComponents([.day], from: start, to: end).day ?? 0) + 1)
+            let elapsedDays = max(1, (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1)
+            expectedProgress = Double(elapsedDays) / Double(totalDays)
+        }
+
+        let expectedMasteredCount = Int(ceil(Double(totalCount) * expectedProgress))
+        guard expectedMasteredCount > 0 else {
+            return nil
+        }
+
+        let actualProgressRatio = Double(masteredCount) / Double(expectedMasteredCount)
+        guard actualProgressRatio < Double(dangerPercent) / 100 else {
+            return nil
+        }
+
+        return StudyProgressWarning(
+            masteredCount: masteredCount,
+            expectedMasteredCount: expectedMasteredCount,
+            dangerPercent: dangerPercent,
+            remainingDays: countdownDays(until: endDate)
+        )
+    }
+
+    private static func nextTriggerDate(for notificationTime: Date, now: Date = Date()) -> Date {
+        let calendar = Calendar.current
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: notificationTime)
+        let hour = timeComponents.hour ?? 21
+        let minute = timeComponents.minute ?? 0
+        let today = calendar.startOfDay(for: now)
+        let todayTrigger = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: today) ?? now
+
+        if todayTrigger > now {
+            return todayTrigger
+        }
+
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? now.addingTimeInterval(24 * 60 * 60)
+        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: tomorrow) ?? tomorrow
+    }
+}
+
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var presets = KnowledgePreset.all
     @State private var knowledgePoints = KnowledgePoint.samples
     @State private var markdownText = KnowledgePreset.defaultPreset.markdownText
@@ -170,7 +466,11 @@ struct ContentView: View {
     @State private var presetStates: [String: PresetStudyState] = [:]
     @State private var currentPresetID = KnowledgePreset.defaultPresetID
     @State private var dailyGoal = 20
-    @State private var countdownDate: Date?
+    @State private var countdownStartDate: Date?
+    @State private var countdownEndDate: Date?
+    @State private var notificationsEnabled = false
+    @State private var notificationTime = PresetStudyState.defaultNotificationTime()
+    @State private var dangerPercent = 80
     @State private var hasLoadedInitialPresetState = false
     @State private var isApplyingPresetState = false
     @AppStorage("dailyLearningGoal") private var legacyDailyGoal = 20
@@ -193,7 +493,7 @@ struct ContentView: View {
     }
 
     private var countdownDayCount: Int? {
-        countdownDays(until: countdownDate)
+        countdownDays(until: countdownEndDate)
     }
 
     private var currentPreset: KnowledgePreset {
@@ -327,7 +627,11 @@ struct ContentView: View {
                     SettingsView(
                         profile: userProfile,
                         dailyGoal: dailyGoalBinding,
-                        countdownDate: countdownDateBinding,
+                        countdownStartDate: countdownStartDateBinding,
+                        countdownEndDate: countdownEndDateBinding,
+                        notificationsEnabled: notificationsEnabled,
+                        notificationTime: notificationTimeBinding,
+                        dangerPercent: dangerPercentBinding,
                         currentPresetName: currentPreset.name,
                         onClose: {
                             navigationPath.removeAll()
@@ -337,7 +641,9 @@ struct ContentView: View {
                         },
                         onOpenPresetSelection: {
                             navigationPath.append(.presetSelection)
-                        }
+                        },
+                        onSetNotificationsEnabled: updateNotificationsEnabled,
+                        onSendTestNotification: sendDebugTestNotification
                     )
                 case .editProfile:
                     EditProfileView(profile: $userProfile)
@@ -422,6 +728,11 @@ struct ContentView: View {
             .onChange(of: markdownText) { _ in
                 persistCurrentStudyStateIfReady()
             }
+            .onChange(of: scenePhase) { phase in
+                if phase == .active {
+                    rescheduleCurrentNotification()
+                }
+            }
         }
     }
 
@@ -434,11 +745,38 @@ struct ContentView: View {
         )
     }
 
-    private var countdownDateBinding: Binding<Date?> {
+    private var countdownStartDateBinding: Binding<Date?> {
         Binding(
-            get: { countdownDate },
+            get: { countdownStartDate },
             set: { newValue in
-                updateCountdownDate(newValue)
+                updateCountdownRange(startDate: newValue, endDate: countdownEndDate)
+            }
+        )
+    }
+
+    private var countdownEndDateBinding: Binding<Date?> {
+        Binding(
+            get: { countdownEndDate },
+            set: { newValue in
+                updateCountdownRange(startDate: countdownStartDate, endDate: newValue)
+            }
+        )
+    }
+
+    private var notificationTimeBinding: Binding<Date> {
+        Binding(
+            get: { notificationTime },
+            set: { newValue in
+                updateNotificationTime(newValue)
+            }
+        )
+    }
+
+    private var dangerPercentBinding: Binding<Int> {
+        Binding(
+            get: { dangerPercent },
+            set: { newValue in
+                updateDangerPercent(newValue)
             }
         )
     }
@@ -457,6 +795,7 @@ struct ContentView: View {
 
         presetStates[currentPresetID] = state
         restorePresetState(state)
+        rescheduleCurrentNotification()
     }
 
     private func switchToPreset(_ preset: KnowledgePreset) -> Bool {
@@ -464,6 +803,7 @@ struct ContentView: View {
             return false
         }
 
+        let previousPresetID = currentPresetID
         saveCurrentPresetState()
 
         withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
@@ -474,7 +814,12 @@ struct ContentView: View {
             restorePresetState(targetState)
         }
 
+        if previousPresetID != preset.id {
+            KikariaNotificationManager.cancelStudyProgressWarning(for: previousPresetID)
+        }
+
         persistLibrary()
+        rescheduleCurrentNotification()
         return true
     }
 
@@ -504,7 +849,8 @@ struct ContentView: View {
             selectedTags: [],
             dailyReviewRecords: [:],
             dailyGoal: dailyGoal(forPresetID: preset.id),
-            countdownDate: nil
+            countdownStartDate: nil,
+            countdownEndDate: nil
         )
     }
 
@@ -516,7 +862,11 @@ struct ContentView: View {
             selectedTags: selectedTags,
             dailyReviewRecords: dailyReviewRecords,
             dailyGoal: clampedDailyGoal(dailyGoal),
-            countdownDate: countdownDate
+            countdownStartDate: countdownStartDate,
+            countdownEndDate: countdownEndDate,
+            notificationsEnabled: notificationsEnabled,
+            notificationTime: notificationTime,
+            dangerPercent: clampedDangerPercent(dangerPercent)
         )
     }
 
@@ -528,12 +878,17 @@ struct ContentView: View {
         selectedTags = validSelectedTags(from: state.selectedTags, in: state.knowledgePoints)
         dailyReviewRecords = state.dailyReviewRecords
         dailyGoal = clampedDailyGoal(state.dailyGoal)
-        countdownDate = state.countdownDate
+        countdownStartDate = state.countdownStartDate
+        countdownEndDate = state.countdownEndDate
+        notificationsEnabled = state.notificationsEnabled
+        notificationTime = normalizedNotificationTime(state.notificationTime)
+        dangerPercent = clampedDangerPercent(state.dangerPercent)
 
         DispatchQueue.main.async {
             isApplyingPresetState = false
             presetStates[state.presetId] = currentPresetStateSnapshot()
             persistLibrary()
+            rescheduleCurrentNotification()
         }
     }
 
@@ -549,10 +904,48 @@ struct ContentView: View {
         persistLibrary()
     }
 
-    private func updateCountdownDate(_ newValue: Date?) {
-        countdownDate = newValue
+    private func updateCountdownRange(startDate: Date?, endDate: Date?) {
+        countdownStartDate = startDate
+        countdownEndDate = endDate
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
+        rescheduleCurrentNotification()
+    }
+
+    private func updateNotificationsEnabled(_ newValue: Bool, completion: @escaping (Bool, String?) -> Void) {
+        if newValue {
+            KikariaNotificationManager.requestAuthorization { granted in
+                notificationsEnabled = granted
+                presetStates[currentPresetID] = currentPresetStateSnapshot()
+                persistLibrary()
+                rescheduleCurrentNotification()
+                completion(granted, granted ? nil : "请在系统设置中允许通知")
+            }
+        } else {
+            notificationsEnabled = false
+            presetStates[currentPresetID] = currentPresetStateSnapshot()
+            persistLibrary()
+            KikariaNotificationManager.cancelStudyProgressWarning(for: currentPresetID)
+            completion(false, nil)
+        }
+    }
+
+    private func updateNotificationTime(_ newValue: Date) {
+        notificationTime = normalizedNotificationTime(newValue)
+        presetStates[currentPresetID] = currentPresetStateSnapshot()
+        persistLibrary()
+        rescheduleCurrentNotification()
+    }
+
+    private func updateDangerPercent(_ newValue: Int) {
+        dangerPercent = clampedDangerPercent(newValue)
+        presetStates[currentPresetID] = currentPresetStateSnapshot()
+        persistLibrary()
+        rescheduleCurrentNotification()
+    }
+
+    private func sendDebugTestNotification(completion: @escaping (String) -> Void) {
+        KikariaNotificationManager.scheduleDebugTestNotification(completion: completion)
     }
 
     private func dailyGoal(forPresetID presetID: String) -> Int {
@@ -574,6 +967,7 @@ struct ContentView: View {
 
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
+        rescheduleCurrentNotification()
     }
 
     private func loadPersistedPresetLibrary() {
@@ -660,7 +1054,11 @@ struct ContentView: View {
             selectedTags: [],
             dailyReviewRecords: [:],
             dailyGoal: 20,
-            countdownDate: nil
+            countdownStartDate: nil,
+            countdownEndDate: nil,
+            notificationsEnabled: false,
+            notificationTime: PresetStudyState.defaultNotificationTime(),
+            dangerPercent: 80
         )
 
         presets.append(preset)
@@ -699,6 +1097,7 @@ struct ContentView: View {
         let wasCurrentPreset = presetID == currentPresetID
         presets.removeAll { $0.id == presetID }
         presetStates[presetID] = nil
+        KikariaNotificationManager.cancelStudyProgressWarning(for: presetID)
 
         if wasCurrentPreset, let nextPreset = presets.first {
             _ = switchToPreset(nextPreset)
@@ -783,6 +1182,27 @@ struct ContentView: View {
         min(max(goal, 1), 100)
     }
 
+    private func clampedDangerPercent(_ percent: Int) -> Int {
+        min(max(percent, 1), 100)
+    }
+
+    private func normalizedNotificationTime(_ date: Date) -> Date {
+        let components = Calendar.current.dateComponents([.hour, .minute], from: date)
+        var normalized = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        normalized.hour = components.hour ?? 21
+        normalized.minute = components.minute ?? 0
+        normalized.second = 0
+        return Calendar.current.date(from: normalized) ?? PresetStudyState.defaultNotificationTime()
+    }
+
+    private func rescheduleCurrentNotification() {
+        guard hasLoadedInitialPresetState else {
+            return
+        }
+
+        KikariaNotificationManager.rescheduleStudyProgressWarning(for: currentPresetStateSnapshot())
+    }
+
 }
 
 private struct ProfileAvatarView: View {
@@ -816,14 +1236,25 @@ private struct ProfileAvatarView: View {
 private struct SettingsView: View {
     let profile: UserProfile
     @Binding var dailyGoal: Int
-    @Binding var countdownDate: Date?
+    @Binding var countdownStartDate: Date?
+    @Binding var countdownEndDate: Date?
+    let notificationsEnabled: Bool
+    @Binding var notificationTime: Date
+    @Binding var dangerPercent: Int
     let currentPresetName: String
     let onClose: () -> Void
     let onEditProfile: () -> Void
     let onOpenPresetSelection: () -> Void
+    let onSetNotificationsEnabled: (Bool, @escaping (Bool, String?) -> Void) -> Void
+    let onSendTestNotification: (@escaping (String) -> Void) -> Void
     @State private var isShowingDailyGoalPicker = false
     @State private var isShowingCountdownPicker = false
-    @State private var countdownDraftDate = Date()
+    @State private var isShowingDangerPicker = false
+    @State private var countdownDraftStartDate = Date()
+    @State private var countdownDraftEndDate = Date()
+    @State private var countdownErrorMessage: String?
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
 
     var body: some View {
         ZStack {
@@ -896,19 +1327,74 @@ private struct SettingsView: View {
                             ) {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                                     isShowingCountdownPicker = false
+                                    isShowingDangerPicker = false
                                     isShowingDailyGoalPicker.toggle()
                                 }
                             }
 
                             SettingsListRow(
                                 title: "倒数日",
-                                valueText: countdownDate.map { "\(countdownDays(until: $0) ?? 0)天" } ?? "未设置"
+                                valueText: countdownEndDate.map { "\(countdownDays(until: $0) ?? 0)天" } ?? "未设置"
                             ) {
-                                countdownDraftDate = countdownDate ?? Date()
+                                prepareCountdownDraft()
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                                     isShowingDailyGoalPicker = false
+                                    isShowingDangerPicker = false
                                     isShowingCountdownPicker.toggle()
                                 }
+                            }
+
+                            SettingsToggleRow(
+                                title: "学习进度通知",
+                                isOn: notificationsEnabled
+                            ) { newValue in
+                                onSetNotificationsEnabled(newValue) { _, message in
+                                    if let message {
+                                        showToast(message)
+                                    }
+                                }
+                            }
+
+                            if notificationsEnabled {
+                                SettingsTimePickerRow(
+                                    title: "通知时间",
+                                    selectedTime: $notificationTime
+                                )
+
+                                SettingsListRow(
+                                    title: "进度安全线",
+                                    valueText: "\(dangerPercent)%"
+                                ) {
+                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                                        isShowingDailyGoalPicker = false
+                                        isShowingCountdownPicker = false
+                                        isShowingDangerPicker.toggle()
+                                    }
+                                }
+
+                                if countdownStartDate == nil || countdownEndDate == nil {
+                                    Text("请先设置倒数日区间")
+                                        .font(KikariaTypography.chineseCaption(size: 12, weight: .medium))
+                                        .foregroundStyle(KikariaTheme.softText)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 8)
+                                }
+
+                                #if DEBUG
+                                Button {
+                                    onSendTestNotification { message in
+                                        showToast(message)
+                                    }
+                                } label: {
+                                    Text("测试通知")
+                                        .font(KikariaTypography.chineseButton(size: 14))
+                                        .foregroundStyle(KikariaTheme.deepText)
+                                        .frame(maxWidth: .infinity, minHeight: 48)
+                                        .background(.white.opacity(0.52), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                #endif
                             }
 
                             SettingsListRow(
@@ -962,15 +1448,33 @@ private struct SettingsView: View {
 
                 VStack {
                     Spacer()
-                        .frame(height: 430)
+                        .frame(height: 332)
 
-                    CountdownDatePickerBubble(selectedDate: $countdownDraftDate) {
-                        countdownDate = nil
+                    CountdownDateRangePickerBubble(
+                        startDate: $countdownDraftStartDate,
+                        endDate: $countdownDraftEndDate,
+                        isConfigured: countdownEndDate != nil,
+                        errorMessage: countdownErrorMessage
+                    ) {
+                        countdownStartDate = nil
+                        countdownEndDate = nil
+                        countdownErrorMessage = nil
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                             isShowingCountdownPicker = false
                         }
                     } onDone: {
-                        countdownDate = countdownDraftDate
+                        guard Calendar.current.startOfDay(for: countdownDraftEndDate) >= Calendar.current.startOfDay(for: countdownDraftStartDate) else {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                countdownErrorMessage = "结束日期不能早于开始日期。"
+                            }
+                            showToast("结束日期不能早于开始日期")
+                            return
+                        }
+
+                        countdownStartDate = countdownDraftStartDate
+                        countdownEndDate = countdownDraftEndDate
+                        countdownErrorMessage = nil
+
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                             isShowingCountdownPicker = false
                         }
@@ -981,9 +1485,66 @@ private struct SettingsView: View {
                     Spacer()
                 }
             }
+
+            if isShowingDangerPicker {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            isShowingDangerPicker = false
+                        }
+                    }
+                    .transition(.opacity)
+
+                VStack {
+                    Spacer()
+                        .frame(height: 492)
+
+                    DangerPercentPickerBubble(dangerPercent: $dangerPercent) {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                            isShowingDangerPicker = false
+                        }
+                    }
+                    .padding(.horizontal, 34)
+                    .transition(.scale(scale: 0.94, anchor: .topTrailing).combined(with: .opacity))
+
+                    Spacer()
+                }
+            }
+
+            if let toastMessage {
+                KikariaToastLayer(message: toastMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    private func prepareCountdownDraft() {
+        let today = Date()
+        countdownDraftStartDate = countdownStartDate ?? today
+        countdownDraftEndDate = countdownEndDate ?? countdownStartDate ?? today
+        countdownErrorMessage = nil
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.22)) {
+                toastMessage = nil
+            }
+        }
     }
 }
 
@@ -1019,6 +1580,62 @@ private struct SettingsListRow: View {
             .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 9)
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let title: String
+    let isOn: Bool
+    let onChange: (Bool) -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Text(title)
+                .font(KikariaTypography.chineseHeadline(size: 17))
+                .foregroundStyle(KikariaTheme.deepText)
+
+            Spacer()
+
+            Toggle(
+                title,
+                isOn: Binding(
+                    get: { isOn },
+                    set: { onChange($0) }
+                )
+            )
+            .labelsHidden()
+            .tint(KikariaTheme.sky)
+        }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 9)
+    }
+}
+
+private struct SettingsTimePickerRow: View {
+    let title: String
+    @Binding var selectedTime: Date
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Text(title)
+                .font(KikariaTypography.chineseHeadline(size: 17))
+                .foregroundStyle(KikariaTheme.deepText)
+
+            Spacer()
+
+            DatePicker(title, selection: $selectedTime, displayedComponents: .hourAndMinute)
+                .labelsHidden()
+                .datePickerStyle(.compact)
+                .tint(KikariaTheme.sky)
+        }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, minHeight: 64)
+        .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 9)
     }
 }
 
@@ -1131,8 +1748,11 @@ private struct DailyGoalPickerBubble: View {
     }
 }
 
-private struct CountdownDatePickerBubble: View {
-    @Binding var selectedDate: Date
+private struct CountdownDateRangePickerBubble: View {
+    @Binding var startDate: Date
+    @Binding var endDate: Date
+    let isConfigured: Bool
+    let errorMessage: String?
     let onClear: () -> Void
     let onDone: () -> Void
 
@@ -1145,17 +1765,48 @@ private struct CountdownDatePickerBubble: View {
 
                 Spacer()
 
-                Text(countdownText(for: selectedDate))
+                Text(isConfigured ? countdownText(for: endDate) : "未设置")
                     .font(KikariaTypography.chineseHeadline())
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
             }
 
-            DatePicker("倒数日", selection: $selectedDate, displayedComponents: .date)
-                .datePickerStyle(.wheel)
-                .labelsHidden()
-                .frame(height: 142)
-                .clipped()
+            VStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("开始日期")
+                        .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    DatePicker("开始日期", selection: $startDate, displayedComponents: .date)
+                        .font(KikariaTypography.chineseBody(size: 14, weight: .medium))
+                        .datePickerStyle(.wheel)
+                        .labelsHidden()
+                        .frame(height: 100)
+                        .clipped()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("结束日期")
+                        .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    DatePicker("结束日期", selection: $endDate, displayedComponents: .date)
+                        .font(KikariaTypography.chineseBody(size: 14, weight: .medium))
+                        .datePickerStyle(.wheel)
+                        .labelsHidden()
+                        .frame(height: 100)
+                        .clipped()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             HStack(spacing: 10) {
                 Button(action: onClear) {
@@ -1181,6 +1832,58 @@ private struct CountdownDatePickerBubble: View {
         }
         .padding(18)
         .frame(maxWidth: 326)
+        .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(.white.opacity(0.38), lineWidth: 1)
+        }
+        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 24, y: 14)
+    }
+}
+
+private struct DangerPercentPickerBubble: View {
+    @Binding var dangerPercent: Int
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("进度安全线")
+                    .font(KikariaTypography.chineseHeadline())
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                Spacer()
+
+                Text("\(dangerPercent)%")
+                    .font(KikariaTypography.number(size: 17))
+                    .monospacedDigit()
+                    .foregroundStyle(KikariaTheme.sky)
+            }
+
+            Picker("进度安全线", selection: $dangerPercent) {
+                ForEach(1...100, id: \.self) { percent in
+                    Text("\(percent)%")
+                        .font(KikariaTypography.chineseBody(size: 18))
+                        .tag(percent)
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(height: 126)
+            .clipped()
+
+            Button(action: onDone) {
+                Text("完成")
+                    .font(KikariaTypography.chineseButton())
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(KikariaTheme.actionGradient, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .frame(maxWidth: 318)
         .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay {
