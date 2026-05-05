@@ -75,6 +75,18 @@ private struct KikariaWidgetView: View {
                 endPoint: .bottomTrailing
             )
 
+            Circle()
+                .fill(Color.white.opacity(0.26))
+                .frame(width: 118, height: 118)
+                .blur(radius: 1.5)
+                .offset(x: -54, y: -46)
+
+            Circle()
+                .fill(Color(red: 0.57, green: 0.88, blue: 0.91).opacity(0.24))
+                .frame(width: 96, height: 96)
+                .blur(radius: 1.0)
+                .offset(x: 58, y: 48)
+
             switch widgetFamily {
             case .systemMedium:
                 mediumContent
@@ -174,6 +186,10 @@ private struct WidgetMetricBubble: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(.white.opacity(0.48), in: Capsule())
+        .overlay {
+            Capsule()
+                .stroke(.white.opacity(0.42), lineWidth: 1)
+        }
     }
 }
 

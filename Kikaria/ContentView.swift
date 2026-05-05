@@ -60,6 +60,183 @@ private enum KikariaTheme {
     )
 }
 
+private struct LiquidGlassCardModifier: ViewModifier {
+    let cornerRadius: CGFloat
+    let material: Material
+    let fillOpacity: Double
+    let strokeOpacity: Double
+    let shadowOpacity: Double
+    let shadowRadius: CGFloat
+    let shadowY: CGFloat
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
+        content
+            .background {
+                shape
+                    .fill(Color.white.opacity(fillOpacity))
+            }
+            .background(material, in: shape)
+            .overlay {
+                shape
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(strokeOpacity),
+                                Color.white.opacity(strokeOpacity * 0.28),
+                                KikariaTheme.sky.opacity(0.13)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .overlay {
+                shape
+                    .stroke(Color.white.opacity(0.18), lineWidth: 0.5)
+                    .blur(radius: 0.4)
+                    .offset(y: 0.5)
+                    .mask(shape)
+            }
+            .shadow(color: KikariaTheme.sky.opacity(shadowOpacity), radius: shadowRadius, x: 0, y: shadowY)
+            .shadow(color: Color.black.opacity(0.025), radius: shadowRadius * 0.55, x: 0, y: shadowY * 0.55)
+    }
+}
+
+private struct LiquidGlassCapsuleModifier: ViewModifier {
+    let material: Material
+    let fillOpacity: Double
+    let strokeOpacity: Double
+    let shadowOpacity: Double
+    let shadowRadius: CGFloat
+    let shadowY: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                Capsule()
+                    .fill(Color.white.opacity(fillOpacity))
+            }
+            .background(material, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(strokeOpacity),
+                                Color.white.opacity(strokeOpacity * 0.28),
+                                KikariaTheme.cyan.opacity(0.16)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: KikariaTheme.sky.opacity(shadowOpacity), radius: shadowRadius, y: shadowY)
+    }
+}
+
+private struct LiquidGlassCircleModifier: ViewModifier {
+    let material: Material
+    let fillOpacity: Double
+    let strokeOpacity: Double
+    let shadowOpacity: Double
+    let shadowRadius: CGFloat
+    let shadowY: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                Circle()
+                    .fill(Color.white.opacity(fillOpacity))
+            }
+            .background(material, in: Circle())
+            .overlay {
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(strokeOpacity),
+                                Color.white.opacity(strokeOpacity * 0.22),
+                                KikariaTheme.sky.opacity(0.12)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: KikariaTheme.sky.opacity(shadowOpacity), radius: shadowRadius, y: shadowY)
+    }
+}
+
+private extension View {
+    func liquidGlassCard(
+        cornerRadius: CGFloat = 28,
+        material: Material = .ultraThinMaterial,
+        fillOpacity: Double = 0.48,
+        strokeOpacity: Double = 0.42,
+        shadowOpacity: Double = 0.12,
+        shadowRadius: CGFloat = 18,
+        shadowY: CGFloat = 10
+    ) -> some View {
+        modifier(
+            LiquidGlassCardModifier(
+                cornerRadius: cornerRadius,
+                material: material,
+                fillOpacity: fillOpacity,
+                strokeOpacity: strokeOpacity,
+                shadowOpacity: shadowOpacity,
+                shadowRadius: shadowRadius,
+                shadowY: shadowY
+            )
+        )
+    }
+
+    func liquidGlassCapsule(
+        material: Material = .ultraThinMaterial,
+        fillOpacity: Double = 0.48,
+        strokeOpacity: Double = 0.42,
+        shadowOpacity: Double = 0.10,
+        shadowRadius: CGFloat = 14,
+        shadowY: CGFloat = 7
+    ) -> some View {
+        modifier(
+            LiquidGlassCapsuleModifier(
+                material: material,
+                fillOpacity: fillOpacity,
+                strokeOpacity: strokeOpacity,
+                shadowOpacity: shadowOpacity,
+                shadowRadius: shadowRadius,
+                shadowY: shadowY
+            )
+        )
+    }
+
+    func liquidGlassCircle(
+        material: Material = .ultraThinMaterial,
+        fillOpacity: Double = 0.44,
+        strokeOpacity: Double = 0.42,
+        shadowOpacity: Double = 0.14,
+        shadowRadius: CGFloat = 14,
+        shadowY: CGFloat = 7
+    ) -> some View {
+        modifier(
+            LiquidGlassCircleModifier(
+                material: material,
+                fillOpacity: fillOpacity,
+                strokeOpacity: strokeOpacity,
+                shadowOpacity: shadowOpacity,
+                shadowRadius: shadowRadius,
+                shadowY: shadowY
+            )
+        )
+    }
+}
+
 private enum AppRoute: Hashable {
     case scope
     case review
@@ -119,6 +296,10 @@ private struct UserProfile {
 struct DailyReviewRecord: Codable, Equatable {
     var date: Date
     var count: Int
+}
+
+private func studyProgressNotificationBody(for presetName: String) -> String {
+    "今天的「\(presetName)」学习量尚未达标哦，抓紧学习吧。"
 }
 
 private struct PresetStudyState: Codable {
@@ -260,12 +441,8 @@ private struct StudyProgressWarning {
     let dangerPercent: Int
     let remainingDays: Int?
 
-    var body: String {
-        if let remainingDays {
-            return "距离目标日还剩 \(remainingDays) 天。你已掌握 \(masteredCount) / \(expectedMasteredCount) 个计划知识点，低于 \(dangerPercent)% 安全线。"
-        }
-
-        return "你已掌握 \(masteredCount) / \(expectedMasteredCount) 个计划知识点，低于 \(dangerPercent)% 安全线。"
+    func body(for presetName: String) -> String {
+        studyProgressNotificationBody(for: presetName)
     }
 }
 
@@ -303,7 +480,28 @@ private enum KikariaNotificationManager {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
     }
 
-    static func rescheduleStudyProgressWarning(for state: PresetStudyState) {
+    static func cancelAllKikariaStudyNotifications() {
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            let identifiers = requests
+                .map(\.identifier)
+                .filter { $0.hasPrefix("kikaria.studyProgressWarning.") }
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+        }
+    }
+
+    static func rescheduleAllStudyProgressWarnings(
+        for states: [String: PresetStudyState],
+        presetNames: [String: String]
+    ) {
+        for state in states.values {
+            rescheduleStudyProgressWarning(
+                for: state,
+                presetName: presetNames[state.presetId] ?? "当前预设"
+            )
+        }
+    }
+
+    static func rescheduleStudyProgressWarning(for state: PresetStudyState, presetName: String) {
         let center = UNUserNotificationCenter.current()
         let identifier = identifier(for: state.presetId)
         center.removePendingNotificationRequests(withIdentifiers: [identifier])
@@ -325,8 +523,8 @@ private enum KikariaNotificationManager {
             }
 
             let content = UNMutableNotificationContent()
-            content.title = "Kikaria 学习提醒"
-            content.body = warning.body
+            content.title = "Kikaria"
+            content.body = warning.body(for: presetName)
             content.sound = .default
 
             let triggerDate = nextTriggerDate(for: state.notificationTime)
@@ -337,17 +535,17 @@ private enum KikariaNotificationManager {
         }
     }
 
-    static func scheduleDebugTestNotification(completion: @escaping (String) -> Void) {
+    static func scheduleDebugTestNotification(presetName: String, completion: @escaping (String) -> Void) {
         #if DEBUG
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             switch settings.authorizationStatus {
             case .authorized, .provisional, .ephemeral:
-                scheduleAuthorizedDebugTestNotification(completion: completion)
+                scheduleAuthorizedDebugTestNotification(presetName: presetName, completion: completion)
             case .notDetermined:
                 requestAuthorization { granted in
                     if granted {
-                        scheduleAuthorizedDebugTestNotification(completion: completion)
+                        scheduleAuthorizedDebugTestNotification(presetName: presetName, completion: completion)
                     } else {
                         completion("请在系统设置中允许通知")
                     }
@@ -365,15 +563,15 @@ private enum KikariaNotificationManager {
         #endif
     }
 
-    private static func scheduleAuthorizedDebugTestNotification(completion: @escaping (String) -> Void) {
+    private static func scheduleAuthorizedDebugTestNotification(presetName: String, completion: @escaping (String) -> Void) {
         #if DEBUG
         let center = UNUserNotificationCenter.current()
         let identifier = "kikaria.test.notification"
         center.removePendingNotificationRequests(withIdentifiers: [identifier])
 
         let content = UNMutableNotificationContent()
-        content.title = "Kikaria 测试通知"
-        content.body = "这是一条学习提醒测试。"
+        content.title = "Kikaria"
+        content.body = studyProgressNotificationBody(for: presetName)
         content.sound = .default
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
         let request = UNNotificationRequest(
@@ -384,9 +582,9 @@ private enum KikariaNotificationManager {
         center.add(request) { error in
             DispatchQueue.main.async {
                 if error == nil {
-                    completion("测试通知将在 5 秒后发送")
+                    completion("提醒将在 5 秒后发送")
                 } else {
-                    completion("测试通知发送失败")
+                    completion("提醒发送失败")
                 }
             }
         }
@@ -680,11 +878,11 @@ struct ContentView: View {
                         onEditProfile: {
                             navigationPath.append(.editProfile)
                         },
-                        onOpenPresetSelection: {
-                            navigationPath.append(.presetSelection)
-                        },
                         onOpenOnboarding: {
                             isShowingOnboarding = true
+                        },
+                        onOpenMarkdownGuide: {
+                            navigationPath.append(.markdownFormatGuide)
                         },
                         onSetNotificationsEnabled: updateNotificationsEnabled,
                         onSendTestNotification: sendDebugTestNotification
@@ -780,7 +978,7 @@ struct ContentView: View {
             }
             .onChange(of: scenePhase) { phase in
                 if phase == .active {
-                    rescheduleCurrentNotification()
+                    rescheduleAllPresetNotifications()
                 }
             }
             .fullScreenCover(isPresented: $isShowingOnboarding) {
@@ -852,7 +1050,7 @@ struct ContentView: View {
 
         presetStates[currentPresetID] = state
         restorePresetState(state)
-        rescheduleCurrentNotification()
+        rescheduleAllPresetNotifications()
     }
 
     private func switchToPreset(_ preset: KnowledgePreset) -> Bool {
@@ -860,7 +1058,6 @@ struct ContentView: View {
             return false
         }
 
-        let previousPresetID = currentPresetID
         saveCurrentPresetState()
 
         withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
@@ -871,12 +1068,8 @@ struct ContentView: View {
             restorePresetState(targetState)
         }
 
-        if previousPresetID != preset.id {
-            KikariaNotificationManager.cancelStudyProgressWarning(for: previousPresetID)
-        }
-
         persistLibrary()
-        rescheduleCurrentNotification()
+        rescheduleAllPresetNotifications()
         return true
     }
 
@@ -950,7 +1143,7 @@ struct ContentView: View {
             isApplyingPresetState = false
             presetStates[state.presetId] = currentPresetStateSnapshot()
             persistLibrary()
-            rescheduleCurrentNotification()
+            rescheduleAllPresetNotifications()
             updateWidgetSnapshot()
         }
     }
@@ -973,7 +1166,7 @@ struct ContentView: View {
         countdownEndDate = endDate
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
-        rescheduleCurrentNotification()
+        rescheduleAllPresetNotifications()
         updateWidgetSnapshot()
     }
 
@@ -983,7 +1176,7 @@ struct ContentView: View {
                 notificationsEnabled = granted
                 presetStates[currentPresetID] = currentPresetStateSnapshot()
                 persistLibrary()
-                rescheduleCurrentNotification()
+                rescheduleAllPresetNotifications()
                 completion(granted, granted ? nil : "请在系统设置中允许通知")
             }
         } else {
@@ -999,7 +1192,7 @@ struct ContentView: View {
         notificationTime = normalizedNotificationTime(newValue)
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
-        rescheduleCurrentNotification()
+        rescheduleAllPresetNotifications()
         updateWidgetSnapshot()
     }
 
@@ -1007,11 +1200,14 @@ struct ContentView: View {
         dangerPercent = clampedDangerPercent(newValue)
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
-        rescheduleCurrentNotification()
+        rescheduleAllPresetNotifications()
     }
 
     private func sendDebugTestNotification(completion: @escaping (String) -> Void) {
-        KikariaNotificationManager.scheduleDebugTestNotification(completion: completion)
+        KikariaNotificationManager.scheduleDebugTestNotification(
+            presetName: currentPreset.name,
+            completion: completion
+        )
     }
 
     private func dailyGoal(forPresetID presetID: String) -> Int {
@@ -1033,7 +1229,7 @@ struct ContentView: View {
 
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
-        rescheduleCurrentNotification()
+        rescheduleAllPresetNotifications()
     }
 
     private func loadPersistedPresetLibrary() {
@@ -1149,6 +1345,7 @@ struct ContentView: View {
         presets[index].subtitle = trimmedDescription.isEmpty ? presets[index].subtitle : trimmedDescription
         presets[index].description = trimmedDescription.isEmpty ? presets[index].description : trimmedDescription
         persistLibrary()
+        rescheduleAllPresetNotifications()
         if presetID == currentPresetID {
             updateWidgetSnapshot()
         }
@@ -1171,6 +1368,7 @@ struct ContentView: View {
             _ = switchToPreset(nextPreset)
         } else {
             persistLibrary()
+            rescheduleAllPresetNotifications()
         }
     }
 
@@ -1244,6 +1442,7 @@ struct ContentView: View {
             restorePresetState(editedState)
         } else {
             persistLibrary()
+            rescheduleAllPresetNotifications()
         }
         updateWidgetSnapshot()
     }
@@ -1265,12 +1464,15 @@ struct ContentView: View {
         return Calendar.current.date(from: normalized) ?? PresetStudyState.defaultNotificationTime()
     }
 
-    private func rescheduleCurrentNotification() {
+    private func rescheduleAllPresetNotifications() {
         guard hasLoadedInitialPresetState else {
             return
         }
 
-        KikariaNotificationManager.rescheduleStudyProgressWarning(for: currentPresetStateSnapshot())
+        var states = presetStates
+        states[currentPresetID] = currentPresetStateSnapshot()
+        let presetNames = Dictionary(uniqueKeysWithValues: presets.map { ($0.id, $0.name) })
+        KikariaNotificationManager.rescheduleAllStudyProgressWarnings(for: states, presetNames: presetNames)
     }
 
     private func records(on date: Date, type: StudyActivityType? = nil) -> [StudyActivityRecord] {
@@ -1442,13 +1644,7 @@ private struct OnboardingPageCard: View {
         .padding(.horizontal, 24)
         .padding(.vertical, 44)
         .frame(maxWidth: .infinity, maxHeight: 430)
-        .background(.white.opacity(0.56), in: RoundedRectangle(cornerRadius: 34, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 34, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .stroke(.white.opacity(0.32), lineWidth: 1)
-        }
-        .shadow(color: KikariaTheme.sky.opacity(0.13), radius: 24, y: 14)
+        .liquidGlassCard(cornerRadius: 34, fillOpacity: 0.50, strokeOpacity: 0.48, shadowOpacity: 0.13, shadowRadius: 24, shadowY: 14)
     }
 }
 
@@ -1504,13 +1700,7 @@ private struct KikariaSearchBar: View {
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, minHeight: 50)
-        .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(.white.opacity(0.30), lineWidth: 1)
-        }
-        .shadow(color: KikariaTheme.sky.opacity(0.08), radius: 12, y: 7)
+        .liquidGlassCard(cornerRadius: 22, fillOpacity: 0.44, strokeOpacity: 0.40, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
     }
 }
 
@@ -1638,9 +1828,7 @@ private struct TodayOverviewView: View {
                     }
                     .padding(22)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.white.opacity(0.56), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-                    .shadow(color: KikariaTheme.sky.opacity(0.13), radius: 22, y: 12)
+                    .liquidGlassCard(cornerRadius: 30, fillOpacity: 0.48, strokeOpacity: 0.46, shadowOpacity: 0.13, shadowRadius: 22, shadowY: 12)
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         OverviewMetricCard(title: "查看答案", value: "\(todaySummary.reviewedAnswerCount)", detail: "今日次数")
@@ -1667,9 +1855,7 @@ private struct TodayOverviewView: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 19)
-                        .background(.white.opacity(0.56), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                        .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+                        .liquidGlassCard(cornerRadius: 26, fillOpacity: 0.46, strokeOpacity: 0.42, shadowOpacity: 0.12, shadowRadius: 18, shadowY: 10)
                     }
                     .buttonStyle(.plain)
                 }
@@ -1706,9 +1892,7 @@ private struct OverviewMetricCard: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.50), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.08), radius: 14, y: 8)
+        .liquidGlassCard(cornerRadius: 24, material: .thinMaterial, fillOpacity: 0.42, strokeOpacity: 0.36, shadowOpacity: 0.08, shadowRadius: 14, shadowY: 8)
     }
 }
 
@@ -1741,7 +1925,7 @@ private struct ReviewHistoryView: View {
                                     .font(.headline.weight(.semibold))
                                     .foregroundStyle(KikariaTheme.sky)
                                     .frame(width: 40, height: 40)
-                                    .background(.white.opacity(0.52), in: Circle())
+                                    .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
                             }
                             .buttonStyle(.plain)
 
@@ -1760,7 +1944,7 @@ private struct ReviewHistoryView: View {
                                     .font(.headline.weight(.semibold))
                                     .foregroundStyle(KikariaTheme.sky)
                                     .frame(width: 40, height: 40)
-                                    .background(.white.opacity(0.52), in: Circle())
+                                    .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
                             }
                             .buttonStyle(.plain)
                         }
@@ -1788,9 +1972,7 @@ private struct ReviewHistoryView: View {
                         }
                     }
                     .padding(18)
-                    .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-                    .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 20, y: 12)
+                    .liquidGlassCard(cornerRadius: 30, fillOpacity: 0.44, strokeOpacity: 0.42, shadowOpacity: 0.12, shadowRadius: 20, shadowY: 12)
 
                     HistoryDaySummaryCard(date: selectedDate, summary: ActivitySummary.make(from: records(on: selectedDate)))
                 }
@@ -1913,7 +2095,7 @@ private struct HistoryDaySummaryCard: View {
                     .foregroundStyle(KikariaTheme.softText)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
-                    .background(.white.opacity(0.56), in: Capsule())
+                    .liquidGlassCapsule(fillOpacity: 0.36, strokeOpacity: 0.34, shadowOpacity: 0.04, shadowRadius: 6, shadowY: 3)
             }
 
             if summary.totalCount == 0 {
@@ -1931,9 +2113,7 @@ private struct HistoryDaySummaryCard: View {
             }
         }
         .padding(20)
-        .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 18, y: 10)
+        .liquidGlassCard(cornerRadius: 28, fillOpacity: 0.44, strokeOpacity: 0.40, shadowOpacity: 0.10, shadowRadius: 18, shadowY: 10)
     }
 }
 
@@ -1979,9 +2159,11 @@ private struct ProfileAvatarView: View {
                 Image(systemName: systemName)
                     .font(.system(size: size))
                     .foregroundStyle(KikariaTheme.sky, .white.opacity(0.85))
+                    .frame(width: size, height: size)
             }
         }
-        .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 12, y: 6)
+        .padding(size <= 48 ? 3 : 5)
+        .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.50, shadowOpacity: 0.16, shadowRadius: 12, shadowY: 6)
     }
 }
 
@@ -1996,8 +2178,8 @@ private struct SettingsView: View {
     let currentPresetName: String
     let onClose: () -> Void
     let onEditProfile: () -> Void
-    let onOpenPresetSelection: () -> Void
     let onOpenOnboarding: () -> Void
+    let onOpenMarkdownGuide: () -> Void
     let onSetNotificationsEnabled: (Bool, @escaping (Bool, String?) -> Void) -> Void
     let onSendTestNotification: (@escaping (String) -> Void) -> Void
     @State private var isShowingDailyGoalPicker = false
@@ -2008,6 +2190,13 @@ private struct SettingsView: View {
     @State private var countdownErrorMessage: String?
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
+    @State private var isShowingPrivacyPolicy = false
+
+    private var versionText: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
+    }
 
     var body: some View {
         ZStack {
@@ -2027,9 +2216,7 @@ private struct SettingsView: View {
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(KikariaTheme.deepText)
                             .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.58), in: Circle())
-                            .background(.ultraThinMaterial, in: Circle())
-                            .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 12, y: 6)
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.10, shadowRadius: 12, shadowY: 6)
                     }
                     .buttonStyle(.plain)
                 }
@@ -2038,14 +2225,13 @@ private struct SettingsView: View {
                 .padding(.bottom, 18)
 
                 ScrollView {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 22) {
                         VStack(spacing: 12) {
                             ProfileAvatarView(
                                 systemName: profile.avatarSystemName,
                                 imageData: profile.avatarImageData,
                                 size: 86
                             )
-                            .padding(.top, 8)
 
                             VStack(spacing: 4) {
                                 Text(profile.displayName)
@@ -2063,17 +2249,24 @@ private struct SettingsView: View {
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.horizontal, 24)
                                     .padding(.vertical, 13)
-                                    .background(.white.opacity(0.62), in: Capsule())
-                                    .background(.ultraThinMaterial, in: Capsule())
-                                    .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 14, y: 8)
+                                    .liquidGlassCapsule(fillOpacity: 0.44, strokeOpacity: 0.46, shadowOpacity: 0.10, shadowRadius: 14, shadowY: 8)
                             }
                             .buttonStyle(.plain)
                             .padding(.top, 4)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 22)
+                        .padding(.top, 4)
+                        .padding(.bottom, 2)
 
-                        VStack(spacing: 12) {
+                        SettingsSectionCard(title: "当前预设") {
+                            SettingsListRow(
+                                title: "当前预设",
+                                valueText: currentPresetName,
+                                showsChevron: false
+                            )
+
+                            SettingsSectionDivider()
+
                             SettingsListRow(
                                 title: "每日学习目标",
                                 valueText: "\(dailyGoal)"
@@ -2084,6 +2277,8 @@ private struct SettingsView: View {
                                     isShowingDailyGoalPicker.toggle()
                                 }
                             }
+
+                            SettingsSectionDivider()
 
                             SettingsListRow(
                                 title: "倒数日",
@@ -2097,6 +2292,21 @@ private struct SettingsView: View {
                                 }
                             }
 
+                            SettingsSectionDivider()
+
+                            SettingsListRow(
+                                title: "进度安全线",
+                                valueText: "\(dangerPercent)%"
+                            ) {
+                                withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                                    isShowingDailyGoalPicker = false
+                                    isShowingCountdownPicker = false
+                                    isShowingDangerPicker.toggle()
+                                }
+                            }
+                        }
+
+                        SettingsSectionCard(title: "通知") {
                             SettingsToggleRow(
                                 title: "学习进度通知",
                                 isOn: notificationsEnabled
@@ -2109,60 +2319,78 @@ private struct SettingsView: View {
                             }
 
                             if notificationsEnabled {
+                                SettingsSectionDivider()
+
                                 SettingsTimePickerRow(
                                     title: "通知时间",
                                     selectedTime: $notificationTime
                                 )
 
-                                SettingsListRow(
-                                    title: "进度安全线",
-                                    valueText: "\(dangerPercent)%"
-                                ) {
-                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
-                                        isShowingDailyGoalPicker = false
-                                        isShowingCountdownPicker = false
-                                        isShowingDangerPicker.toggle()
-                                    }
-                                }
-
                                 if countdownStartDate == nil || countdownEndDate == nil {
-                                    Text("请先设置倒数日区间")
+                                    Text("需设置倒数日")
                                         .font(KikariaTypography.chineseCaption(size: 12, weight: .medium))
                                         .foregroundStyle(KikariaTheme.softText)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.horizontal, 8)
+                                        .padding(.horizontal, 18)
+                                        .padding(.bottom, 10)
                                 }
 
                                 #if DEBUG
+                                SettingsSectionDivider()
+
                                 Button {
                                     onSendTestNotification { message in
                                         showToast(message)
                                     }
                                 } label: {
-                                    Text("测试通知")
-                                        .font(KikariaTypography.chineseButton(size: 14))
-                                        .foregroundStyle(KikariaTheme.deepText)
-                                        .frame(maxWidth: .infinity, minHeight: 48)
-                                        .background(.white.opacity(0.52), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                    SettingsRowContent(title: "预览提醒", valueText: "")
                                 }
                                 .buttonStyle(.plain)
                                 #endif
                             }
+                        }
 
+                        SettingsSectionCard(title: "帮助") {
                             SettingsListRow(
-                                title: "切换预设",
-                                valueText: currentPresetName
-                            ) {
-                                onOpenPresetSelection()
-                            }
-
-                            SettingsListRow(
-                                title: "重新查看新手引导",
-                                valueText: "查看"
+                                title: "新手引导",
+                                valueText: ""
                             ) {
                                 onOpenOnboarding()
                             }
+
+                            SettingsSectionDivider()
+
+                            SettingsListRow(
+                                title: "Markdown 格式",
+                                valueText: ""
+                            ) {
+                                onOpenMarkdownGuide()
+                            }
+                        }
+
+                        SettingsSectionCard(title: "关于") {
+                            SettingsListRow(
+                                title: "隐私政策",
+                                valueText: ""
+                            ) {
+                                isShowingPrivacyPolicy = true
+                            }
+
+                            SettingsSectionDivider()
+
+                            SettingsListRow(
+                                title: "版权声明",
+                                valueText: "© 2026 Vita",
+                                showsChevron: false
+                            )
+
+                            SettingsSectionDivider()
+
+                            SettingsListRow(
+                                title: "版本",
+                                valueText: versionText,
+                                showsChevron: false
+                            )
                         }
                     }
                     .padding(.horizontal, 24)
@@ -2279,6 +2507,11 @@ private struct SettingsView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .alert("隐私政策", isPresented: $isShowingPrivacyPolicy) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text("Kikaria 当前仅在本机保存你的学习资料、预设、头像和学习进度。学习进度通知使用 iOS 本地通知，不会上传到服务器。")
+        }
     }
 
     private func prepareCountdownDraft() {
@@ -2308,38 +2541,93 @@ private struct SettingsView: View {
     }
 }
 
-private struct SettingsListRow: View {
+private struct SettingsSectionCard<Content: View>: View {
     let title: String
-    let valueText: String
-    let action: () -> Void
+    let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                Text(title)
-                    .font(KikariaTypography.chineseHeadline(size: 17))
-                    .foregroundStyle(KikariaTheme.deepText)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                .foregroundStyle(KikariaTheme.softText)
+                .padding(.horizontal, 4)
 
-                Spacer()
+            VStack(spacing: 0) {
+                content
+            }
+            .liquidGlassCard(cornerRadius: 28, fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.10, shadowRadius: 16, shadowY: 9)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
 
+private struct SettingsSectionDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(KikariaTheme.blueGray.opacity(0.13))
+            .frame(height: 1)
+            .padding(.leading, 18)
+    }
+}
+
+private struct SettingsRowContent: View {
+    let title: String
+    let valueText: String
+    var showsChevron = true
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Text(title)
+                .font(KikariaTypography.chineseHeadline(size: 16))
+                .foregroundStyle(KikariaTheme.deepText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.84)
+
+            Spacer(minLength: 12)
+
+            if !valueText.isEmpty {
                 Text(valueText)
-                    .font(KikariaTypography.chineseHeadline(size: 17))
-                    .foregroundStyle(KikariaTheme.sky)
+                    .font(KikariaTypography.chineseHeadline(size: 16))
+                    .foregroundStyle(showsChevron ? KikariaTheme.sky : KikariaTheme.softText)
                     .monospacedDigit()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.78)
+                    .minimumScaleFactor(0.72)
+            }
 
+            if showsChevron {
                 Image(systemName: "chevron.right")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(KikariaTheme.blueGray)
             }
-            .padding(.horizontal, 20)
-            .frame(maxWidth: .infinity, minHeight: 64)
-            .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 9)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 18)
+        .frame(maxWidth: .infinity, minHeight: 58)
+        .contentShape(Rectangle())
+    }
+}
+
+private struct SettingsListRow: View {
+    let title: String
+    let valueText: String
+    var showsChevron = true
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        Group {
+            if let action {
+                Button(action: action) {
+                    SettingsRowContent(title: title, valueText: valueText, showsChevron: showsChevron)
+                }
+                .buttonStyle(.plain)
+            } else {
+                SettingsRowContent(title: title, valueText: valueText, showsChevron: false)
+            }
+        }
     }
 }
 
@@ -2366,11 +2654,8 @@ private struct SettingsToggleRow: View {
             .labelsHidden()
             .tint(KikariaTheme.sky)
         }
-        .padding(.horizontal, 20)
-        .frame(maxWidth: .infinity, minHeight: 64)
-        .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 9)
+        .padding(.horizontal, 18)
+        .frame(maxWidth: .infinity, minHeight: 58)
     }
 }
 
@@ -2391,11 +2676,8 @@ private struct SettingsTimePickerRow: View {
                 .datePickerStyle(.compact)
                 .tint(KikariaTheme.sky)
         }
-        .padding(.horizontal, 20)
-        .frame(maxWidth: .infinity, minHeight: 64)
-        .background(.white.opacity(0.54), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 9)
+        .padding(.horizontal, 18)
+        .frame(maxWidth: .infinity, minHeight: 58)
     }
 }
 
@@ -2414,7 +2696,7 @@ private struct SettingsOptionRow: View {
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(KikariaTheme.sky)
                     .frame(width: 38, height: 38)
-                    .background(.white.opacity(0.50), in: Circle())
+                    .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.34, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
@@ -2445,12 +2727,7 @@ private struct SettingsOptionRow: View {
             }
             .padding(18)
             .frame(maxWidth: .infinity)
-            .background {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(.white.opacity(0.54))
-            }
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+            .liquidGlassCard(cornerRadius: 26, fillOpacity: 0.44, strokeOpacity: 0.42, shadowOpacity: 0.12, shadowRadius: 18, shadowY: 10)
         }
         .buttonStyle(.plain)
     }
@@ -2498,13 +2775,7 @@ private struct DailyGoalPickerBubble: View {
         }
         .padding(18)
         .frame(maxWidth: 318)
-        .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(.white.opacity(0.38), lineWidth: 1)
-        }
-        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 24, y: 14)
+        .liquidGlassCard(cornerRadius: 28, material: .regularMaterial, fillOpacity: 0.50, strokeOpacity: 0.52, shadowOpacity: 0.18, shadowRadius: 24, shadowY: 14)
     }
 }
 
@@ -2575,7 +2846,7 @@ private struct CountdownDateRangePickerBubble: View {
                         .foregroundStyle(KikariaTheme.deepText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(.white.opacity(0.62), in: Capsule())
+                        .liquidGlassCapsule(fillOpacity: 0.44, strokeOpacity: 0.42, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
                 }
                 .buttonStyle(.plain)
 
@@ -2592,13 +2863,7 @@ private struct CountdownDateRangePickerBubble: View {
         }
         .padding(18)
         .frame(maxWidth: 326)
-        .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(.white.opacity(0.38), lineWidth: 1)
-        }
-        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 24, y: 14)
+        .liquidGlassCard(cornerRadius: 28, material: .regularMaterial, fillOpacity: 0.50, strokeOpacity: 0.52, shadowOpacity: 0.18, shadowRadius: 24, shadowY: 14)
     }
 }
 
@@ -2644,13 +2909,7 @@ private struct DangerPercentPickerBubble: View {
         }
         .padding(18)
         .frame(maxWidth: 318)
-        .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(.white.opacity(0.38), lineWidth: 1)
-        }
-        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 24, y: 14)
+        .liquidGlassCard(cornerRadius: 28, material: .regularMaterial, fillOpacity: 0.50, strokeOpacity: 0.52, shadowOpacity: 0.18, shadowRadius: 24, shadowY: 14)
     }
 }
 
@@ -2802,8 +3061,7 @@ private struct PresetCard: View {
                                 .foregroundStyle(KikariaTheme.sky)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(.white.opacity(0.62), in: Capsule())
-                                .background(.ultraThinMaterial, in: Capsule())
+                                .liquidGlassCapsule(fillOpacity: 0.42, strokeOpacity: 0.40, shadowOpacity: 0.04, shadowRadius: 6, shadowY: 3)
                         }
                     }
 
@@ -2821,8 +3079,7 @@ private struct PresetCard: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(KikariaTheme.deepText)
                         .frame(width: 34, height: 34)
-                        .background(.white.opacity(0.56), in: Circle())
-                        .background(.ultraThinMaterial, in: Circle())
+                        .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 8, shadowY: 4)
                 }
                 .buttonStyle(.plain)
             }
@@ -2838,16 +3095,7 @@ private struct PresetCard: View {
         .frame(maxWidth: .infinity)
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .onTapGesture(perform: onSelect)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.white.opacity(isCurrent ? 0.64 : 0.50))
-        }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(isCurrent ? KikariaTheme.sky.opacity(0.62) : .white.opacity(0.26), lineWidth: isCurrent ? 1.6 : 1)
-        }
-        .shadow(color: KikariaTheme.sky.opacity(isCurrent ? 0.15 : 0.09), radius: 18, y: 10)
+        .liquidGlassCard(cornerRadius: 24, fillOpacity: isCurrent ? 0.52 : 0.42, strokeOpacity: isCurrent ? 0.62 : 0.38, shadowOpacity: isCurrent ? 0.15 : 0.09, shadowRadius: 18, shadowY: 10)
     }
 }
 
@@ -2887,8 +3135,7 @@ private struct NewPresetView: View {
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(KikariaTheme.deepText)
                             .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.58), in: Circle())
-                            .background(.ultraThinMaterial, in: Circle())
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
                     }
                     .buttonStyle(.plain)
 
@@ -2925,8 +3172,7 @@ private struct NewPresetView: View {
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 15)
-                                .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .liquidGlassCard(cornerRadius: 22, fillOpacity: 0.42, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
                         }
                         .buttonStyle(.plain)
 
@@ -2944,8 +3190,7 @@ private struct NewPresetView: View {
                                         .foregroundStyle(KikariaTheme.sky)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 7)
-                                        .background(.white.opacity(0.58), in: Capsule())
-                                        .background(.ultraThinMaterial, in: Capsule())
+                                        .liquidGlassCapsule(fillOpacity: 0.38, strokeOpacity: 0.36, shadowOpacity: 0.04, shadowRadius: 6, shadowY: 3)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -2956,9 +3201,7 @@ private struct NewPresetView: View {
                                 .scrollContentBackground(.hidden)
                                 .padding(14)
                                 .frame(minHeight: 260)
-                                .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                                .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 14, y: 8)
+                                .liquidGlassCard(cornerRadius: 24, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.34, shadowOpacity: 0.10, shadowRadius: 14, shadowY: 8)
                         }
 
                         if let errorMessage {
@@ -2967,7 +3210,7 @@ private struct NewPresetView: View {
                                 .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(14)
-                                .background(.white.opacity(0.64), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
                         }
                     }
                     .padding(.horizontal, 24)
@@ -3137,8 +3380,7 @@ private struct MarkdownFormatGuideView: View {
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(KikariaTheme.deepText)
                             .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.58), in: Circle())
-                            .background(.ultraThinMaterial, in: Circle())
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
                     }
                     .buttonStyle(.plain)
 
@@ -3281,13 +3523,7 @@ private struct MarkdownGuideCard<Content: View>: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(.white.opacity(0.28), lineWidth: 1)
-        }
-        .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 16, y: 8)
+        .liquidGlassCard(cornerRadius: 24, fillOpacity: 0.44, strokeOpacity: 0.40, shadowOpacity: 0.10, shadowRadius: 16, shadowY: 8)
     }
 }
 
@@ -3304,12 +3540,7 @@ private struct MarkdownCodeBlock: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
         }
-        .background(.white.opacity(0.70), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(KikariaTheme.sky.opacity(0.12), lineWidth: 1)
-        }
+        .liquidGlassCard(cornerRadius: 18, material: .thinMaterial, fillOpacity: 0.54, strokeOpacity: 0.28, shadowOpacity: 0.04, shadowRadius: 8, shadowY: 4)
     }
 }
 
@@ -3393,8 +3624,7 @@ private struct EditPresetView: View {
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(KikariaTheme.deepText)
                             .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.58), in: Circle())
-                            .background(.ultraThinMaterial, in: Circle())
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
                     }
                     .buttonStyle(.plain)
 
@@ -3430,8 +3660,7 @@ private struct EditPresetView: View {
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 15)
-                                .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .liquidGlassCard(cornerRadius: 22, fillOpacity: 0.42, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
                         }
                         .buttonStyle(.plain)
 
@@ -3478,7 +3707,7 @@ private struct EditPresetView: View {
                                                 .font(.headline.weight(.semibold))
                                                 .foregroundStyle(KikariaTheme.sky)
                                                 .frame(width: 34, height: 34)
-                                                .background(.white.opacity(0.58), in: Circle())
+                                                .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.34, shadowOpacity: 0.05, shadowRadius: 7, shadowY: 3)
                                         }
                                         .buttonStyle(.plain)
 
@@ -3489,13 +3718,12 @@ private struct EditPresetView: View {
                                                 .font(.headline.weight(.semibold))
                                                 .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                                                 .frame(width: 34, height: 34)
-                                                .background(.white.opacity(0.58), in: Circle())
+                                                .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.34, shadowOpacity: 0.05, shadowRadius: 7, shadowY: 3)
                                         }
                                         .buttonStyle(.plain)
                                     }
                                     .padding(16)
-                                    .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                    .liquidGlassCard(cornerRadius: 22, fillOpacity: 0.42, strokeOpacity: 0.36, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
                                 }
                             }
                         }
@@ -3509,7 +3737,7 @@ private struct EditPresetView: View {
                                     .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 15)
-                                    .background(.white.opacity(0.58), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                    .liquidGlassCard(cornerRadius: 22, fillOpacity: 0.42, strokeOpacity: 0.36, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
                             }
                             .buttonStyle(.plain)
                             .padding(.top, 6)
@@ -3635,8 +3863,7 @@ private struct EditKnowledgePointView: View {
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(KikariaTheme.deepText)
                             .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.58), in: Circle())
-                            .background(.ultraThinMaterial, in: Circle())
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
                     }
                     .buttonStyle(.plain)
 
@@ -3678,7 +3905,7 @@ private struct EditKnowledgePointView: View {
                                 .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(14)
-                                .background(.white.opacity(0.64), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
                         }
                     }
                     .padding(.horizontal, 24)
@@ -3739,9 +3966,7 @@ private struct EditableLongTextField: View {
                 .scrollContentBackground(.hidden)
                 .padding(14)
                 .frame(minHeight: minHeight)
-                .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .shadow(color: KikariaTheme.sky.opacity(0.08), radius: 12, y: 7)
+                .liquidGlassCard(cornerRadius: 22, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.32, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
         }
     }
 }
@@ -3773,8 +3998,7 @@ private struct EditProfileView: View {
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(KikariaTheme.deepText)
                             .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.58), in: Circle())
-                            .background(.ultraThinMaterial, in: Circle())
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
                     }
                     .buttonStyle(.plain)
 
@@ -3815,8 +4039,7 @@ private struct EditProfileView: View {
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.horizontal, 18)
                                     .padding(.vertical, 11)
-                                    .background(.white.opacity(0.48), in: Capsule())
-                                    .background(.ultraThinMaterial, in: Capsule())
+                                    .liquidGlassCapsule(fillOpacity: 0.38, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
                             }
                             .buttonStyle(.plain)
                         }
@@ -3895,9 +4118,7 @@ private struct ProfileTextField: View {
                 .autocorrectionDisabled()
                 .padding(.horizontal, 16)
                 .padding(.vertical, 15)
-                .background(.white.opacity(0.66), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .shadow(color: KikariaTheme.sky.opacity(0.08), radius: 12, y: 7)
+                .liquidGlassCard(cornerRadius: 20, fillOpacity: 0.50, strokeOpacity: 0.34, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
         }
     }
 }
@@ -3940,8 +4161,7 @@ private struct MarkdownEditorView: View {
                             .font(.headline.weight(.semibold))
                             .foregroundStyle(KikariaTheme.deepText)
                             .frame(width: 42, height: 42)
-                            .background(.white.opacity(0.58), in: Circle())
-                            .background(.ultraThinMaterial, in: Circle())
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
                     }
                     .buttonStyle(.plain)
 
@@ -3971,9 +4191,7 @@ private struct MarkdownEditorView: View {
                         .scrollContentBackground(.hidden)
                         .padding(16)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                        .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+                        .liquidGlassCard(cornerRadius: 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.34, shadowOpacity: 0.12, shadowRadius: 18, shadowY: 10)
 
                     if let errorMessage {
                         Text(errorMessage)
@@ -3981,8 +4199,7 @@ private struct MarkdownEditorView: View {
                             .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
                             .transition(.opacity.combined(with: .move(edge: .bottom)))
                     }
                 }
@@ -4099,8 +4316,34 @@ private struct StartReviewButton: View {
                     .scaleEffect(isBreathing ? 1.018 : 0.992)
                     .overlay {
                         Circle()
-                            .fill(.white.opacity(0.16))
+                            .fill(
+                                RadialGradient(
+                                    colors: [
+                                        Color.white.opacity(0.30),
+                                        Color.white.opacity(0.10),
+                                        Color.white.opacity(0.02)
+                                    ],
+                                    center: .topLeading,
+                                    startRadius: 12,
+                                    endRadius: 150
+                                )
+                            )
                             .padding(1)
+                    }
+                    .overlay {
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.48),
+                                        Color.white.opacity(0.12),
+                                        KikariaTheme.cyan.opacity(0.22)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.1
+                            )
                     }
 
                 Image(systemName: "arrow.right")
@@ -4149,7 +4392,33 @@ private struct SoftBubble: View {
             .background(.ultraThinMaterial, in: Circle())
             .overlay {
                 Circle()
-                    .stroke(.white.opacity(0.36), lineWidth: 1)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.white.opacity(0.24),
+                                Color.white.opacity(0.05),
+                                Color.clear
+                            ],
+                            center: .topLeading,
+                            startRadius: 4,
+                            endRadius: size * 0.72
+                        )
+                    )
+            }
+            .overlay {
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.42),
+                                Color.white.opacity(0.08),
+                                KikariaTheme.cyan.opacity(0.16)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             }
             .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 14, y: 8)
     }
@@ -4234,12 +4503,7 @@ private struct TodayOverviewHomeProgressButton: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 20)
         .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 25, style: .continuous)
-                .fill(.white.opacity(0.48))
-        }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 25, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.11), radius: 17, y: 9)
+        .liquidGlassCard(cornerRadius: 25, fillOpacity: 0.42, strokeOpacity: 0.46, shadowOpacity: 0.11, shadowRadius: 17, shadowY: 9)
     }
 }
 
@@ -4295,22 +4559,14 @@ private struct HomeDashboardGridCard: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(KikariaTheme.blueGray.opacity(0.58))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 11)
-                .background(.white.opacity(0.38), in: Capsule())
-                .background(.ultraThinMaterial, in: Capsule())
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.white.opacity(0.47))
-        }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+        .liquidGlassCard(cornerRadius: 28, fillOpacity: 0.40, strokeOpacity: 0.44, shadowOpacity: 0.12, shadowRadius: 18, shadowY: 10)
     }
 }
 
@@ -5138,7 +5394,23 @@ private struct ReviewActionButton: View {
                 .padding(.vertical, 19)
                 .background {
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(isPrimary ? primaryFill : AnyShapeStyle(.white.opacity(0.82)))
+                        .fill(isPrimary ? primaryFill : AnyShapeStyle(.white.opacity(0.46)))
+                }
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(isPrimary ? 0.44 : 0.48),
+                                    Color.white.opacity(0.12),
+                                    shadowColor.opacity(0.18)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
                 }
                 .shadow(color: shadowColor.opacity(isPrimary ? 0.22 : 0.10), radius: 16, y: 9)
         }
@@ -5169,11 +5441,26 @@ private struct MasteredReviewButton: View {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(
                         isMastered
-                            ? AnyShapeStyle(.white.opacity(0.78))
+                            ? AnyShapeStyle(.white.opacity(0.42))
                             : AnyShapeStyle(KikariaTheme.masteredActionGradient)
                     )
             }
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.46),
+                                Color.white.opacity(0.12),
+                                KikariaTheme.masteredGreen.opacity(0.20)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
             .shadow(
                 color: isMastered
                     ? KikariaTheme.blueGray.opacity(0.10)
@@ -5469,12 +5756,7 @@ private struct ReinforcementStartButton: View {
         .padding(.horizontal, 22)
         .padding(.vertical, 22)
         .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.white.opacity(0.54))
-        }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.16), radius: 20, y: 10)
+        .liquidGlassCard(cornerRadius: 28, fillOpacity: 0.46, strokeOpacity: 0.46, shadowOpacity: 0.16, shadowRadius: 20, shadowY: 10)
     }
 }
 
@@ -5501,12 +5783,7 @@ private struct MasteredStartButton: View {
         .padding(.horizontal, 22)
         .padding(.vertical, 22)
         .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.white.opacity(0.54))
-        }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .shadow(color: KikariaTheme.masteredGreen.opacity(0.16), radius: 20, y: 10)
+        .liquidGlassCard(cornerRadius: 28, fillOpacity: 0.46, strokeOpacity: 0.46, shadowOpacity: 0.16, shadowRadius: 20, shadowY: 10)
     }
 }
 
@@ -5553,12 +5830,7 @@ private struct ReinforcementCard: View {
             .tint(removeTint)
         }
         .padding(18)
-        .background {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(.white.opacity(0.48))
-        }
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 20, y: 12)
+        .liquidGlassCard(cornerRadius: 30, material: .thinMaterial, fillOpacity: 0.42, strokeOpacity: 0.40, shadowOpacity: 0.12, shadowRadius: 20, shadowY: 12)
         .offset(x: previewOffset)
         .simultaneousGesture(cardSwipeGesture)
     }
@@ -5598,12 +5870,7 @@ private struct KikariaToast: View {
             .lineLimit(2)
             .padding(.horizontal, 18)
             .padding(.vertical, 13)
-            .background {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(.white.opacity(0.62))
-            }
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 18, y: 10)
+            .liquidGlassCard(cornerRadius: 22, material: .regularMaterial, fillOpacity: 0.52, strokeOpacity: 0.52, shadowOpacity: 0.18, shadowRadius: 18, shadowY: 10)
     }
 }
 
@@ -5640,8 +5907,7 @@ private struct FloatingInfoCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(18)
-        .background(.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.14), radius: 18, y: 10)
+        .liquidGlassCard(cornerRadius: 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.42, shadowOpacity: 0.14, shadowRadius: 18, shadowY: 10)
     }
 }
 
@@ -5656,11 +5922,7 @@ private struct LightTagRow: View {
                     .foregroundStyle(KikariaTheme.softText)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
-                    .background(.white.opacity(0.58), in: Capsule())
-                    .overlay {
-                        Capsule()
-                            .stroke(KikariaTheme.cyan.opacity(0.30), lineWidth: 1)
-                    }
+                    .liquidGlassCapsule(fillOpacity: 0.38, strokeOpacity: 0.34, shadowOpacity: 0.04, shadowRadius: 6, shadowY: 3)
             }
         }
         .frame(maxWidth: .infinity)
@@ -5677,13 +5939,7 @@ private struct TodayReviewCountPill: View {
             .monospacedDigit()
             .padding(.horizontal, 18)
             .padding(.vertical, 8)
-            .background(.white.opacity(0.54), in: Capsule())
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(KikariaTheme.cyan.opacity(0.32), lineWidth: 1)
-            }
-            .shadow(color: KikariaTheme.sky.opacity(0.10), radius: 12, y: 6)
+            .liquidGlassCapsule(fillOpacity: 0.42, strokeOpacity: 0.38, shadowOpacity: 0.10, shadowRadius: 12, shadowY: 6)
             .accessibilityLabel("该知识点今日复习 \(count) 次")
     }
 }
@@ -5794,8 +6050,7 @@ private struct SoftEmptyState: View {
         }
         .padding(26)
         .frame(maxWidth: .infinity)
-        .background(.white.opacity(0.80), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
+        .liquidGlassCard(cornerRadius: 30, material: .thinMaterial, fillOpacity: 0.54, strokeOpacity: 0.42, shadowOpacity: 0.12, shadowRadius: 18, shadowY: 10)
     }
 }
 
