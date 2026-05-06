@@ -14,9 +14,102 @@ struct KnowledgePoint: Identifiable, Equatable, Codable {
     var hint: String
     var content: String
     var isReinforced: Bool
+    var reinforcementCount: Int
+    var lastReinforcedAt: Date?
     var isMastered: Bool
     var createdAt: Date
     var updatedAt: Date
+
+    init(
+        id: UUID,
+        title: String,
+        tags: [String],
+        hint: String,
+        content: String,
+        isReinforced: Bool = false,
+        isMastered: Bool = false,
+        createdAt: Date,
+        updatedAt: Date,
+        reinforcementCount: Int? = nil,
+        lastReinforcedAt: Date? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.tags = tags
+        self.hint = hint
+        self.content = content
+        let migratedReinforcementCount = max(0, reinforcementCount ?? (isReinforced ? 1 : 0))
+        self.reinforcementCount = migratedReinforcementCount
+        self.isReinforced = migratedReinforcementCount > 0
+        self.lastReinforcedAt = migratedReinforcementCount > 0 ? lastReinforcedAt : nil
+        self.isMastered = isMastered
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case tags
+        case hint
+        case content
+        case isReinforced
+        case reinforcementCount
+        case lastReinforcedAt
+        case isMastered
+        case createdAt
+        case updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        tags = try container.decode([String].self, forKey: .tags)
+        hint = try container.decode(String.self, forKey: .hint)
+        content = try container.decode(String.self, forKey: .content)
+        let legacyIsReinforced = try container.decodeIfPresent(Bool.self, forKey: .isReinforced) ?? false
+        let decodedReinforcementCount = try container.decodeIfPresent(Int.self, forKey: .reinforcementCount)
+        reinforcementCount = max(0, decodedReinforcementCount ?? (legacyIsReinforced ? 1 : 0))
+        isReinforced = reinforcementCount > 0
+        lastReinforcedAt = try container.decodeIfPresent(Date.self, forKey: .lastReinforcedAt)
+        if reinforcementCount == 0 {
+            lastReinforcedAt = nil
+        }
+        isMastered = try container.decodeIfPresent(Bool.self, forKey: .isMastered) ?? false
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(tags, forKey: .tags)
+        try container.encode(hint, forKey: .hint)
+        try container.encode(content, forKey: .content)
+        try container.encode(reinforcementCount > 0, forKey: .isReinforced)
+        try container.encode(reinforcementCount, forKey: .reinforcementCount)
+        try container.encodeIfPresent(lastReinforcedAt, forKey: .lastReinforcedAt)
+        try container.encode(isMastered, forKey: .isMastered)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+    }
+
+    mutating func addReinforcement(at date: Date = Date()) -> Int {
+        reinforcementCount = max(0, reinforcementCount) + 1
+        isReinforced = true
+        lastReinforcedAt = date
+        updatedAt = date
+        return reinforcementCount
+    }
+
+    mutating func clearReinforcement(at date: Date = Date()) {
+        reinforcementCount = 0
+        isReinforced = false
+        lastReinforcedAt = nil
+        updatedAt = date
+    }
 }
 
 enum KnowledgePointMarkdownError: LocalizedError {

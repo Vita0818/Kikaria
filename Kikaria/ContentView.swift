@@ -19,6 +19,8 @@ private enum KikariaTheme {
     static let masteredGreen = Color(red: 0.36, green: 0.76, blue: 0.54)
     static let masteredDeepGreen = Color(red: 0.12, green: 0.47, blue: 0.30)
     static let masteredCompletedGreen = Color(red: 0.79, green: 0.93, blue: 0.84)
+    static let nextAmber = Color(red: 0.54, green: 0.49, blue: 0.75)
+    static let removeCoral = Color(red: 0.86, green: 0.32, blue: 0.30)
     static let deepText = Color(red: 0.13, green: 0.25, blue: 0.33)
     static let softText = Color(red: 0.42, green: 0.54, blue: 0.62)
 
@@ -54,6 +56,24 @@ private enum KikariaTheme {
         colors: [
             Color(red: 0.25, green: 0.66, blue: 0.42),
             Color(red: 0.54, green: 0.82, blue: 0.63)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    static let nextGradient = LinearGradient(
+        colors: [
+            Color(red: 0.78, green: 0.72, blue: 0.94),
+            Color(red: 0.58, green: 0.53, blue: 0.80)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    static let removeGradient = LinearGradient(
+        colors: [
+            Color(red: 0.90, green: 0.38, blue: 0.35),
+            Color(red: 0.98, green: 0.58, blue: 0.50)
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -235,6 +255,15 @@ private extension View {
             )
         )
     }
+
+    @ViewBuilder
+    func highPriorityGestureIf<GestureType: Gesture>(_ isActive: Bool, _ gesture: GestureType) -> some View {
+        if isActive {
+            highPriorityGesture(gesture)
+        } else {
+            self
+        }
+    }
 }
 
 private enum AppRoute: Hashable {
@@ -286,7 +315,7 @@ enum ReviewMode {
     }
 }
 
-private struct UserProfile {
+private struct UserProfile: Codable, Equatable {
     var displayName = "Vita"
     var userHandle = "vita_0818"
     var avatarSystemName = "person.crop.circle.fill"
@@ -408,6 +437,53 @@ private struct PresetLibrarySnapshot: Codable {
     var presets: [KnowledgePreset]
     var presetStates: [String: PresetStudyState]
     var currentPresetID: String
+}
+
+private struct KikariaAppState: Codable {
+    static let storageKey = "kikaria.appStateJSON"
+    static let currentSchemaVersion = 1
+
+    var schemaVersion: Int
+    var presets: [KnowledgePreset]
+    var presetStates: [String: PresetStudyState]
+    var currentPresetID: String
+    var userProfile: UserProfile
+    var hasCompletedOnboarding: Bool
+
+    init(
+        schemaVersion: Int = KikariaAppState.currentSchemaVersion,
+        presets: [KnowledgePreset],
+        presetStates: [String: PresetStudyState],
+        currentPresetID: String,
+        userProfile: UserProfile,
+        hasCompletedOnboarding: Bool
+    ) {
+        self.schemaVersion = schemaVersion
+        self.presets = presets
+        self.presetStates = presetStates
+        self.currentPresetID = currentPresetID
+        self.userProfile = userProfile
+        self.hasCompletedOnboarding = hasCompletedOnboarding
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case presets
+        case presetStates
+        case currentPresetID
+        case userProfile
+        case hasCompletedOnboarding
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 0
+        presets = try container.decodeIfPresent([KnowledgePreset].self, forKey: .presets) ?? KnowledgePreset.all
+        presetStates = try container.decodeIfPresent([String: PresetStudyState].self, forKey: .presetStates) ?? [:]
+        currentPresetID = try container.decodeIfPresent(String.self, forKey: .currentPresetID) ?? KnowledgePreset.defaultPresetID
+        userProfile = try container.decodeIfPresent(UserProfile.self, forKey: .userProfile) ?? UserProfile()
+        hasCompletedOnboarding = try container.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
+    }
 }
 
 private enum PresetCreationOutcome {
@@ -680,9 +756,7 @@ struct ContentView: View {
     @State private var dangerPercent = 80
     @State private var hasLoadedInitialPresetState = false
     @State private var isApplyingPresetState = false
-    @AppStorage("dailyLearningGoal") private var legacyDailyGoal = 20
-    @AppStorage("presetLibraryJSON") private var encodedPresetLibrary = ""
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var hasCompletedOnboarding = false
     @State private var isShowingOnboarding = false
 
     private var allTags: [String] {
@@ -694,7 +768,7 @@ struct ContentView: View {
     }
 
     private var reinforcedCount: Int {
-        knowledgePoints.filter(\.isReinforced).count
+        knowledgePoints.filter { $0.reinforcementCount > 0 }.count
     }
 
     private var masteredCount: Int {
@@ -973,12 +1047,20 @@ struct ContentView: View {
             .onChange(of: activityRecords) { _ in
                 persistCurrentStudyStateIfReady()
             }
+            .onChange(of: userProfile) { _ in
+                saveAppStateIfReady()
+            }
+            .onChange(of: hasCompletedOnboarding) { _ in
+                saveAppStateIfReady()
+            }
             .onChange(of: markdownText) { _ in
                 persistCurrentStudyStateIfReady()
             }
             .onChange(of: scenePhase) { phase in
                 if phase == .active {
                     rescheduleAllPresetNotifications()
+                } else if phase == .inactive || phase == .background {
+                    saveAppStateIfReady()
                 }
             }
             .fullScreenCover(isPresented: $isShowingOnboarding) {
@@ -1042,7 +1124,7 @@ struct ContentView: View {
         }
 
         hasLoadedInitialPresetState = true
-        loadPersistedPresetLibrary()
+        loadAppState()
 
         guard let state = studyState(for: currentPreset) else {
             return
@@ -1216,7 +1298,15 @@ struct ContentView: View {
         }
 
         if presetID == KnowledgePreset.defaultPresetID {
-            return clampedDailyGoal(legacyDailyGoal)
+            return clampedDailyGoal(legacyDailyGoalValue())
+        }
+
+        return 20
+    }
+
+    private func legacyDailyGoalValue() -> Int {
+        if let value = UserDefaults.standard.object(forKey: "dailyLearningGoal") as? Int {
+            return value
         }
 
         return 20
@@ -1232,23 +1322,75 @@ struct ContentView: View {
         rescheduleAllPresetNotifications()
     }
 
-    private func loadPersistedPresetLibrary() {
-        guard let data = encodedPresetLibrary.data(using: .utf8),
-              let snapshot = try? JSONDecoder().decode(PresetLibrarySnapshot.self, from: data),
-              !snapshot.presets.isEmpty
-        else {
-            presets = KnowledgePreset.all
-            currentPresetID = KnowledgePreset.defaultPresetID
-            return
+    private func loadAppState() {
+        let defaults = UserDefaults.standard
+
+        if let data = defaults.data(forKey: KikariaAppState.storageKey) {
+            do {
+                let appState = try JSONDecoder().decode(KikariaAppState.self, from: data)
+                applyLoadedAppState(appState)
+                #if DEBUG
+                print("Kikaria app state loaded")
+                #endif
+                return
+            } catch {
+                #if DEBUG
+                print("Kikaria app state decode failed: \(error)")
+                #endif
+            }
         }
 
-        presets = mergedPresets(with: snapshot.presets)
-        presetStates = snapshot.presetStates
+        if let legacyEncodedLibrary = defaults.string(forKey: "presetLibraryJSON"),
+           let data = legacyEncodedLibrary.data(using: .utf8),
+           let snapshot = try? JSONDecoder().decode(PresetLibrarySnapshot.self, from: data),
+           !snapshot.presets.isEmpty {
+            presets = mergedPresets(with: snapshot.presets)
+            presetStates = snapshot.presetStates
+            if presets.contains(where: { $0.id == snapshot.currentPresetID }) {
+                currentPresetID = snapshot.currentPresetID
+            } else {
+                currentPresetID = presets.first?.id ?? KnowledgePreset.defaultPresetID
+            }
+        } else {
+            presets = KnowledgePreset.all
+            presetStates = [:]
+            currentPresetID = KnowledgePreset.defaultPresetID
+        }
 
-        if presets.contains(where: { $0.id == snapshot.currentPresetID }) {
-            currentPresetID = snapshot.currentPresetID
+        if let completed = defaults.object(forKey: "hasCompletedOnboarding") as? Bool {
+            hasCompletedOnboarding = completed
+        }
+
+        userProfile = UserProfile()
+        ensurePresetStatesExist()
+        #if DEBUG
+        print("Kikaria app state loaded")
+        #endif
+    }
+
+    private func applyLoadedAppState(_ appState: KikariaAppState) {
+        presets = mergedPresets(with: appState.presets)
+        presetStates = appState.presetStates
+        userProfile = appState.userProfile
+        hasCompletedOnboarding = appState.hasCompletedOnboarding
+
+        if presets.contains(where: { $0.id == appState.currentPresetID }) {
+            currentPresetID = appState.currentPresetID
         } else {
             currentPresetID = presets.first?.id ?? KnowledgePreset.defaultPresetID
+        }
+
+        ensurePresetStatesExist()
+    }
+
+    private func ensurePresetStatesExist() {
+        let validPresetIDs = Set(presets.map(\.id))
+        presetStates = presetStates.filter { validPresetIDs.contains($0.key) }
+
+        for preset in presets where presetStates[preset.id] == nil {
+            if let state = initialStudyState(for: preset) {
+                presetStates[preset.id] = state
+            }
         }
     }
 
@@ -1263,25 +1405,42 @@ struct ContentView: View {
     }
 
     private func persistLibrary() {
+        saveAppState()
+    }
+
+    private func saveAppStateIfReady() {
+        guard hasLoadedInitialPresetState, !isApplyingPresetState else {
+            return
+        }
+
+        saveAppState()
+    }
+
+    private func saveAppState() {
         var states = presetStates
 
         if hasLoadedInitialPresetState {
             states[currentPresetID] = currentPresetStateSnapshot()
         }
 
-        let snapshot = PresetLibrarySnapshot(
+        let appState = KikariaAppState(
             presets: presets,
             presetStates: states,
-            currentPresetID: currentPresetID
+            currentPresetID: currentPresetID,
+            userProfile: userProfile,
+            hasCompletedOnboarding: hasCompletedOnboarding
         )
 
-        if let data = try? JSONEncoder().encode(snapshot),
-           let encoded = String(data: data, encoding: .utf8) {
-            encodedPresetLibrary = encoded
-        }
-
-        if currentPresetID == KnowledgePreset.defaultPresetID {
-            legacyDailyGoal = clampedDailyGoal(dailyGoal)
+        do {
+            let data = try JSONEncoder().encode(appState)
+            UserDefaults.standard.set(data, forKey: KikariaAppState.storageKey)
+            #if DEBUG
+            print("Kikaria app state saved")
+            #endif
+        } catch {
+            #if DEBUG
+            print("Kikaria app state save failed: \(error)")
+            #endif
         }
     }
 
@@ -3941,7 +4100,9 @@ private struct EditKnowledgePointView: View {
             isReinforced: point?.isReinforced ?? false,
             isMastered: point?.isMastered ?? false,
             createdAt: point?.createdAt ?? now,
-            updatedAt: now
+            updatedAt: now,
+            reinforcementCount: point?.reinforcementCount,
+            lastReinforcedAt: point?.lastReinforcedAt
         )
 
         onSave(savedPoint)
@@ -4091,13 +4252,38 @@ private struct EditProfileView: View {
             }
 
             await MainActor.run {
-                guard UIImage(data: data) != nil else {
+                guard let compressedData = compressedAvatarData(from: data) else {
                     return
                 }
 
-                profile.avatarImageData = data
+                profile.avatarImageData = compressedData
             }
         }
+    }
+
+    private func compressedAvatarData(from data: Data) -> Data? {
+        guard let image = UIImage(data: data) else {
+            return nil
+        }
+
+        let maxDimension: CGFloat = 512
+        let largestSide = max(image.size.width, image.size.height)
+        let scale = largestSide > 0 ? min(1, maxDimension / largestSide) : 1
+
+        let outputImage: UIImage
+        if scale < 1 {
+            let targetSize = CGSize(
+                width: image.size.width * scale,
+                height: image.size.height * scale
+            )
+            outputImage = UIGraphicsImageRenderer(size: targetSize).image { _ in
+                image.draw(in: CGRect(origin: .zero, size: targetSize))
+            }
+        } else {
+            outputImage = image
+        }
+
+        return outputImage.jpegData(compressionQuality: 0.82) ?? outputImage.pngData()
     }
 }
 
@@ -4773,7 +4959,7 @@ struct ReviewView: View {
                 point.tags.contains { selectedTags.contains($0) }
             }
         case .reinforcement:
-            return knowledgePoints.filter(\.isReinforced)
+            return knowledgePoints.filter { $0.reinforcementCount > 0 }
         case .mastered:
             return knowledgePoints.filter(\.isMastered)
         }
@@ -4823,125 +5009,141 @@ struct ReviewView: View {
                     .padding(24)
                 }
             } else if let currentPoint {
-                VStack(spacing: 0) {
-                    Spacer(minLength: 58)
+                GeometryReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            Spacer(minLength: 58)
 
-                    VStack(spacing: 18) {
-                        Text(currentPoint.title)
-                            .font(.system(size: 40, weight: .semibold, design: .serif))
-                            .foregroundStyle(KikariaTheme.deepText)
-                            .multilineTextAlignment(.center)
-                            .minimumScaleFactor(0.72)
-                            .padding(.horizontal, 22)
+                            VStack(spacing: 18) {
+                                Text(currentPoint.title)
+                                    .font(.system(size: 40, weight: .semibold, design: .serif))
+                                    .foregroundStyle(KikariaTheme.deepText)
+                                    .multilineTextAlignment(.center)
+                                    .minimumScaleFactor(0.72)
+                                    .padding(.horizontal, 22)
 
-                        LightTagRow(tags: currentPoint.tags)
+                                LightTagRow(tags: currentPoint.tags)
 
-                        if isShowingContent {
-                            TodayReviewCountPill(count: currentTodayReviewCount)
-                                .transition(.move(edge: .top).combined(with: .opacity))
+                                if isShowingContent {
+                                    TodayReviewCountPill(count: currentTodayReviewCount)
+                                        .transition(.move(edge: .top).combined(with: .opacity))
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 14)
+
+                            VStack(spacing: 14) {
+                                if isShowingHint {
+                                    FloatingInfoCard(title: "提示", text: currentPoint.hint)
+                                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                                }
+
+                                if isShowingContent {
+                                    FloatingInfoCard(title: "答案", text: currentPoint.content)
+                                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.top, 30)
+
+                            Spacer(minLength: 24)
+
+                            VStack(spacing: 14) {
+                                if !isShowingContent {
+                                    if !isShowingHint {
+                                        ReviewActionButton(
+                                            title: "查看提示",
+                                            systemImage: "lightbulb",
+                                            isPrimary: false
+                                        ) {
+                                            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                                                revealHint()
+                                            }
+                                        }
+                                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                                    }
+
+                                    ReviewActionButton(
+                                        title: "查看答案",
+                                        systemImage: "doc.text",
+                                        isPrimary: true
+                                    ) {
+                                        withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                                            revealContent()
+                                        }
+                                    }
+                                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                                } else {
+                                    if mode.isReinforcement {
+                                        ReinforcementReviewAnsweredActionGrid(
+                                            point: currentPoint,
+                                            removeFromReinforcement: {
+                                                removeCurrentPointFromReinforcement(shouldShowToast: true)
+                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                                    chooseRandomPoint()
+                                                }
+                                            },
+                                            markAsMastered: {
+                                                markCurrentPointAsMastered()
+                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                                    chooseRandomPoint()
+                                                }
+                                            },
+                                            next: {
+                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                                    chooseRandomPoint()
+                                                }
+                                            }
+                                        )
+                                    } else if mode.isMastered {
+                                        MasteredReviewAnsweredActionGrid(
+                                            point: currentPoint,
+                                            addToReinforcement: {
+                                                addCurrentPointToReinforcementAndAdvance()
+                                            },
+                                            removeFromMastered: {
+                                                removeCurrentPointFromMastered(shouldShowToast: true)
+                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                                    chooseRandomPoint()
+                                                }
+                                            },
+                                            next: {
+                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                                    chooseRandomPoint()
+                                                }
+                                            }
+                                        )
+                                    } else {
+                                        NormalReviewAnsweredActionGrid(
+                                            point: currentPoint,
+                                            addToReinforcement: {
+                                                addCurrentPointToReinforcementAndAdvance()
+                                            },
+                                            markAsMastered: {
+                                                markCurrentPointAsMastered()
+                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                                    chooseRandomPoint()
+                                                }
+                                            },
+                                            next: {
+                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                                                    chooseRandomPoint()
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 28)
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: proxy.size.height, alignment: .top)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 14)
-
-                    VStack(spacing: 14) {
-                        if isShowingHint {
-                            FloatingInfoCard(title: "提示", text: currentPoint.hint)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-
-                        if isShowingContent {
-                            FloatingInfoCard(title: "答案", text: currentPoint.content)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 30)
-
-                    Spacer(minLength: 24)
-
-                    VStack(spacing: 14) {
-                        if !isShowingContent {
-                            if !isShowingHint {
-                                ReviewActionButton(
-                                    title: "查看提示",
-                                    systemImage: "lightbulb",
-                                    isPrimary: false
-                                ) {
-                                    withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                                        revealHint()
-                                    }
-                                }
-                                .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                            }
-
-                            ReviewActionButton(
-                                title: "查看答案",
-                                systemImage: "doc.text",
-                                isPrimary: true
-                            ) {
-                                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                                    revealContent()
-                                }
-                            }
-                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                        } else {
-                            if mode.isReinforcement {
-                                ReviewActionButton(
-                                    title: "移出重点集锦",
-                                    systemImage: "minus.circle.fill",
-                                    isPrimary: true
-                                ) {
-                                    removeCurrentPointFromReinforcement(shouldShowToast: true)
-                                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                        chooseRandomPoint()
-                                    }
-                                }
-                            } else if mode.isMastered {
-                                ReviewActionButton(
-                                    title: "移出已掌握",
-                                    systemImage: "minus.circle.fill",
-                                    isPrimary: true,
-                                    tone: .green
-                                ) {
-                                    removeCurrentPointFromMastered(shouldShowToast: true)
-                                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                        chooseRandomPoint()
-                                    }
-                                }
-                            } else {
-                                ReviewActionButton(
-                                    title: currentPoint.isReinforced ? "已添加至集锦" : "加入重点集锦",
-                                    systemImage: currentPoint.isReinforced ? "checkmark.circle.fill" : "plus.circle.fill",
-                                    isPrimary: !currentPoint.isReinforced,
-                                    isEnabled: !currentPoint.isReinforced
-                                ) {
-                                    addCurrentPointToReinforcementAndAdvance()
-                                }
-
-                                MasteredReviewButton(isMastered: currentPoint.isMastered) {
-                                    markCurrentPointAsMastered()
-                                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                        chooseRandomPoint()
-                                    }
-                                }
-                            }
-
-                            ReviewActionButton(
-                                title: "下一个",
-                                systemImage: "shuffle",
-                                isPrimary: false
-                            ) {
-                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                    chooseRandomPoint()
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 28)
+                    .scrollIndicators(.hidden)
+                    .highPriorityGestureIf(!isShowingContent, preAnswerSwipeUpGesture)
+                    .scaleEffect(gestureFeedback ? 0.985 : 1.0)
                 }
-                .scaleEffect(gestureFeedback ? 0.985 : 1.0)
             } else {
                 ProgressView()
             }
@@ -4989,6 +5191,32 @@ struct ReviewView: View {
             }
     }
 
+    private var preAnswerSwipeUpGesture: some Gesture {
+        DragGesture(minimumDistance: 24, coordinateSpace: .local)
+            .onEnded { value in
+                guard !isShowingScopePanel, !isShowingContent else {
+                    return
+                }
+
+                let dx = value.translation.width
+                let dy = value.translation.height
+                let horizontal = abs(dx)
+                let vertical = abs(dy)
+
+                guard dy < 0,
+                      vertical > 80,
+                      vertical > horizontal * 1.4
+                else {
+                    return
+                }
+
+                triggerGestureFeedback()
+                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                    revealContent()
+                }
+            }
+    }
+
     private func handleDragGesture(translation: CGSize, startLocation: CGPoint) {
         guard !isShowingScopePanel else {
             return
@@ -4999,8 +5227,9 @@ struct ReviewView: View {
         let horizontal = abs(dx)
         let vertical = abs(dy)
         let horizontalThreshold: CGFloat = 80
-        let verticalThreshold: CGFloat = 100
+        let verticalThreshold: CGFloat = isShowingContent ? 180 : 90
         let dominance: CGFloat = 1.4
+        let isCentralReadingArea = startLocation.y > 190 && startLocation.y < UIScreen.main.bounds.height - 190
 
         if horizontal > horizontalThreshold && horizontal > vertical * dominance {
             if dx > 0 {
@@ -5018,6 +5247,10 @@ struct ReviewView: View {
             }
         } else if vertical > verticalThreshold && vertical > horizontal * dominance {
             if dy < 0 {
+                if isShowingContent, isCentralReadingArea, vertical < 240 {
+                    return
+                }
+
                 triggerGestureFeedback()
                 if isShowingContent {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
@@ -5029,6 +5262,10 @@ struct ReviewView: View {
                     }
                 }
             } else {
+                if isShowingContent, isCentralReadingArea {
+                    return
+                }
+
                 triggerGestureFeedback()
                 withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
                     goBackOrChooseRandom()
@@ -5049,19 +5286,13 @@ struct ReviewView: View {
     }
 
     private func handleNormalSwipeLeft() {
-        // Normal-mode left swipe only adds to reinforcement; it must never mark a point as mastered.
+        // Normal-mode left swipe only adds/re-adds to reinforcement; it must never mark a point as mastered.
         let wasMastered = currentPoint?.isMastered
-        if currentPoint?.isReinforced == true {
-            withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                chooseRandomPoint()
-            }
-        } else {
-            withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                revealContent()
-            }
-            addCurrentPointToReinforcement()
-            assert(currentPoint?.isMastered == wasMastered)
+        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+            revealContent()
         }
+        addCurrentPointToReinforcement(shouldShowToast: true)
+        assert(currentPoint?.isMastered == wasMastered)
     }
 
     private func handleReinforcementSwipeLeft() {
@@ -5241,26 +5472,26 @@ struct ReviewView: View {
         }
     }
 
-    private func addCurrentPointToReinforcement() {
+    private func addCurrentPointToReinforcement(shouldShowToast: Bool = false) {
         guard let currentPointID,
               let index = knowledgePoints.firstIndex(where: { $0.id == currentPointID })
         else {
             return
         }
 
-        guard !knowledgePoints[index].isReinforced else {
-            return
-        }
-
+        let title = knowledgePoints[index].title
         let wasMastered = knowledgePoints[index].isMastered
-        knowledgePoints[index].isReinforced = true
-        knowledgePoints[index].updatedAt = Date()
+        let newCount = knowledgePoints[index].addReinforcement()
         assert(knowledgePoints[index].isMastered == wasMastered)
         onRecordActivity(.addedReinforcement, knowledgePoints[index])
+
+        if shouldShowToast {
+            showToast(reinforcementAddedToastTitle(for: title, count: newCount))
+        }
     }
 
     private func addCurrentPointToReinforcementAndAdvance() {
-        addCurrentPointToReinforcement()
+        addCurrentPointToReinforcement(shouldShowToast: true)
         withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
             chooseRandomPoint()
         }
@@ -5276,7 +5507,7 @@ struct ReviewView: View {
 
         let title = knowledgePoints[index].title
         knowledgePoints[index].isMastered = true
-        knowledgePoints[index].isReinforced = false
+        knowledgePoints[index].clearReinforcement()
         knowledgePoints[index].updatedAt = Date()
         onRecordActivity(.markedMastered, knowledgePoints[index])
         showToast("\(title) 已掌握")
@@ -5290,19 +5521,18 @@ struct ReviewView: View {
             return false
         }
 
-        guard knowledgePoints[index].isReinforced else {
+        guard knowledgePoints[index].reinforcementCount > 0 else {
             return false
         }
 
         let title = knowledgePoints[index].title
         let wasMastered = knowledgePoints[index].isMastered
-        knowledgePoints[index].isReinforced = false
-        knowledgePoints[index].updatedAt = Date()
+        knowledgePoints[index].clearReinforcement()
         assert(knowledgePoints[index].isMastered == wasMastered)
         onRecordActivity(.removedReinforcement, knowledgePoints[index])
 
         if shouldShowToast {
-            showToast("\(title) 已移除")
+            showToast("\(title) 已移出重点集锦")
         }
 
         return true
@@ -5352,11 +5582,142 @@ struct ReviewView: View {
             }
         }
     }
+
+    private func reinforcementAddedToastTitle(for title: String, count: Int) -> String {
+        count <= 1 ? "\(title) 已加入重点集锦" : "\(title) 已加入重点集锦 ×\(count)"
+    }
 }
 
 private enum ReviewActionTone {
     case blue
     case green
+    case amber
+    case red
+}
+
+private struct ReviewAnsweredActionGrid<TopButton: View, BottomButton: View>: View {
+    let next: () -> Void
+    private let topButton: () -> TopButton
+    private let bottomButton: () -> BottomButton
+
+    init(
+        next: @escaping () -> Void,
+        @ViewBuilder topButton: @escaping () -> TopButton,
+        @ViewBuilder bottomButton: @escaping () -> BottomButton
+    ) {
+        self.next = next
+        self.topButton = topButton
+        self.bottomButton = bottomButton
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            let spacing: CGFloat = 12
+            let availableWidth = max(0, proxy.size.width - spacing)
+            let leftWidth = availableWidth * 0.65
+            let rightWidth = availableWidth - leftWidth
+
+            HStack(spacing: spacing) {
+                VStack(spacing: spacing) {
+                    topButton()
+                    bottomButton()
+                }
+                .frame(width: leftWidth)
+
+                ReviewActionButton(
+                    title: "下一个",
+                    systemImage: "shuffle",
+                    isPrimary: false,
+                    tone: .amber,
+                    isVerticalContent: true,
+                    minHeight: 144
+                ) {
+                    next()
+                }
+                .frame(width: rightWidth)
+            }
+        }
+        .frame(height: 144)
+    }
+}
+
+private struct NormalReviewAnsweredActionGrid: View {
+    let point: KnowledgePoint
+    let addToReinforcement: () -> Void
+    let markAsMastered: () -> Void
+    let next: () -> Void
+
+    var body: some View {
+        ReviewAnsweredActionGrid(next: next) {
+            ReviewActionButton(
+                title: point.reinforcementCount > 0 ? "再次加入 ×\(point.reinforcementCount)" : "加入重点集锦",
+                systemImage: "plus.circle.fill",
+                isPrimary: true,
+                minHeight: 66
+            ) {
+                addToReinforcement()
+            }
+        } bottomButton: {
+            MasteredReviewButton(isMastered: point.isMastered, minHeight: 66) {
+                markAsMastered()
+            }
+        }
+    }
+}
+
+private struct ReinforcementReviewAnsweredActionGrid: View {
+    let point: KnowledgePoint
+    let removeFromReinforcement: () -> Void
+    let markAsMastered: () -> Void
+    let next: () -> Void
+
+    var body: some View {
+        ReviewAnsweredActionGrid(next: next) {
+            ReviewActionButton(
+                title: "移出重点集锦",
+                systemImage: "minus.circle.fill",
+                isPrimary: true,
+                tone: .red,
+                minHeight: 66
+            ) {
+                removeFromReinforcement()
+            }
+        } bottomButton: {
+            MasteredReviewButton(isMastered: point.isMastered, minHeight: 66) {
+                markAsMastered()
+            }
+        }
+    }
+}
+
+private struct MasteredReviewAnsweredActionGrid: View {
+    let point: KnowledgePoint
+    let addToReinforcement: () -> Void
+    let removeFromMastered: () -> Void
+    let next: () -> Void
+
+    var body: some View {
+        ReviewAnsweredActionGrid(next: next) {
+            ReviewActionButton(
+                title: point.reinforcementCount > 0 ? "再次加入 ×\(point.reinforcementCount)" : "加入重点集锦",
+                systemImage: "plus.circle.fill",
+                isPrimary: true,
+                minHeight: 66
+            ) {
+                addToReinforcement()
+            }
+        } bottomButton: {
+            ReviewActionButton(
+                title: "移出已掌握",
+                systemImage: "minus.circle.fill",
+                isPrimary: true,
+                tone: .red,
+                minHeight: 66
+            ) {
+                removeFromMastered()
+            }
+        }
+    }
 }
 
 private struct ReviewActionButton: View {
@@ -5365,6 +5726,8 @@ private struct ReviewActionButton: View {
     let isPrimary: Bool
     var tone: ReviewActionTone = .blue
     var isEnabled = true
+    var isVerticalContent = false
+    var minHeight: CGFloat? = nil
     let action: () -> Void
 
     private var primaryFill: AnyShapeStyle {
@@ -5373,6 +5736,79 @@ private struct ReviewActionButton: View {
             return AnyShapeStyle(KikariaTheme.actionGradient)
         case .green:
             return AnyShapeStyle(KikariaTheme.masteredGradient)
+        case .amber:
+            return AnyShapeStyle(KikariaTheme.nextGradient)
+        case .red:
+            return AnyShapeStyle(KikariaTheme.removeGradient)
+        }
+    }
+
+    private var secondaryFill: AnyShapeStyle {
+        switch tone {
+        case .blue, .green:
+            return AnyShapeStyle(.white.opacity(0.46))
+        case .amber:
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.78, green: 0.72, blue: 0.94).opacity(0.68),
+                        Color(red: 0.58, green: 0.53, blue: 0.80).opacity(0.56)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        case .red:
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.90, green: 0.38, blue: 0.35).opacity(0.58),
+                        Color(red: 0.98, green: 0.58, blue: 0.50).opacity(0.46)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+    }
+
+    private var foregroundColor: Color {
+        if isPrimary {
+            return .white
+        }
+
+        switch tone {
+        case .amber:
+            return .white.opacity(0.94)
+        default:
+            return KikariaTheme.deepText
+        }
+    }
+
+    private var textShadowColor: Color {
+        switch tone {
+        case .amber:
+            return Color(red: 0.23, green: 0.20, blue: 0.36).opacity(0.22)
+        default:
+            return .clear
+        }
+    }
+
+    private var strokeAccentOpacity: Double {
+        switch tone {
+        case .amber:
+            return 0.16
+        default:
+            return 0.18
+        }
+    }
+
+    private var buttonShadowOpacity: Double {
+        switch tone {
+        case .amber:
+            return isPrimary ? 0.12 : 0.055
+        default:
+            return isPrimary ? 0.22 : 0.10
         }
     }
 
@@ -5382,19 +5818,24 @@ private struct ReviewActionButton: View {
             return KikariaTheme.sky
         case .green:
             return KikariaTheme.masteredGreen
+        case .amber:
+            return KikariaTheme.nextAmber
+        case .red:
+            return KikariaTheme.removeCoral
         }
     }
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(KikariaTypography.chineseButton())
-                .foregroundStyle(isPrimary ? .white : KikariaTheme.deepText)
+            content
+                .foregroundStyle(foregroundColor)
+                .shadow(color: textShadowColor, radius: tone == .amber ? 4 : 0, y: tone == .amber ? 1 : 0)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 19)
+                .frame(minHeight: minHeight)
                 .background {
                     RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .fill(isPrimary ? primaryFill : AnyShapeStyle(.white.opacity(0.46)))
+                        .fill(isPrimary ? primaryFill : secondaryFill)
                 }
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
                 .overlay {
@@ -5404,7 +5845,7 @@ private struct ReviewActionButton: View {
                                 colors: [
                                     Color.white.opacity(isPrimary ? 0.44 : 0.48),
                                     Color.white.opacity(0.12),
-                                    shadowColor.opacity(0.18)
+                                    shadowColor.opacity(strokeAccentOpacity)
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -5412,16 +5853,34 @@ private struct ReviewActionButton: View {
                             lineWidth: 1
                         )
                 }
-                .shadow(color: shadowColor.opacity(isPrimary ? 0.22 : 0.10), radius: 16, y: 9)
+                .shadow(color: shadowColor.opacity(buttonShadowOpacity), radius: 16, y: 9)
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1 : 0.82)
     }
+
+    @ViewBuilder
+    private var content: some View {
+        if isVerticalContent {
+            VStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.title3.weight(.semibold))
+
+                Text(title)
+                    .font(KikariaTypography.chineseButton())
+            }
+            .frame(maxWidth: .infinity)
+        } else {
+            Label(title, systemImage: systemImage)
+                .font(KikariaTypography.chineseButton())
+        }
+    }
 }
 
 private struct MasteredReviewButton: View {
     let isMastered: Bool
+    var minHeight: CGFloat? = nil
     let action: () -> Void
 
     var body: some View {
@@ -5437,6 +5896,7 @@ private struct MasteredReviewButton: View {
             .foregroundStyle(isMastered ? KikariaTheme.softText : .white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 19)
+            .frame(minHeight: minHeight)
             .background {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(
@@ -5509,7 +5969,24 @@ struct ReinforcementView: View {
     @State private var toastToken = UUID()
 
     private var reinforcedPoints: [KnowledgePoint] {
-        knowledgePoints.filter(\.isReinforced)
+        knowledgePoints
+            .filter { $0.reinforcementCount > 0 }
+            .sorted { lhs, rhs in
+                if lhs.reinforcementCount != rhs.reinforcementCount {
+                    return lhs.reinforcementCount > rhs.reinforcementCount
+                }
+
+                switch (lhs.lastReinforcedAt, rhs.lastReinforcedAt) {
+                case let (lhsDate?, rhsDate?):
+                    return lhsDate > rhsDate
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                case (nil, nil):
+                    return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+                }
+            }
     }
 
     private var filteredReinforcedPoints: [KnowledgePoint] {
@@ -5586,12 +6063,11 @@ struct ReinforcementView: View {
         }
 
         withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
-            knowledgePoints[index].isReinforced = false
-            knowledgePoints[index].updatedAt = Date()
+            knowledgePoints[index].clearReinforcement()
         }
 
         onRecordActivity(.removedReinforcement, point)
-        showToast("\(point.title) 已移除")
+        showToast("\(point.title) 已移出重点集锦")
     }
 
     private func showToast(_ message: String) {
@@ -5665,8 +6141,8 @@ struct MasteredView: View {
                                     ReinforcementCard(
                                         point: point,
                                         removeTitle: "移出已掌握",
-                                        removeSystemImage: "minus.circle",
-                                        removeTint: KikariaTheme.masteredGreen.opacity(0.86)
+                                        removeSystemImage: "minus.circle.fill",
+                                        showsReinforcementCountBadge: false
                                     ) {
                                         removeFromMastered(point)
                                     }
@@ -5790,8 +6266,8 @@ private struct MasteredStartButton: View {
 private struct ReinforcementCard: View {
     let point: KnowledgePoint
     var removeTitle = "移出重点集锦"
-    var removeSystemImage = "minus.circle"
-    var removeTint = Color.red.opacity(0.82)
+    var removeSystemImage = "minus.circle.fill"
+    var showsReinforcementCountBadge = true
     let removeAction: () -> Void
     @GestureState private var dragTranslation: CGSize = .zero
 
@@ -5808,9 +6284,22 @@ private struct ReinforcementCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(point.title)
-                .font(.system(size: 22, weight: .semibold, design: .serif))
-                .foregroundStyle(KikariaTheme.deepText)
+            HStack(alignment: .top, spacing: 12) {
+                Text(point.title)
+                    .font(.system(size: 22, weight: .semibold, design: .serif))
+                    .foregroundStyle(KikariaTheme.deepText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                if showsReinforcementCountBadge, point.reinforcementCount > 0 {
+                    Text("×\(point.reinforcementCount)")
+                        .font(KikariaTypography.number(size: 14, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(KikariaTheme.sky)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 7)
+                        .liquidGlassCard(cornerRadius: 16, material: .ultraThinMaterial, fillOpacity: 0.52, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
+                }
+            }
 
             LightTagRow(tags: point.tags)
 
@@ -5820,14 +6309,35 @@ private struct ReinforcementCard: View {
             FloatingInfoCard(title: "答案", text: point.content)
                 .shadow(color: .clear, radius: 0)
 
-            Button(role: .destructive, action: removeAction) {
+            Button(action: removeAction) {
                 Label(removeTitle, systemImage: removeSystemImage)
                     .font(KikariaTypography.chineseButton(size: 14))
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
+                    .background {
+                        Capsule(style: .continuous)
+                            .fill(KikariaTheme.removeGradient)
+                    }
+                    .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [
+                                        Color.white.opacity(0.48),
+                                        Color.white.opacity(0.12),
+                                        KikariaTheme.removeCoral.opacity(0.22)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    }
+                    .shadow(color: KikariaTheme.removeCoral.opacity(0.18), radius: 14, y: 8)
             }
-            .buttonStyle(.borderless)
-            .tint(removeTint)
+            .buttonStyle(.plain)
         }
         .padding(18)
         .liquidGlassCard(cornerRadius: 30, material: .thinMaterial, fillOpacity: 0.42, strokeOpacity: 0.40, shadowOpacity: 0.12, shadowRadius: 20, shadowY: 12)
@@ -5905,6 +6415,7 @@ private struct FloatingInfoCard: View {
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineSpacing(3)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
         .liquidGlassCard(cornerRadius: 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.42, shadowOpacity: 0.14, shadowRadius: 18, shadowY: 10)
