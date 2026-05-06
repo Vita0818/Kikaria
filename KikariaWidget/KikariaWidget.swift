@@ -1,5 +1,29 @@
 import SwiftUI
+import UIKit
 import WidgetKit
+
+private enum WidgetTheme {
+    private static func adaptive(
+        light: (CGFloat, CGFloat, CGFloat),
+        dark: (CGFloat, CGFloat, CGFloat)
+    ) -> Color {
+        Color(
+            UIColor { traits in
+                let color = traits.userInterfaceStyle == .dark ? dark : light
+                return UIColor(red: color.0, green: color.1, blue: color.2, alpha: 1)
+            }
+        )
+    }
+
+    static let backgroundGradient = LinearGradient(
+        colors: [
+            adaptive(light: (0.93, 0.98, 1.0), dark: (0.02, 0.07, 0.11)),
+            adaptive(light: (0.80, 0.94, 0.98), dark: (0.04, 0.15, 0.20))
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+}
 
 private struct WidgetSnapshot: Codable {
     var presetName: String
@@ -62,27 +86,21 @@ private struct KikariaWidgetProvider: TimelineProvider {
 
 private struct KikariaWidgetView: View {
     @Environment(\.widgetFamily) private var widgetFamily
+    @Environment(\.colorScheme) private var colorScheme
     let entry: KikariaWidgetEntry
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.93, green: 0.98, blue: 1.0),
-                    Color(red: 0.80, green: 0.94, blue: 0.98)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            widgetGradient
 
             Circle()
-                .fill(Color.white.opacity(0.26))
+                .fill(widgetHighlight.opacity(colorScheme == .dark ? 0.16 : 0.26))
                 .frame(width: 118, height: 118)
                 .blur(radius: 1.5)
                 .offset(x: -54, y: -46)
 
             Circle()
-                .fill(Color(red: 0.57, green: 0.88, blue: 0.91).opacity(0.24))
+                .fill(widgetAccent.opacity(colorScheme == .dark ? 0.22 : 0.24))
                 .frame(width: 96, height: 96)
                 .blur(radius: 1.0)
                 .offset(x: 58, y: 48)
@@ -97,24 +115,70 @@ private struct KikariaWidgetView: View {
         .widgetBackground()
     }
 
+    private var widgetGradient: LinearGradient {
+        LinearGradient(
+            colors: colorScheme == .dark
+                ? [
+                    Color(red: 0.02, green: 0.07, blue: 0.11),
+                    Color(red: 0.04, green: 0.15, blue: 0.20)
+                ]
+                : [
+                    Color(red: 0.93, green: 0.98, blue: 1.0),
+                    Color(red: 0.80, green: 0.94, blue: 0.98)
+                ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var widgetPrimaryText: Color {
+        colorScheme == .dark
+            ? Color(red: 0.90, green: 0.96, blue: 1.0)
+            : Color(red: 0.13, green: 0.25, blue: 0.33)
+    }
+
+    private var widgetSecondaryText: Color {
+        colorScheme == .dark
+            ? Color(red: 0.66, green: 0.77, blue: 0.86)
+            : Color(red: 0.42, green: 0.54, blue: 0.62)
+    }
+
+    private var widgetAccent: Color {
+        colorScheme == .dark
+            ? Color(red: 0.32, green: 0.80, blue: 0.82)
+            : Color(red: 0.57, green: 0.88, blue: 0.91)
+    }
+
+    private var widgetHighlight: Color {
+        colorScheme == .dark
+            ? Color(red: 0.25, green: 0.53, blue: 0.70)
+            : .white
+    }
+
+    private var widgetMasteredText: Color {
+        colorScheme == .dark
+            ? Color(red: 0.58, green: 0.94, blue: 0.74)
+            : Color(red: 0.12, green: 0.47, blue: 0.30)
+    }
+
     private var smallContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Kikaria")
                 .font(.system(size: 21, weight: .semibold, design: .serif))
-                .foregroundStyle(Color(red: 0.13, green: 0.25, blue: 0.33))
+                .foregroundStyle(widgetPrimaryText)
 
             Spacer(minLength: 6)
 
             Text(entry.snapshot.presetName)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color(red: 0.42, green: 0.54, blue: 0.62))
+                .foregroundStyle(widgetSecondaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
 
             Text("\(entry.snapshot.masteredCount) / \(entry.snapshot.dailyGoal)")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(Color(red: 0.12, green: 0.47, blue: 0.30))
+                .foregroundStyle(widgetMasteredText)
 
             HStack(spacing: 5) {
                 Image(systemName: "calendar")
@@ -122,7 +186,7 @@ private struct KikariaWidgetView: View {
                 Text(countdownText)
                     .font(.system(size: 12, weight: .semibold))
             }
-            .foregroundStyle(Color(red: 0.39, green: 0.73, blue: 0.96))
+            .foregroundStyle(colorScheme == .dark ? Color(red: 0.62, green: 0.86, blue: 1.0) : Color(red: 0.39, green: 0.73, blue: 0.96))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(16)
@@ -133,18 +197,18 @@ private struct KikariaWidgetView: View {
             VStack(alignment: .leading, spacing: 9) {
                 Text("Kikaria")
                     .font(.system(size: 24, weight: .semibold, design: .serif))
-                    .foregroundStyle(Color(red: 0.13, green: 0.25, blue: 0.33))
+                    .foregroundStyle(widgetPrimaryText)
 
                 Text(entry.snapshot.presetName)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color(red: 0.42, green: 0.54, blue: 0.62))
+                    .foregroundStyle(widgetSecondaryText)
                     .lineLimit(1)
 
                 Spacer()
 
                 Text("今日复习 \(entry.snapshot.todayReviewCount) 次")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(red: 0.42, green: 0.54, blue: 0.62))
+                    .foregroundStyle(widgetSecondaryText)
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -166,6 +230,7 @@ private struct KikariaWidgetView: View {
 }
 
 private struct WidgetMetricBubble: View {
+    @Environment(\.colorScheme) private var colorScheme
     let title: String
     let value: String
 
@@ -173,22 +238,22 @@ private struct WidgetMetricBubble: View {
         HStack(spacing: 8) {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color(red: 0.42, green: 0.54, blue: 0.62))
+                .foregroundStyle(colorScheme == .dark ? Color(red: 0.66, green: 0.77, blue: 0.86) : Color(red: 0.42, green: 0.54, blue: 0.62))
                 .frame(width: 42, alignment: .leading)
 
             Text(value)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(Color(red: 0.13, green: 0.25, blue: 0.33))
+                .foregroundStyle(colorScheme == .dark ? Color(red: 0.90, green: 0.96, blue: 1.0) : Color(red: 0.13, green: 0.25, blue: 0.33))
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(.white.opacity(0.48), in: Capsule())
+        .background((colorScheme == .dark ? Color(red: 0.06, green: 0.13, blue: 0.18).opacity(0.52) : .white.opacity(0.48)), in: Capsule())
         .overlay {
             Capsule()
-                .stroke(.white.opacity(0.42), lineWidth: 1)
+                .stroke(.white.opacity(colorScheme == .dark ? 0.22 : 0.42), lineWidth: 1)
         }
     }
 }
@@ -198,26 +263,10 @@ private extension View {
     func widgetBackground() -> some View {
         if #available(iOSApplicationExtension 17.0, *) {
             containerBackground(for: .widget) {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.93, green: 0.98, blue: 1.0),
-                        Color(red: 0.80, green: 0.94, blue: 0.98)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                WidgetTheme.backgroundGradient
             }
         } else {
-            background(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.93, green: 0.98, blue: 1.0),
-                        Color(red: 0.80, green: 0.94, blue: 0.98)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            background(WidgetTheme.backgroundGradient)
         }
     }
 }

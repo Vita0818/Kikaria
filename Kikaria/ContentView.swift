@@ -12,23 +12,61 @@ import UserNotifications
 import UniformTypeIdentifiers
 
 private enum KikariaTheme {
-    static let sky = Color(red: 0.39, green: 0.73, blue: 0.96)
-    static let cyan = Color(red: 0.57, green: 0.88, blue: 0.91)
-    static let mist = Color(red: 0.91, green: 0.97, blue: 0.99)
-    static let blueGray = Color(red: 0.62, green: 0.72, blue: 0.80)
-    static let masteredGreen = Color(red: 0.36, green: 0.76, blue: 0.54)
-    static let masteredDeepGreen = Color(red: 0.12, green: 0.47, blue: 0.30)
-    static let masteredCompletedGreen = Color(red: 0.79, green: 0.93, blue: 0.84)
-    static let nextAmber = Color(red: 0.54, green: 0.49, blue: 0.75)
-    static let removeCoral = Color(red: 0.86, green: 0.32, blue: 0.30)
-    static let deepText = Color(red: 0.13, green: 0.25, blue: 0.33)
-    static let softText = Color(red: 0.42, green: 0.54, blue: 0.62)
+    private struct RGBA {
+        let red: CGFloat
+        let green: CGFloat
+        let blue: CGFloat
+        let alpha: CGFloat
+    }
+
+    private static func rgb(_ red: Double, _ green: Double, _ blue: Double, _ alpha: Double = 1) -> RGBA {
+        RGBA(
+            red: CGFloat(red),
+            green: CGFloat(green),
+            blue: CGFloat(blue),
+            alpha: CGFloat(alpha)
+        )
+    }
+
+    private static func adaptive(light: RGBA, dark: RGBA) -> Color {
+        Color(
+            UIColor { traits in
+                let color = traits.userInterfaceStyle == .dark ? dark : light
+                return UIColor(
+                    red: color.red,
+                    green: color.green,
+                    blue: color.blue,
+                    alpha: color.alpha
+                )
+            }
+        )
+    }
+
+    static let sky = adaptive(light: rgb(0.39, 0.73, 0.96), dark: rgb(0.30, 0.72, 0.96))
+    static let cyan = adaptive(light: rgb(0.57, 0.88, 0.91), dark: rgb(0.32, 0.80, 0.82))
+    static let mist = adaptive(light: rgb(0.91, 0.97, 0.99), dark: rgb(0.08, 0.16, 0.22))
+    static let blueGray = adaptive(light: rgb(0.62, 0.72, 0.80), dark: rgb(0.48, 0.61, 0.72))
+    static let masteredGreen = adaptive(light: rgb(0.36, 0.76, 0.54), dark: rgb(0.32, 0.82, 0.60))
+    static let masteredDeepGreen = adaptive(light: rgb(0.12, 0.47, 0.30), dark: rgb(0.58, 0.94, 0.74))
+    static let masteredCompletedGreen = adaptive(light: rgb(0.79, 0.93, 0.84), dark: rgb(0.18, 0.38, 0.30))
+    static let nextAmber = adaptive(light: rgb(0.54, 0.49, 0.75), dark: rgb(0.55, 0.46, 0.82))
+    static let removeCoral = adaptive(light: rgb(0.86, 0.32, 0.30), dark: rgb(0.98, 0.42, 0.42))
+    static let deepText = adaptive(light: rgb(0.13, 0.25, 0.33), dark: rgb(0.90, 0.96, 1.0))
+    static let softText = adaptive(light: rgb(0.42, 0.54, 0.62), dark: rgb(0.66, 0.77, 0.86))
+    static let tertiaryText = adaptive(light: rgb(0.58, 0.68, 0.76), dark: rgb(0.43, 0.55, 0.66))
+    static let glassSurface = adaptive(light: rgb(1, 1, 1), dark: rgb(0.06, 0.13, 0.18))
+    static let glassStrokeAccent = adaptive(light: rgb(0.57, 0.88, 0.91), dark: rgb(0.42, 0.84, 0.93))
+    static let shadow = adaptive(light: rgb(0.39, 0.73, 0.96), dark: rgb(0.00, 0.02, 0.05))
+    static let bubbleMint = adaptive(light: rgb(0.73, 0.95, 0.90), dark: rgb(0.20, 0.58, 0.54))
+    static let bubbleLavender = adaptive(light: rgb(0.75, 0.78, 1.0), dark: rgb(0.32, 0.30, 0.58))
+    static let bubbleGreen = adaptive(light: rgb(0.78, 0.95, 0.74), dark: rgb(0.20, 0.50, 0.34))
+    static let bubbleWhite = adaptive(light: rgb(1, 1, 1), dark: rgb(0.15, 0.23, 0.33))
 
     static let pageGradient = LinearGradient(
         colors: [
-            Color(red: 0.93, green: 0.98, blue: 1.0),
-            Color(red: 0.86, green: 0.96, blue: 0.98),
-            Color(red: 0.96, green: 0.98, blue: 1.0)
+            adaptive(light: rgb(0.93, 0.98, 1.0), dark: rgb(0.02, 0.07, 0.11)),
+            adaptive(light: rgb(0.86, 0.96, 0.98), dark: rgb(0.04, 0.15, 0.20)),
+            adaptive(light: rgb(0.96, 0.98, 1.0), dark: rgb(0.01, 0.04, 0.08))
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -36,8 +74,8 @@ private enum KikariaTheme {
 
     static let actionGradient = LinearGradient(
         colors: [
-            Color(red: 0.35, green: 0.72, blue: 0.97),
-            Color(red: 0.50, green: 0.87, blue: 0.89)
+            adaptive(light: rgb(0.35, 0.72, 0.97), dark: rgb(0.08, 0.44, 0.70)),
+            adaptive(light: rgb(0.50, 0.87, 0.89), dark: rgb(0.06, 0.62, 0.66))
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -45,8 +83,8 @@ private enum KikariaTheme {
 
     static let masteredGradient = LinearGradient(
         colors: [
-            Color(red: 0.39, green: 0.78, blue: 0.55),
-            Color(red: 0.68, green: 0.91, blue: 0.76)
+            adaptive(light: rgb(0.39, 0.78, 0.55), dark: rgb(0.11, 0.54, 0.36)),
+            adaptive(light: rgb(0.68, 0.91, 0.76), dark: rgb(0.20, 0.75, 0.54))
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -54,8 +92,8 @@ private enum KikariaTheme {
 
     static let masteredActionGradient = LinearGradient(
         colors: [
-            Color(red: 0.25, green: 0.66, blue: 0.42),
-            Color(red: 0.54, green: 0.82, blue: 0.63)
+            adaptive(light: rgb(0.25, 0.66, 0.42), dark: rgb(0.09, 0.48, 0.33)),
+            adaptive(light: rgb(0.54, 0.82, 0.63), dark: rgb(0.18, 0.70, 0.49))
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -63,8 +101,8 @@ private enum KikariaTheme {
 
     static let nextGradient = LinearGradient(
         colors: [
-            Color(red: 0.78, green: 0.72, blue: 0.94),
-            Color(red: 0.58, green: 0.53, blue: 0.80)
+            adaptive(light: rgb(0.78, 0.72, 0.94), dark: rgb(0.35, 0.29, 0.58)),
+            adaptive(light: rgb(0.58, 0.53, 0.80), dark: rgb(0.50, 0.40, 0.76))
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -72,8 +110,8 @@ private enum KikariaTheme {
 
     static let removeGradient = LinearGradient(
         colors: [
-            Color(red: 0.90, green: 0.38, blue: 0.35),
-            Color(red: 0.98, green: 0.58, blue: 0.50)
+            adaptive(light: rgb(0.90, 0.38, 0.35), dark: rgb(0.58, 0.14, 0.16)),
+            adaptive(light: rgb(0.98, 0.58, 0.50), dark: rgb(0.86, 0.28, 0.28))
         ],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -81,6 +119,7 @@ private enum KikariaTheme {
 }
 
 private struct LiquidGlassCardModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
     let material: Material
     let fillOpacity: Double
@@ -91,11 +130,15 @@ private struct LiquidGlassCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let adjustedFillOpacity = colorScheme == .dark ? min(fillOpacity * 0.82, 0.38) : fillOpacity
+        let adjustedStrokeOpacity = colorScheme == .dark ? min(strokeOpacity * 0.86, 0.34) : strokeOpacity
+        let accentOpacity = colorScheme == .dark ? 0.22 : 0.13
+        let baseShadowOpacity = colorScheme == .dark ? max(shadowOpacity * 0.58, 0.08) : shadowOpacity
 
         content
             .background {
                 shape
-                    .fill(Color.white.opacity(fillOpacity))
+                    .fill(KikariaTheme.glassSurface.opacity(adjustedFillOpacity))
             }
             .background(material, in: shape)
             .overlay {
@@ -103,9 +146,9 @@ private struct LiquidGlassCardModifier: ViewModifier {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(strokeOpacity),
-                                Color.white.opacity(strokeOpacity * 0.28),
-                                KikariaTheme.sky.opacity(0.13)
+                                Color.white.opacity(adjustedStrokeOpacity),
+                                Color.white.opacity(adjustedStrokeOpacity * 0.24),
+                                KikariaTheme.glassStrokeAccent.opacity(accentOpacity)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -115,17 +158,18 @@ private struct LiquidGlassCardModifier: ViewModifier {
             }
             .overlay {
                 shape
-                    .stroke(Color.white.opacity(0.18), lineWidth: 0.5)
+                    .stroke(Color.white.opacity(colorScheme == .dark ? 0.10 : 0.18), lineWidth: 0.5)
                     .blur(radius: 0.4)
                     .offset(y: 0.5)
                     .mask(shape)
             }
-            .shadow(color: KikariaTheme.sky.opacity(shadowOpacity), radius: shadowRadius, x: 0, y: shadowY)
-            .shadow(color: Color.black.opacity(0.025), radius: shadowRadius * 0.55, x: 0, y: shadowY * 0.55)
+            .shadow(color: KikariaTheme.shadow.opacity(baseShadowOpacity), radius: shadowRadius, x: 0, y: shadowY)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.025), radius: shadowRadius * 0.55, x: 0, y: shadowY * 0.55)
     }
 }
 
 private struct LiquidGlassCapsuleModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let material: Material
     let fillOpacity: Double
     let strokeOpacity: Double
@@ -134,10 +178,14 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
     let shadowY: CGFloat
 
     func body(content: Content) -> some View {
+        let adjustedFillOpacity = colorScheme == .dark ? min(fillOpacity * 0.82, 0.38) : fillOpacity
+        let adjustedStrokeOpacity = colorScheme == .dark ? min(strokeOpacity * 0.86, 0.34) : strokeOpacity
+        let accentOpacity = colorScheme == .dark ? 0.24 : 0.16
+
         content
             .background {
                 Capsule()
-                    .fill(Color.white.opacity(fillOpacity))
+                    .fill(KikariaTheme.glassSurface.opacity(adjustedFillOpacity))
             }
             .background(material, in: Capsule())
             .overlay {
@@ -145,9 +193,9 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(strokeOpacity),
-                                Color.white.opacity(strokeOpacity * 0.28),
-                                KikariaTheme.cyan.opacity(0.16)
+                                Color.white.opacity(adjustedStrokeOpacity),
+                                Color.white.opacity(adjustedStrokeOpacity * 0.24),
+                                KikariaTheme.cyan.opacity(accentOpacity)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -155,11 +203,12 @@ private struct LiquidGlassCapsuleModifier: ViewModifier {
                         lineWidth: 1
                     )
             }
-            .shadow(color: KikariaTheme.sky.opacity(shadowOpacity), radius: shadowRadius, y: shadowY)
+            .shadow(color: KikariaTheme.shadow.opacity(colorScheme == .dark ? max(shadowOpacity * 0.58, 0.08) : shadowOpacity), radius: shadowRadius, y: shadowY)
     }
 }
 
 private struct LiquidGlassCircleModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
     let material: Material
     let fillOpacity: Double
     let strokeOpacity: Double
@@ -168,10 +217,14 @@ private struct LiquidGlassCircleModifier: ViewModifier {
     let shadowY: CGFloat
 
     func body(content: Content) -> some View {
+        let adjustedFillOpacity = colorScheme == .dark ? min(fillOpacity * 0.82, 0.38) : fillOpacity
+        let adjustedStrokeOpacity = colorScheme == .dark ? min(strokeOpacity * 0.86, 0.34) : strokeOpacity
+        let accentOpacity = colorScheme == .dark ? 0.24 : 0.12
+
         content
             .background {
                 Circle()
-                    .fill(Color.white.opacity(fillOpacity))
+                    .fill(KikariaTheme.glassSurface.opacity(adjustedFillOpacity))
             }
             .background(material, in: Circle())
             .overlay {
@@ -179,9 +232,9 @@ private struct LiquidGlassCircleModifier: ViewModifier {
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(strokeOpacity),
-                                Color.white.opacity(strokeOpacity * 0.22),
-                                KikariaTheme.sky.opacity(0.12)
+                                Color.white.opacity(adjustedStrokeOpacity),
+                                Color.white.opacity(adjustedStrokeOpacity * 0.22),
+                                KikariaTheme.sky.opacity(accentOpacity)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -189,7 +242,7 @@ private struct LiquidGlassCircleModifier: ViewModifier {
                         lineWidth: 1
                     )
             }
-            .shadow(color: KikariaTheme.sky.opacity(shadowOpacity), radius: shadowRadius, y: shadowY)
+            .shadow(color: KikariaTheme.shadow.opacity(colorScheme == .dark ? max(shadowOpacity * 0.58, 0.08) : shadowOpacity), radius: shadowRadius, y: shadowY)
     }
 }
 
@@ -441,13 +494,14 @@ private struct PresetLibrarySnapshot: Codable {
 
 private struct KikariaAppState: Codable {
     static let storageKey = "kikaria.appStateJSON"
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     var schemaVersion: Int
     var presets: [KnowledgePreset]
     var presetStates: [String: PresetStudyState]
     var currentPresetID: String
     var userProfile: UserProfile
+    var hasCompletedProfileSetup: Bool
     var hasCompletedOnboarding: Bool
 
     init(
@@ -456,6 +510,7 @@ private struct KikariaAppState: Codable {
         presetStates: [String: PresetStudyState],
         currentPresetID: String,
         userProfile: UserProfile,
+        hasCompletedProfileSetup: Bool,
         hasCompletedOnboarding: Bool
     ) {
         self.schemaVersion = schemaVersion
@@ -463,6 +518,7 @@ private struct KikariaAppState: Codable {
         self.presetStates = presetStates
         self.currentPresetID = currentPresetID
         self.userProfile = userProfile
+        self.hasCompletedProfileSetup = hasCompletedProfileSetup
         self.hasCompletedOnboarding = hasCompletedOnboarding
     }
 
@@ -472,6 +528,7 @@ private struct KikariaAppState: Codable {
         case presetStates
         case currentPresetID
         case userProfile
+        case hasCompletedProfileSetup
         case hasCompletedOnboarding
     }
 
@@ -481,9 +538,17 @@ private struct KikariaAppState: Codable {
         presets = try container.decodeIfPresent([KnowledgePreset].self, forKey: .presets) ?? KnowledgePreset.all
         presetStates = try container.decodeIfPresent([String: PresetStudyState].self, forKey: .presetStates) ?? [:]
         currentPresetID = try container.decodeIfPresent(String.self, forKey: .currentPresetID) ?? KnowledgePreset.defaultPresetID
-        userProfile = try container.decodeIfPresent(UserProfile.self, forKey: .userProfile) ?? UserProfile()
+        let decodedProfile = try container.decodeIfPresent(UserProfile.self, forKey: .userProfile) ?? UserProfile()
+        userProfile = decodedProfile
+        hasCompletedProfileSetup = try container.decodeIfPresent(Bool.self, forKey: .hasCompletedProfileSetup) ?? (decodedProfile != UserProfile())
         hasCompletedOnboarding = try container.decodeIfPresent(Bool.self, forKey: .hasCompletedOnboarding) ?? false
     }
+}
+
+private enum PresetDeleteOutcome {
+    case deleted(String)
+    case blockedLastPreset
+    case notFound
 }
 
 private enum PresetCreationOutcome {
@@ -756,6 +821,8 @@ struct ContentView: View {
     @State private var dangerPercent = 80
     @State private var hasLoadedInitialPresetState = false
     @State private var isApplyingPresetState = false
+    @State private var hasCompletedProfileSetup = false
+    @State private var isShowingProfileSetup = false
     @State private var hasCompletedOnboarding = false
     @State private var isShowingOnboarding = false
 
@@ -975,6 +1042,7 @@ struct ContentView: View {
                         presets: presets,
                         currentPresetID: $currentPresetID,
                         switchPreset: switchToPreset,
+                        deletePreset: deletePresetFromSelection,
                         onUploadNewPreset: {
                             navigationPath.append(.newPreset)
                         },
@@ -1031,7 +1099,9 @@ struct ContentView: View {
             }
             .onAppear {
                 loadInitialPresetStateIfNeeded()
-                if !hasCompletedOnboarding {
+                if !hasCompletedProfileSetup {
+                    isShowingProfileSetup = true
+                } else if !hasCompletedOnboarding {
                     isShowingOnboarding = true
                 }
             }
@@ -1048,6 +1118,9 @@ struct ContentView: View {
                 persistCurrentStudyStateIfReady()
             }
             .onChange(of: userProfile) { _ in
+                saveAppStateIfReady()
+            }
+            .onChange(of: hasCompletedProfileSetup) { _ in
                 saveAppStateIfReady()
             }
             .onChange(of: hasCompletedOnboarding) { _ in
@@ -1069,6 +1142,19 @@ struct ContentView: View {
                     isShowingOnboarding = false
                 }
                 .interactiveDismissDisabled(!hasCompletedOnboarding)
+            }
+            .fullScreenCover(isPresented: $isShowingProfileSetup) {
+                InitialProfileSetupView(profile: $userProfile) {
+                    hasCompletedProfileSetup = true
+                    isShowingProfileSetup = false
+
+                    if !hasCompletedOnboarding {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            isShowingOnboarding = true
+                        }
+                    }
+                }
+                .interactiveDismissDisabled(true)
             }
         }
     }
@@ -1362,6 +1448,7 @@ struct ContentView: View {
         }
 
         userProfile = UserProfile()
+        hasCompletedProfileSetup = false
         ensurePresetStatesExist()
         #if DEBUG
         print("Kikaria app state loaded")
@@ -1369,9 +1456,15 @@ struct ContentView: View {
     }
 
     private func applyLoadedAppState(_ appState: KikariaAppState) {
-        presets = mergedPresets(with: appState.presets)
+        if appState.schemaVersion >= 2 {
+            presets = appState.presets.isEmpty ? KnowledgePreset.all : appState.presets
+        } else {
+            presets = mergedPresets(with: appState.presets)
+        }
+
         presetStates = appState.presetStates
         userProfile = appState.userProfile
+        hasCompletedProfileSetup = appState.hasCompletedProfileSetup
         hasCompletedOnboarding = appState.hasCompletedOnboarding
 
         if presets.contains(where: { $0.id == appState.currentPresetID }) {
@@ -1428,6 +1521,7 @@ struct ContentView: View {
             presetStates: states,
             currentPresetID: currentPresetID,
             userProfile: userProfile,
+            hasCompletedProfileSetup: hasCompletedProfileSetup,
             hasCompletedOnboarding: hasCompletedOnboarding
         )
 
@@ -1511,24 +1605,44 @@ struct ContentView: View {
     }
 
     private func deletePreset(_ presetID: String) {
-        guard let preset = presets.first(where: { $0.id == presetID }),
-              !preset.isBuiltIn,
-              presets.count > 1
-        else {
-            return
+        _ = deletePresetFromSelection(presetID)
+    }
+
+    private func deletePresetFromSelection(_ presetID: String) -> PresetDeleteOutcome {
+        guard let preset = presets.first(where: { $0.id == presetID }) else {
+            return .notFound
         }
 
+        guard presets.count > 1 else {
+            return .blockedLastPreset
+        }
+
+        let deletedName = preset.name
         let wasCurrentPreset = presetID == currentPresetID
         presets.removeAll { $0.id == presetID }
         presetStates[presetID] = nil
         KikariaNotificationManager.cancelStudyProgressWarning(for: presetID)
 
         if wasCurrentPreset, let nextPreset = presets.first {
-            _ = switchToPreset(nextPreset)
+            let nextState = studyState(for: nextPreset) ?? initialStudyState(for: nextPreset)
+
+            if let nextState {
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.9)) {
+                    restorePresetState(nextState)
+                }
+            } else {
+                currentPresetID = nextPreset.id
+                persistLibrary()
+                rescheduleAllPresetNotifications()
+                updateWidgetSnapshot()
+            }
         } else {
             persistLibrary()
             rescheduleAllPresetNotifications()
+            updateWidgetSnapshot()
         }
+
+        return .deleted(deletedName)
     }
 
     private func knowledgePointEditorContext(presetID: String, pointID: UUID?) -> (presetName: String, point: KnowledgePoint?)? {
@@ -2994,7 +3108,7 @@ private struct CountdownDateRangePickerBubble: View {
             if let errorMessage {
                 Text(errorMessage)
                     .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
-                    .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                    .foregroundStyle(KikariaTheme.removeCoral)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -3076,9 +3190,11 @@ private struct PresetSelectionView: View {
     let presets: [KnowledgePreset]
     @Binding var currentPresetID: String
     let switchPreset: (KnowledgePreset) -> Bool
+    let deletePreset: (String) -> PresetDeleteOutcome
     let onUploadNewPreset: () -> Void
     let onEditPreset: (KnowledgePreset) -> Void
     @State private var pendingPreset: KnowledgePreset?
+    @State private var pendingDeletePreset: KnowledgePreset?
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
 
@@ -3123,6 +3239,9 @@ private struct PresetSelectionView: View {
                             },
                             onEdit: {
                                 onEditPreset(preset)
+                            },
+                            onDelete: {
+                                pendingDeletePreset = preset
                             }
                         )
                         .buttonStyle(.plain)
@@ -3150,6 +3269,17 @@ private struct PresetSelectionView: View {
         } message: {
             Text("将切换到另一套知识点。当前预设的学习进度会被保留。")
         }
+        .alert("删除预设？", isPresented: isConfirmingPresetDelete) {
+            Button("取消", role: .cancel) {
+                pendingDeletePreset = nil
+            }
+
+            Button("删除", role: .destructive) {
+                confirmPresetDelete()
+            }
+        } message: {
+            Text("删除后将移除该预设的所有知识点、重点集锦、已掌握状态和学习记录。")
+        }
     }
 
     private var isConfirmingPreset: Binding<Bool> {
@@ -3158,6 +3288,17 @@ private struct PresetSelectionView: View {
             set: { isPresented in
                 if !isPresented {
                     pendingPreset = nil
+                }
+            }
+        )
+    }
+
+    private var isConfirmingPresetDelete: Binding<Bool> {
+        Binding(
+            get: { pendingDeletePreset != nil },
+            set: { isPresented in
+                if !isPresented {
+                    pendingDeletePreset = nil
                 }
             }
         )
@@ -3174,6 +3315,23 @@ private struct PresetSelectionView: View {
             showToast("已切换至「\(preset.name)」")
         } else {
             showToast("预设解析失败，请稍后再试")
+        }
+    }
+
+    private func confirmPresetDelete() {
+        guard let preset = pendingDeletePreset else {
+            return
+        }
+
+        pendingDeletePreset = nil
+
+        switch deletePreset(preset.id) {
+        case .deleted(let name):
+            showToast("已删除「\(name)」")
+        case .blockedLastPreset:
+            showToast("至少需要保留一个预设")
+        case .notFound:
+            showToast("预设不存在")
         }
     }
 
@@ -3202,6 +3360,7 @@ private struct PresetCard: View {
     let isCurrent: Bool
     let onSelect: () -> Void
     let onEdit: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
@@ -3233,14 +3392,25 @@ private struct PresetCard: View {
 
                 Spacer()
 
-                Button(action: onEdit) {
-                    Image(systemName: "pencil")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(KikariaTheme.deepText)
-                        .frame(width: 34, height: 34)
-                        .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 8, shadowY: 4)
+                HStack(spacing: 8) {
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .frame(width: 34, height: 34)
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 8, shadowY: 4)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(KikariaTheme.removeCoral)
+                            .frame(width: 34, height: 34)
+                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 8, shadowY: 4)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             Text(preset.description)
@@ -3366,7 +3536,7 @@ private struct NewPresetView: View {
                         if let errorMessage {
                             Text(errorMessage)
                                 .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
-                                .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                .foregroundStyle(KikariaTheme.removeCoral)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(14)
                                 .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
@@ -3875,7 +4045,7 @@ private struct EditPresetView: View {
                                         } label: {
                                             Image(systemName: "trash")
                                                 .font(.headline.weight(.semibold))
-                                                .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                                .foregroundStyle(KikariaTheme.removeCoral)
                                                 .frame(width: 34, height: 34)
                                                 .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.34, shadowOpacity: 0.05, shadowRadius: 7, shadowY: 3)
                                         }
@@ -3893,7 +4063,7 @@ private struct EditPresetView: View {
                             } label: {
                                 Text("删除此预设")
                                     .font(KikariaTypography.chineseButton())
-                                    .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                    .foregroundStyle(KikariaTheme.removeCoral)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 15)
                                     .liquidGlassCard(cornerRadius: 22, fillOpacity: 0.42, strokeOpacity: 0.36, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
@@ -4061,7 +4231,7 @@ private struct EditKnowledgePointView: View {
                         if let errorMessage {
                             Text(errorMessage)
                                 .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
-                                .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                                .foregroundStyle(KikariaTheme.removeCoral)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(14)
                                 .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
@@ -4129,6 +4299,105 @@ private struct EditableLongTextField: View {
                 .frame(minHeight: minHeight)
                 .liquidGlassCard(cornerRadius: 22, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.32, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
         }
+    }
+}
+
+private struct InitialProfileSetupView: View {
+    @Binding var profile: UserProfile
+    let onComplete: () -> Void
+    @State private var displayName = ""
+    @State private var userHandle = ""
+
+    private var trimmedDisplayName: String {
+        displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSave: Bool {
+        !trimmedDisplayName.isEmpty
+    }
+
+    var body: some View {
+        ZStack {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+
+            VStack(spacing: 22) {
+                VStack(spacing: 10) {
+                    Text("欢迎使用 Kikaria")
+                        .font(KikariaTypography.chineseTitle(size: 30, weight: .bold))
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Text("先设置你的个人资料")
+                        .font(KikariaTypography.chineseBody(size: 16, weight: .medium))
+                        .foregroundStyle(KikariaTheme.softText)
+                }
+
+                ProfileAvatarView(
+                    systemName: profile.avatarSystemName,
+                    imageData: profile.avatarImageData,
+                    size: 88
+                )
+                .padding(.top, 4)
+
+                VStack(spacing: 14) {
+                    ProfileTextField(title: "昵称", text: $displayName)
+                    ProfileTextField(title: "用户名", text: $userHandle)
+                }
+
+                Button(action: saveProfile) {
+                    Text("开始使用")
+                        .font(KikariaTypography.chineseButton(size: 17))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(KikariaTheme.actionGradient, in: Capsule())
+                        .shadow(color: KikariaTheme.sky.opacity(canSave ? 0.22 : 0.04), radius: 16, y: 8)
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSave)
+                .opacity(canSave ? 1 : 0.48)
+                .padding(.top, 4)
+            }
+            .padding(24)
+            .frame(maxWidth: 370)
+            .liquidGlassCard(cornerRadius: 34, material: .regularMaterial, fillOpacity: 0.46, strokeOpacity: 0.46, shadowOpacity: 0.16, shadowRadius: 24, shadowY: 14)
+            .padding(.horizontal, 24)
+        }
+        .onAppear {
+            if displayName.isEmpty {
+                displayName = profile.displayName == "Vita" ? "" : profile.displayName
+            }
+
+            if userHandle.isEmpty {
+                userHandle = profile.userHandle == "vita_0818" ? "" : profile.userHandle
+            }
+        }
+    }
+
+    private func saveProfile() {
+        guard canSave else {
+            return
+        }
+
+        let trimmedHandle = userHandle
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+        profile.displayName = trimmedDisplayName
+        profile.userHandle = trimmedHandle.isEmpty ? generatedHandle(from: trimmedDisplayName) : trimmedHandle
+        onComplete()
+    }
+
+    private func generatedHandle(from name: String) -> String {
+        let normalized = name
+            .lowercased()
+            .unicodeScalars
+            .map { scalar in
+                CharacterSet.alphanumerics.contains(scalar) ? String(scalar) : "_"
+            }
+            .joined()
+            .trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+
+        return normalized.isEmpty ? "kikaria_user" : normalized
     }
 }
 
@@ -4382,7 +4651,7 @@ private struct MarkdownEditorView: View {
                     if let errorMessage {
                         Text(errorMessage)
                             .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
-                            .foregroundStyle(Color(red: 0.72, green: 0.24, blue: 0.24))
+                            .foregroundStyle(KikariaTheme.removeCoral)
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
@@ -4458,7 +4727,7 @@ private struct StartReviewButton: View {
                 ZStack {
                     DecorativeBubble(
                         size: 92,
-                        colors: [KikariaTheme.cyan, Color(red: 0.73, green: 0.95, blue: 0.90)],
+                        colors: [KikariaTheme.cyan, KikariaTheme.bubbleMint],
                         opacity: 0.48
                     )
                     .rotationEffect(.degrees(-orbitDegrees))
@@ -4467,7 +4736,7 @@ private struct StartReviewButton: View {
 
                     DecorativeBubble(
                         size: 80,
-                        colors: [Color(red: 0.75, green: 0.78, blue: 1.0), KikariaTheme.mist],
+                        colors: [KikariaTheme.bubbleLavender, KikariaTheme.mist],
                         opacity: 0.42
                     )
                     .rotationEffect(.degrees(-orbitDegrees))
@@ -4476,7 +4745,7 @@ private struct StartReviewButton: View {
 
                     DecorativeBubble(
                         size: 78,
-                        colors: [Color(red: 0.78, green: 0.95, blue: 0.74), KikariaTheme.cyan],
+                        colors: [KikariaTheme.bubbleGreen, KikariaTheme.cyan],
                         opacity: 0.38
                     )
                     .rotationEffect(.degrees(-orbitDegrees))
@@ -4485,7 +4754,7 @@ private struct StartReviewButton: View {
 
                     DecorativeBubble(
                         size: 74,
-                        colors: [KikariaTheme.sky, Color.white],
+                        colors: [KikariaTheme.sky, KikariaTheme.bubbleWhite],
                         opacity: 0.36
                     )
                     .rotationEffect(.degrees(-orbitDegrees))
@@ -4647,7 +4916,7 @@ private struct HomeEntryCard: View {
         .frame(maxWidth: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.white.opacity(0.46))
+                .fill(KikariaTheme.glassSurface.opacity(0.46))
         }
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .shadow(color: KikariaTheme.sky.opacity(0.12), radius: 18, y: 10)
@@ -4914,7 +5183,7 @@ private struct ScopeTagChip: View {
             .padding(.horizontal, 14)
             .background {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(isSelected ? KikariaTheme.sky : .white.opacity(0.76))
+                    .fill(isSelected ? KikariaTheme.sky : KikariaTheme.glassSurface.opacity(0.76))
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -4985,6 +5254,167 @@ struct ReviewView: View {
         return todayReviewCount(for: currentPointID)
     }
 
+    private var revealAnimation: Animation {
+        .spring(response: 0.42, dampingFraction: 0.88)
+    }
+
+    private var revealButtons: some View {
+        VStack(spacing: 14) {
+            ReviewActionButton(
+                title: "查看提示",
+                systemImage: "lightbulb",
+                isPrimary: false
+            ) {
+                withAnimation(revealAnimation) {
+                    revealHint()
+                }
+            }
+            .opacity(isShowingHint ? 0 : 1)
+            .allowsHitTesting(!isShowingHint)
+
+            ReviewActionButton(
+                title: "查看答案",
+                systemImage: "doc.text",
+                isPrimary: true
+            ) {
+                withAnimation(revealAnimation) {
+                    revealContent()
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: isShowingHint)
+    }
+
+    @ViewBuilder
+    private func answeredActionGrid(for currentPoint: KnowledgePoint) -> some View {
+        if mode.isReinforcement {
+            ReinforcementReviewAnsweredActionGrid(
+                point: currentPoint,
+                removeFromReinforcement: {
+                    removeCurrentPointFromReinforcement(shouldShowToast: true)
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                },
+                markAsMastered: {
+                    markCurrentPointAsMastered()
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                },
+                next: {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                }
+            )
+        } else if mode.isMastered {
+            MasteredReviewAnsweredActionGrid(
+                point: currentPoint,
+                addToReinforcement: {
+                    addCurrentPointToReinforcementAndAdvance()
+                },
+                removeFromMastered: {
+                    removeCurrentPointFromMastered(shouldShowToast: true)
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                },
+                next: {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                }
+            )
+        } else {
+            NormalReviewAnsweredActionGrid(
+                point: currentPoint,
+                addToReinforcement: {
+                    addCurrentPointToReinforcementAndAdvance()
+                },
+                markAsMastered: {
+                    markCurrentPointAsMastered()
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                },
+                next: {
+                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+                        chooseRandomPoint()
+                    }
+                }
+            )
+        }
+    }
+
+    private var actionRegionMinimumHeight: CGFloat {
+        156
+    }
+
+    private func titleGroup(for currentPoint: KnowledgePoint) -> some View {
+        VStack(spacing: 18) {
+            Text(currentPoint.title)
+                .font(.system(size: 40, weight: .semibold, design: .serif))
+                .foregroundStyle(KikariaTheme.deepText)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.72)
+                .padding(.horizontal, 22)
+
+            LightTagRow(tags: currentPoint.tags)
+
+            TodayReviewCountPill(count: currentTodayReviewCount)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func centralContentStack(for currentPoint: KnowledgePoint) -> some View {
+        VStack(spacing: 14) {
+            titleGroup(for: currentPoint)
+
+            if isShowingHint {
+                FloatingInfoCard(title: "提示", text: currentPoint.hint)
+                    .transition(.move(edge: .bottom))
+            }
+
+            if isShowingContent {
+                FloatingInfoCard(title: "答案", text: currentPoint.content)
+                    .transition(.move(edge: .bottom))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(revealAnimation, value: isShowingHint)
+        .animation(revealAnimation, value: isShowingContent)
+    }
+
+    private func contentRegion(for currentPoint: KnowledgePoint) -> some View {
+        GeometryReader { proxy in
+            ScrollView {
+                centralContentStack(for: currentPoint)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: proxy.size.height, alignment: .center)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .highPriorityGestureIf(!isShowingContent, preAnswerSwipeUpGesture)
+    }
+
+    private func actionRegion(for currentPoint: KnowledgePoint) -> some View {
+        ZStack {
+            revealButtons
+                .opacity(isShowingContent ? 0 : 1)
+                .allowsHitTesting(!isShowingContent)
+
+            answeredActionGrid(for: currentPoint)
+                .opacity(isShowingContent ? 1 : 0)
+                .allowsHitTesting(isShowingContent)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: actionRegionMinimumHeight, alignment: .bottom)
+        .animation(.easeInOut(duration: 0.18), value: isShowingContent)
+    }
+
     var body: some View {
         ZStack {
             KikariaTheme.pageGradient
@@ -5009,140 +5439,13 @@ struct ReviewView: View {
                     .padding(24)
                 }
             } else if let currentPoint {
-                GeometryReader { proxy in
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            Spacer(minLength: 58)
+                VStack(spacing: 0) {
+                    contentRegion(for: currentPoint)
 
-                            VStack(spacing: 18) {
-                                Text(currentPoint.title)
-                                    .font(.system(size: 40, weight: .semibold, design: .serif))
-                                    .foregroundStyle(KikariaTheme.deepText)
-                                    .multilineTextAlignment(.center)
-                                    .minimumScaleFactor(0.72)
-                                    .padding(.horizontal, 22)
-
-                                LightTagRow(tags: currentPoint.tags)
-
-                                if isShowingContent {
-                                    TodayReviewCountPill(count: currentTodayReviewCount)
-                                        .transition(.move(edge: .top).combined(with: .opacity))
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 14)
-
-                            VStack(spacing: 14) {
-                                if isShowingHint {
-                                    FloatingInfoCard(title: "提示", text: currentPoint.hint)
-                                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                                }
-
-                                if isShowingContent {
-                                    FloatingInfoCard(title: "答案", text: currentPoint.content)
-                                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                                }
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.top, 30)
-
-                            Spacer(minLength: 24)
-
-                            VStack(spacing: 14) {
-                                if !isShowingContent {
-                                    if !isShowingHint {
-                                        ReviewActionButton(
-                                            title: "查看提示",
-                                            systemImage: "lightbulb",
-                                            isPrimary: false
-                                        ) {
-                                            withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                                                revealHint()
-                                            }
-                                        }
-                                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                                    }
-
-                                    ReviewActionButton(
-                                        title: "查看答案",
-                                        systemImage: "doc.text",
-                                        isPrimary: true
-                                    ) {
-                                        withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
-                                            revealContent()
-                                        }
-                                    }
-                                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
-                                } else {
-                                    if mode.isReinforcement {
-                                        ReinforcementReviewAnsweredActionGrid(
-                                            point: currentPoint,
-                                            removeFromReinforcement: {
-                                                removeCurrentPointFromReinforcement(shouldShowToast: true)
-                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                                    chooseRandomPoint()
-                                                }
-                                            },
-                                            markAsMastered: {
-                                                markCurrentPointAsMastered()
-                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                                    chooseRandomPoint()
-                                                }
-                                            },
-                                            next: {
-                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                                    chooseRandomPoint()
-                                                }
-                                            }
-                                        )
-                                    } else if mode.isMastered {
-                                        MasteredReviewAnsweredActionGrid(
-                                            point: currentPoint,
-                                            addToReinforcement: {
-                                                addCurrentPointToReinforcementAndAdvance()
-                                            },
-                                            removeFromMastered: {
-                                                removeCurrentPointFromMastered(shouldShowToast: true)
-                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                                    chooseRandomPoint()
-                                                }
-                                            },
-                                            next: {
-                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                                    chooseRandomPoint()
-                                                }
-                                            }
-                                        )
-                                    } else {
-                                        NormalReviewAnsweredActionGrid(
-                                            point: currentPoint,
-                                            addToReinforcement: {
-                                                addCurrentPointToReinforcementAndAdvance()
-                                            },
-                                            markAsMastered: {
-                                                markCurrentPointAsMastered()
-                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                                    chooseRandomPoint()
-                                                }
-                                            },
-                                            next: {
-                                                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                                                    chooseRandomPoint()
-                                                }
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.bottom, 28)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: proxy.size.height, alignment: .top)
-                    }
-                    .scrollIndicators(.hidden)
-                    .highPriorityGestureIf(!isShowingContent, preAnswerSwipeUpGesture)
-                    .scaleEffect(gestureFeedback ? 0.985 : 1.0)
+                    actionRegion(for: currentPoint)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 12)
+                        .padding(.bottom, 16)
                 }
             } else {
                 ProgressView()
@@ -5211,7 +5514,7 @@ struct ReviewView: View {
                 }
 
                 triggerGestureFeedback()
-                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                withAnimation(revealAnimation) {
                     revealContent()
                 }
             }
@@ -5227,7 +5530,9 @@ struct ReviewView: View {
         let horizontal = abs(dx)
         let vertical = abs(dy)
         let horizontalThreshold: CGFloat = 80
-        let verticalThreshold: CGFloat = isShowingContent ? 180 : 90
+        let revealAnswerSwipeThreshold: CGFloat = 90
+        let nextAfterAnswerSwipeThreshold: CGFloat = 160
+        let verticalThreshold: CGFloat = isShowingContent ? nextAfterAnswerSwipeThreshold : revealAnswerSwipeThreshold
         let dominance: CGFloat = 1.4
         let isCentralReadingArea = startLocation.y > 190 && startLocation.y < UIScreen.main.bounds.height - 190
 
@@ -5247,17 +5552,13 @@ struct ReviewView: View {
             }
         } else if vertical > verticalThreshold && vertical > horizontal * dominance {
             if dy < 0 {
-                if isShowingContent, isCentralReadingArea, vertical < 240 {
-                    return
-                }
-
                 triggerGestureFeedback()
                 if isShowingContent {
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
                         chooseRandomPoint()
                     }
                 } else {
-                    withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) {
+                    withAnimation(revealAnimation) {
                         revealContent()
                     }
                 }
@@ -5288,7 +5589,7 @@ struct ReviewView: View {
     private func handleNormalSwipeLeft() {
         // Normal-mode left swipe only adds/re-adds to reinforcement; it must never mark a point as mastered.
         let wasMastered = currentPoint?.isMastered
-        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+        withAnimation(revealAnimation) {
             revealContent()
         }
         addCurrentPointToReinforcement(shouldShowToast: true)
@@ -5721,6 +6022,7 @@ private struct MasteredReviewAnsweredActionGrid: View {
 }
 
 private struct ReviewActionButton: View {
+    @Environment(\.colorScheme) private var colorScheme
     let title: String
     let systemImage: String
     let isPrimary: Bool
@@ -5746,13 +6048,13 @@ private struct ReviewActionButton: View {
     private var secondaryFill: AnyShapeStyle {
         switch tone {
         case .blue, .green:
-            return AnyShapeStyle(.white.opacity(0.46))
+            return AnyShapeStyle(KikariaTheme.glassSurface.opacity(colorScheme == .dark ? 0.36 : 0.46))
         case .amber:
             return AnyShapeStyle(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.78, green: 0.72, blue: 0.94).opacity(0.68),
-                        Color(red: 0.58, green: 0.53, blue: 0.80).opacity(0.56)
+                        KikariaTheme.nextAmber.opacity(colorScheme == .dark ? 0.72 : 0.68),
+                        Color(red: 0.58, green: 0.53, blue: 0.80).opacity(colorScheme == .dark ? 0.68 : 0.56)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -5762,8 +6064,8 @@ private struct ReviewActionButton: View {
             return AnyShapeStyle(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.90, green: 0.38, blue: 0.35).opacity(0.58),
-                        Color(red: 0.98, green: 0.58, blue: 0.50).opacity(0.46)
+                        KikariaTheme.removeCoral.opacity(colorScheme == .dark ? 0.70 : 0.58),
+                        Color(red: 0.98, green: 0.58, blue: 0.50).opacity(colorScheme == .dark ? 0.56 : 0.46)
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -5781,7 +6083,7 @@ private struct ReviewActionButton: View {
         case .amber:
             return .white.opacity(0.94)
         default:
-            return KikariaTheme.deepText
+            return colorScheme == .dark ? KikariaTheme.deepText.opacity(0.92) : KikariaTheme.deepText
         }
     }
 
@@ -5879,6 +6181,7 @@ private struct ReviewActionButton: View {
 }
 
 private struct MasteredReviewButton: View {
+    @Environment(\.colorScheme) private var colorScheme
     let isMastered: Bool
     var minHeight: CGFloat? = nil
     let action: () -> Void
@@ -5901,7 +6204,7 @@ private struct MasteredReviewButton: View {
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(
                         isMastered
-                            ? AnyShapeStyle(.white.opacity(0.42))
+                            ? AnyShapeStyle(KikariaTheme.glassSurface.opacity(colorScheme == .dark ? 0.34 : 0.42))
                             : AnyShapeStyle(KikariaTheme.masteredActionGradient)
                     )
             }
@@ -5942,7 +6245,7 @@ private struct ReinforcementCompletionView: View {
         VStack(spacing: 28) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 86, weight: .semibold))
-                .foregroundStyle(Color(red: 0.36, green: 0.76, blue: 0.46), .white.opacity(0.96))
+                .foregroundStyle(KikariaTheme.masteredGreen, .white.opacity(0.96))
                 .shadow(color: Color.green.opacity(0.16), radius: 16, y: 8)
 
             Button(action: returnHome) {
