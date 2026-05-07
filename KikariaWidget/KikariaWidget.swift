@@ -173,7 +173,9 @@ private struct KikariaWidgetView: View {
 
     var body: some View {
         ZStack {
-            widgetGradient
+            if shouldDrawInlineWidgetGradient {
+                widgetGradient
+            }
 
             Circle()
                 .fill(widgetHighlight.opacity(colorScheme == .dark ? 0.16 : 0.26))
@@ -199,6 +201,10 @@ private struct KikariaWidgetView: View {
             }
         }
         .widgetBackground()
+    }
+
+    private var shouldDrawInlineWidgetGradient: Bool {
+        !(widgetFamily == .systemLarge && colorScheme == .dark)
     }
 
     private var widgetGradient: LinearGradient {
@@ -251,6 +257,10 @@ private struct KikariaWidgetView: View {
         colorScheme == .dark
             ? Color(red: 0.06, green: 0.13, blue: 0.18).opacity(0.58)
             : Color.white.opacity(0.48)
+    }
+
+    private var largeWidgetCardFill: Color {
+        colorScheme == .dark ? Color.white.opacity(0.10) : widgetCardFill
     }
 
     private var widgetDateText: String {
@@ -391,7 +401,7 @@ private struct KikariaWidgetView: View {
                     if visiblePoints.isEmpty {
                         LargeRandomPointCapsule(
                             title: "暂无知识点",
-                            fill: widgetCardFill,
+                            fill: largeWidgetCardFill,
                             width: metrics.contentWidth,
                             height: metrics.capsuleHeight
                         )
@@ -399,7 +409,7 @@ private struct KikariaWidgetView: View {
                         ForEach(visiblePoints.indices, id: \.self) { index in
                             LargeRandomPointCapsule(
                                 title: visiblePoints[index].title,
-                                fill: widgetCardFill,
+                                fill: largeWidgetCardFill,
                                 width: metrics.contentWidth,
                                 height: metrics.capsuleHeight
                             )

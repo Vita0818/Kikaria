@@ -506,49 +506,6 @@ struct KnowledgePreset: Identifiable, Equatable, Codable {
             The diaphragm is a dome-shaped muscle below the lungs. When it contracts, the chest cavity expands and air is drawn into the lungs.
             """,
             isBuiltIn: true
-        ),
-        KnowledgePreset(
-            id: "template",
-            name: "示例模板",
-            subtitle: "用于后续自定义扩展",
-            description: "提供最小格式样例，方便后续替换为课程或课本内容。",
-            category: "模板",
-            markdownText: """
-            # Concept Title
-
-            tags: Template, Concept
-
-            hint:
-            Write a short clue that helps you recall the concept.
-
-            content:
-            Write the full explanation, formula, definition, or example here.
-
-            ---
-
-            # Keyword Card
-
-            tags: Template, Keyword
-
-            hint:
-            Add a memory cue or related phrase.
-
-            content:
-            Add the meaning, usage, or important details for this keyword.
-
-            ---
-
-            # Question Prompt
-
-            tags: Template, Practice
-
-            hint:
-            Add the first step or a gentle reminder.
-
-            content:
-            Add the complete answer or solution process.
-            """,
-            isBuiltIn: true
         )
     ]
 }

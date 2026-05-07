@@ -381,7 +381,15 @@ struct DailyReviewRecord: Codable, Equatable {
 }
 
 private func studyProgressNotificationBody(for presetName: String) -> String {
-    "今天的「\(presetName)」学习量尚未达标哦，抓紧学习吧。"
+    "今天的「\(presetName)」学习量尚未达标哦，抓紧学习吧！"
+}
+
+private let retiredBuiltInTemplatePresetID = "template"
+
+private func isRetiredBuiltInTemplatePreset(_ preset: KnowledgePreset) -> Bool {
+    preset.id == retiredBuiltInTemplatePresetID &&
+        preset.name == "示例模板" &&
+        preset.category == "模板"
 }
 
 private struct PresetStudyState: Codable {
@@ -1441,6 +1449,7 @@ struct ContentView: View {
             } else {
                 currentPresetID = presets.first?.id ?? KnowledgePreset.defaultPresetID
             }
+            removeRetiredBuiltInTemplatePresetIfNeeded()
         } else {
             presets = KnowledgePreset.all
             presetStates = [:]
@@ -1477,6 +1486,7 @@ struct ContentView: View {
             currentPresetID = presets.first?.id ?? KnowledgePreset.defaultPresetID
         }
 
+        removeRetiredBuiltInTemplatePresetIfNeeded()
         ensurePresetStatesExist()
     }
 
@@ -1499,6 +1509,33 @@ struct ContentView: View {
         }
 
         return merged
+    }
+
+    private func removeRetiredBuiltInTemplatePresetIfNeeded() {
+        let removedIDs = Set(presets.filter(isRetiredBuiltInTemplatePreset).map(\.id))
+
+        if !removedIDs.isEmpty {
+            presets.removeAll(where: isRetiredBuiltInTemplatePreset)
+        }
+
+        var stateIDsToClear = removedIDs
+        if !presets.contains(where: { $0.id == retiredBuiltInTemplatePresetID }),
+           presetStates[retiredBuiltInTemplatePresetID] != nil {
+            stateIDsToClear.insert(retiredBuiltInTemplatePresetID)
+        }
+
+        for presetID in stateIDsToClear {
+            presetStates[presetID] = nil
+            KikariaNotificationManager.cancelStudyProgressWarning(for: presetID)
+        }
+
+        if presets.isEmpty {
+            presets = KnowledgePreset.all
+        }
+
+        if !presets.contains(where: { $0.id == currentPresetID }) {
+            currentPresetID = presets.first?.id ?? KnowledgePreset.defaultPresetID
+        }
     }
 
     private func persistLibrary() {
@@ -2514,6 +2551,7 @@ private struct SettingsView: View {
     @State private var isShowingDailyGoalPicker = false
     @State private var isShowingCountdownPicker = false
     @State private var isShowingDangerPicker = false
+    @State private var isShowingNotificationTimePicker = false
     @State private var countdownDraftStartDate = Date()
     @State private var countdownDraftEndDate = Date()
     @State private var countdownErrorMessage: String?
@@ -2525,6 +2563,13 @@ private struct SettingsView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
+    }
+
+    private var notificationTimeText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: notificationTime)
     }
 
     var body: some View {
@@ -2603,6 +2648,7 @@ private struct SettingsView: View {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                                     isShowingCountdownPicker = false
                                     isShowingDangerPicker = false
+                                    isShowingNotificationTimePicker = false
                                     isShowingDailyGoalPicker.toggle()
                                 }
                             }
@@ -2617,6 +2663,7 @@ private struct SettingsView: View {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                                     isShowingDailyGoalPicker = false
                                     isShowingDangerPicker = false
+                                    isShowingNotificationTimePicker = false
                                     isShowingCountdownPicker.toggle()
                                 }
                             }
@@ -2630,6 +2677,7 @@ private struct SettingsView: View {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                                     isShowingDailyGoalPicker = false
                                     isShowingCountdownPicker = false
+                                    isShowingNotificationTimePicker = false
                                     isShowingDangerPicker.toggle()
                                 }
                             }
@@ -2640,6 +2688,12 @@ private struct SettingsView: View {
                                 title: "学习进度通知",
                                 isOn: notificationsEnabled
                             ) { newValue in
+                                if !newValue {
+                                    withAnimation(.easeOut(duration: 0.18)) {
+                                        isShowingNotificationTimePicker = false
+                                    }
+                                }
+
                                 onSetNotificationsEnabled(newValue) { _, message in
                                     if let message {
                                         showToast(message)
@@ -2650,10 +2704,17 @@ private struct SettingsView: View {
                             if notificationsEnabled {
                                 SettingsSectionDivider()
 
-                                SettingsTimePickerRow(
+                                SettingsListRow(
                                     title: "通知时间",
-                                    selectedTime: $notificationTime
-                                )
+                                    valueText: notificationTimeText
+                                ) {
+                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                                        isShowingDailyGoalPicker = false
+                                        isShowingCountdownPicker = false
+                                        isShowingDangerPicker = false
+                                        isShowingNotificationTimePicker.toggle()
+                                    }
+                                }
 
                                 if countdownStartDate == nil || countdownEndDate == nil {
                                     Text("需设置倒数日")
@@ -2829,6 +2890,32 @@ private struct SettingsView: View {
                 }
             }
 
+            if isShowingNotificationTimePicker && notificationsEnabled {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeOut(duration: 0.18)) {
+                            isShowingNotificationTimePicker = false
+                        }
+                    }
+                    .transition(.opacity)
+
+                VStack {
+                    Spacer()
+                        .frame(height: 456)
+
+                    NotificationTimePickerBubble(notificationTime: $notificationTime) {
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                            isShowingNotificationTimePicker = false
+                        }
+                    }
+                    .padding(.horizontal, 34)
+                    .transition(.scale(scale: 0.94, anchor: .topTrailing).combined(with: .opacity))
+
+                    Spacer()
+                }
+            }
+
             if let toastMessage {
                 KikariaToastLayer(message: toastMessage)
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -2988,28 +3075,6 @@ private struct SettingsToggleRow: View {
     }
 }
 
-private struct SettingsTimePickerRow: View {
-    let title: String
-    @Binding var selectedTime: Date
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 17))
-                .foregroundStyle(KikariaTheme.deepText)
-
-            Spacer()
-
-            DatePicker(title, selection: $selectedTime, displayedComponents: .hourAndMinute)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .tint(KikariaTheme.sky)
-        }
-        .padding(.horizontal, 18)
-        .frame(maxWidth: .infinity, minHeight: 58)
-    }
-}
-
 private struct SettingsOptionRow: View {
     let title: String
     let subtitle: String
@@ -3062,6 +3127,39 @@ private struct SettingsOptionRow: View {
     }
 }
 
+private enum KikariaWheelStyle {
+    static let fontSize: CGFloat = 16
+    static let fontWeight: Font.Weight = .medium
+    static let pickerHeight: CGFloat = 102
+    static let columnSpacing: CGFloat = 5
+    static let minimumScaleFactor: CGFloat = 0.78
+
+    static var valueFont: Font {
+        .system(size: fontSize, weight: fontWeight, design: .serif)
+    }
+}
+
+private struct KikariaWheelValueText: View {
+    let text: String
+    let width: CGFloat
+    var usesMonospacedDigits = true
+
+    var body: some View {
+        Group {
+            if usesMonospacedDigits {
+                Text(text)
+                    .monospacedDigit()
+            } else {
+                Text(text)
+            }
+        }
+        .font(KikariaWheelStyle.valueFont)
+        .lineLimit(1)
+        .minimumScaleFactor(KikariaWheelStyle.minimumScaleFactor)
+        .frame(width: width, alignment: .center)
+    }
+}
+
 private struct DailyGoalPickerBubble: View {
     @Binding var dailyGoal: Int
     let onDone: () -> Void
@@ -3083,13 +3181,13 @@ private struct DailyGoalPickerBubble: View {
 
             Picker("每日学习目标", selection: $dailyGoal) {
                 ForEach(1...100, id: \.self) { goal in
-                    Text("\(goal) 个")
-                        .font(KikariaTypography.chineseBody(size: 18))
+                    KikariaWheelValueText(text: "\(goal) 个", width: 88)
                         .tag(goal)
                 }
             }
             .pickerStyle(.wheel)
-            .frame(height: 126)
+            .frame(maxWidth: .infinity)
+            .frame(height: KikariaWheelStyle.pickerHeight)
             .clipped()
 
             Button(action: onDone) {
@@ -3105,6 +3203,121 @@ private struct DailyGoalPickerBubble: View {
         .padding(18)
         .frame(maxWidth: 318)
         .liquidGlassCard(cornerRadius: 28, material: .regularMaterial, fillOpacity: 0.50, strokeOpacity: 0.52, shadowOpacity: 0.18, shadowRadius: 24, shadowY: 14)
+    }
+}
+
+private struct NotificationTimePickerBubble: View {
+    @Binding var notificationTime: Date
+    let onDone: () -> Void
+
+    private var timeText: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: notificationTime)
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("通知时间")
+                    .font(KikariaTypography.chineseHeadline())
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                Spacer()
+
+                Text(timeText)
+                    .font(KikariaTypography.number(size: 17))
+                    .monospacedDigit()
+                    .foregroundStyle(KikariaTheme.sky)
+            }
+
+            NotificationTimeWheelPicker(time: $notificationTime)
+                .frame(maxWidth: .infinity)
+                .frame(height: KikariaWheelStyle.pickerHeight)
+                .clipped()
+
+            Button(action: onDone) {
+                Text("完成")
+                    .font(KikariaTypography.chineseButton())
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(KikariaTheme.actionGradient, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .frame(maxWidth: 318)
+        .liquidGlassCard(cornerRadius: 28, material: .regularMaterial, fillOpacity: 0.50, strokeOpacity: 0.52, shadowOpacity: 0.18, shadowRadius: 24, shadowY: 14)
+    }
+}
+
+private struct NotificationTimeWheelPicker: View {
+    @Binding var time: Date
+
+    private let calendar = Calendar.current
+
+    private var selectedHour: Int {
+        calendar.component(.hour, from: time)
+    }
+
+    private var selectedMinute: Int {
+        calendar.component(.minute, from: time)
+    }
+
+    private var hourBinding: Binding<Int> {
+        Binding(
+            get: { selectedHour },
+            set: { updateTime(hour: $0) }
+        )
+    }
+
+    private var minuteBinding: Binding<Int> {
+        Binding(
+            get: { selectedMinute },
+            set: { updateTime(minute: $0) }
+        )
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: KikariaWheelStyle.columnSpacing) {
+            Picker("Hour", selection: hourBinding) {
+                ForEach(0...23, id: \.self) { hour in
+                    KikariaWheelValueText(text: String(format: "%02d", hour), width: 54)
+                        .tag(hour)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(width: 68)
+            .clipped()
+
+            Text(":")
+                .font(KikariaWheelStyle.valueFont)
+                .foregroundStyle(KikariaTheme.softText)
+                .frame(width: 16)
+
+            Picker("Minute", selection: minuteBinding) {
+                ForEach(0...59, id: \.self) { minute in
+                    KikariaWheelValueText(text: String(format: "%02d", minute), width: 54)
+                        .tag(minute)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(width: 68)
+            .clipped()
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(height: KikariaWheelStyle.pickerHeight)
+    }
+
+    private func updateTime(hour: Int? = nil, minute: Int? = nil) {
+        var components = calendar.dateComponents([.year, .month, .day, .second, .nanosecond], from: time)
+        components.hour = hour ?? selectedHour
+        components.minute = minute ?? selectedMinute
+        time = calendar.date(from: components) ?? time
     }
 }
 
@@ -3131,34 +3344,9 @@ private struct CountdownDateRangePickerBubble: View {
                     .foregroundStyle(KikariaTheme.sky)
             }
 
-            VStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("开始日期")
-                        .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
-                        .foregroundStyle(KikariaTheme.deepText)
-
-                    DatePicker("开始日期", selection: $startDate, displayedComponents: .date)
-                        .font(KikariaTypography.chineseBody(size: 14, weight: .medium))
-                        .datePickerStyle(.wheel)
-                        .labelsHidden()
-                        .frame(height: 100)
-                        .clipped()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("结束日期")
-                        .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
-                        .foregroundStyle(KikariaTheme.deepText)
-
-                    DatePicker("结束日期", selection: $endDate, displayedComponents: .date)
-                        .font(KikariaTypography.chineseBody(size: 14, weight: .medium))
-                        .datePickerStyle(.wheel)
-                        .labelsHidden()
-                        .frame(height: 100)
-                        .clipped()
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 12) {
+                datePickerSection(title: "开始日期", selection: $startDate)
+                datePickerSection(title: "结束日期", selection: $endDate)
             }
 
             if let errorMessage {
@@ -3194,6 +3382,150 @@ private struct CountdownDateRangePickerBubble: View {
         .frame(maxWidth: 326)
         .liquidGlassCard(cornerRadius: 28, material: .regularMaterial, fillOpacity: 0.50, strokeOpacity: 0.52, shadowOpacity: 0.18, shadowRadius: 24, shadowY: 14)
     }
+
+    private func datePickerSection(title: String, selection: Binding<Date>) -> some View {
+        VStack(spacing: 14) {
+            Text(title)
+                .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                .foregroundStyle(KikariaTheme.softText)
+                .frame(maxWidth: .infinity, alignment: .center)
+
+            CountdownDateWheelPicker(date: selection)
+                .frame(maxWidth: .infinity)
+                .frame(height: KikariaWheelStyle.pickerHeight)
+                .clipped()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct CountdownDateWheelPicker: View {
+    @Binding var date: Date
+
+    private let calendar = Calendar.current
+    private static let monthSymbols: [String] = {
+        let formatter = DateFormatter()
+        return formatter.monthSymbols
+    }()
+
+    private var selectedYear: Int {
+        calendar.component(.year, from: date)
+    }
+
+    private var selectedMonth: Int {
+        calendar.component(.month, from: date)
+    }
+
+    private var selectedDay: Int {
+        calendar.component(.day, from: date)
+    }
+
+    private var daysInSelectedMonth: Int {
+        days(inMonth: selectedMonth, year: selectedYear)
+    }
+
+    private var yearValues: [Int] {
+        let currentYear = calendar.component(.year, from: Date())
+        let lowerBound = min(currentYear - 10, selectedYear - 2)
+        let upperBound = max(currentYear + 50, selectedYear + 2)
+        return Array(lowerBound...upperBound)
+    }
+
+    private var monthBinding: Binding<Int> {
+        Binding(
+            get: { selectedMonth },
+            set: { updateDate(month: $0) }
+        )
+    }
+
+    private var dayBinding: Binding<Int> {
+        Binding(
+            get: { selectedDay },
+            set: { updateDate(day: $0) }
+        )
+    }
+
+    private var yearBinding: Binding<Int> {
+        Binding(
+            get: { selectedYear },
+            set: { updateDate(year: $0) }
+        )
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: KikariaWheelStyle.columnSpacing) {
+            Picker("Month", selection: monthBinding) {
+                ForEach(1...12, id: \.self) { month in
+                    KikariaWheelValueText(
+                        text: monthName(for: month),
+                        width: 108,
+                        usesMonospacedDigits: false
+                    )
+                        .tag(month)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(width: 114)
+            .clipped()
+
+            Picker("Day", selection: dayBinding) {
+                ForEach(1...daysInSelectedMonth, id: \.self) { day in
+                    KikariaWheelValueText(text: "\(day)", width: 48)
+                        .tag(day)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(width: 54)
+            .clipped()
+
+            Picker("Year", selection: yearBinding) {
+                ForEach(yearValues, id: \.self) { year in
+                    KikariaWheelValueText(text: "\(year)", width: 74)
+                        .tag(year)
+                }
+            }
+            .pickerStyle(.wheel)
+            .labelsHidden()
+            .frame(width: 80)
+            .clipped()
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(height: KikariaWheelStyle.pickerHeight)
+    }
+
+    private func monthName(for month: Int) -> String {
+        let index = month - 1
+        guard Self.monthSymbols.indices.contains(index) else {
+            return "\(month)"
+        }
+
+        return Self.monthSymbols[index]
+    }
+
+    private func updateDate(year: Int? = nil, month: Int? = nil, day: Int? = nil) {
+        let newYear = year ?? selectedYear
+        let newMonth = month ?? selectedMonth
+        let maxDay = days(inMonth: newMonth, year: newYear)
+        let newDay = min(day ?? selectedDay, maxDay)
+        var components = calendar.dateComponents([.hour, .minute, .second, .nanosecond], from: date)
+        components.year = newYear
+        components.month = newMonth
+        components.day = newDay
+        date = calendar.date(from: components) ?? date
+    }
+
+    private func days(inMonth month: Int, year: Int) -> Int {
+        let components = DateComponents(year: year, month: month)
+        guard let date = calendar.date(from: components),
+              let range = calendar.range(of: .day, in: .month, for: date)
+        else {
+            return 31
+        }
+
+        return range.count
+    }
 }
 
 private struct DangerPercentPickerBubble: View {
@@ -3217,13 +3549,13 @@ private struct DangerPercentPickerBubble: View {
 
             Picker("进度安全线", selection: $dangerPercent) {
                 ForEach(1...100, id: \.self) { percent in
-                    Text("\(percent)%")
-                        .font(KikariaTypography.chineseBody(size: 18))
+                    KikariaWheelValueText(text: "\(percent)%", width: 82)
                         .tag(percent)
                 }
             }
             .pickerStyle(.wheel)
-            .frame(height: 126)
+            .frame(maxWidth: .infinity)
+            .frame(height: KikariaWheelStyle.pickerHeight)
             .clipped()
 
             Button(action: onDone) {
