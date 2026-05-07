@@ -858,6 +858,10 @@ struct ContentView: View {
         records(on: Date(), type: .reviewedAnswer).count
     }
 
+    private var todayViewedHintCount: Int {
+        records(on: Date(), type: .viewedHint).count
+    }
+
     private var todayMarkedMasteredCount: Int {
         Set(records(on: Date(), type: .markedMastered).map(\.pointId)).count
     }
@@ -1782,19 +1786,38 @@ struct ContentView: View {
                 pointTitle: point.title
             )
         )
+        updateWidgetSnapshot()
     }
 
     private func updateWidgetSnapshot() {
         WidgetDataStore.save(
             WidgetSnapshot(
                 presetName: currentPreset.name,
+                todayMasteredCount: todayMarkedMasteredCount,
                 masteredCount: masteredCount,
                 dailyGoal: dailyGoal,
                 countdownDays: countdownDayCount,
                 todayReviewCount: todayReviewedAnswerCount,
+                todayHintCount: todayViewedHintCount,
+                randomKnowledgePoints: widgetKnowledgePointPreviews(),
                 lastUpdated: Date()
             )
         )
+    }
+
+    private func widgetKnowledgePointPreviews() -> [WidgetKnowledgePointPreview] {
+        let preferredPoints = knowledgePoints.filter { !$0.isMastered }
+        let sourcePoints = preferredPoints.isEmpty ? knowledgePoints : preferredPoints
+
+        return sourcePoints
+            .shuffled()
+            .prefix(5)
+            .map { point in
+                WidgetKnowledgePointPreview(
+                    title: point.title,
+                    tag: point.tags.first
+                )
+            }
     }
 
 }
@@ -2438,6 +2461,39 @@ private struct ProfileAvatarView: View {
         .padding(size <= 48 ? 3 : 5)
         .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.50, shadowOpacity: 0.16, shadowRadius: 12, shadowY: 6)
     }
+}
+
+private func loadCompressedAvatarData(from selectedPhotoItem: PhotosPickerItem) async -> Data? {
+    guard let data = try? await selectedPhotoItem.loadTransferable(type: Data.self) else {
+        return nil
+    }
+
+    return compressedAvatarData(from: data)
+}
+
+private func compressedAvatarData(from data: Data) -> Data? {
+    guard let image = UIImage(data: data) else {
+        return nil
+    }
+
+    let maxDimension: CGFloat = 512
+    let largestSide = max(image.size.width, image.size.height)
+    let scale = largestSide > 0 ? min(1, maxDimension / largestSide) : 1
+
+    let outputImage: UIImage
+    if scale < 1 {
+        let targetSize = CGSize(
+            width: image.size.width * scale,
+            height: image.size.height * scale
+        )
+        outputImage = UIGraphicsImageRenderer(size: targetSize).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+    } else {
+        outputImage = image
+    }
+
+    return outputImage.jpegData(compressionQuality: 0.82) ?? outputImage.pngData()
 }
 
 private struct SettingsView: View {
@@ -4307,6 +4363,10 @@ private struct InitialProfileSetupView: View {
     let onComplete: () -> Void
     @State private var displayName = ""
     @State private var userHandle = ""
+    @State private var avatarImageData: Data?
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var toastMessage: String?
+    @State private var toastToken = UUID()
 
     private var trimmedDisplayName: String {
         displayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -4332,11 +4392,32 @@ private struct InitialProfileSetupView: View {
                         .foregroundStyle(KikariaTheme.softText)
                 }
 
-                ProfileAvatarView(
-                    systemName: profile.avatarSystemName,
-                    imageData: profile.avatarImageData,
-                    size: 88
-                )
+                ZStack(alignment: .bottomTrailing) {
+                    ProfileAvatarView(
+                        systemName: profile.avatarSystemName,
+                        imageData: avatarImageData ?? profile.avatarImageData,
+                        size: 88
+                    )
+
+                    PhotosPicker(
+                        selection: $selectedPhotoItem,
+                        matching: .images
+                    ) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 30, height: 30)
+                            .background(KikariaTheme.actionGradient, in: Circle())
+                            .overlay {
+                                Circle()
+                                    .stroke(.white.opacity(0.72), lineWidth: 1)
+                            }
+                            .shadow(color: KikariaTheme.sky.opacity(0.26), radius: 10, y: 5)
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: 3, y: 3)
+                    .accessibilityLabel("选择头像")
+                }
                 .padding(.top, 4)
 
                 VStack(spacing: 14) {
@@ -4362,6 +4443,10 @@ private struct InitialProfileSetupView: View {
             .frame(maxWidth: 370)
             .liquidGlassCard(cornerRadius: 34, material: .regularMaterial, fillOpacity: 0.46, strokeOpacity: 0.46, shadowOpacity: 0.16, shadowRadius: 24, shadowY: 14)
             .padding(.horizontal, 24)
+
+            if let toastMessage {
+                KikariaToastLayer(message: toastMessage)
+            }
         }
         .onAppear {
             if displayName.isEmpty {
@@ -4371,6 +4456,13 @@ private struct InitialProfileSetupView: View {
             if userHandle.isEmpty {
                 userHandle = profile.userHandle == "vita_0818" ? "" : profile.userHandle
             }
+
+            if avatarImageData == nil {
+                avatarImageData = profile.avatarImageData
+            }
+        }
+        .onChange(of: selectedPhotoItem) { _ in
+            loadSelectedAvatar()
         }
     }
 
@@ -4384,7 +4476,46 @@ private struct InitialProfileSetupView: View {
             .trimmingCharacters(in: CharacterSet(charactersIn: "@"))
         profile.displayName = trimmedDisplayName
         profile.userHandle = trimmedHandle.isEmpty ? generatedHandle(from: trimmedDisplayName) : trimmedHandle
+        profile.avatarImageData = avatarImageData
         onComplete()
+    }
+
+    private func loadSelectedAvatar() {
+        guard let selectedPhotoItem else {
+            return
+        }
+
+        Task {
+            guard let compressedData = await loadCompressedAvatarData(from: selectedPhotoItem) else {
+                await MainActor.run {
+                    showToast("头像加载失败")
+                }
+                return
+            }
+
+            await MainActor.run {
+                avatarImageData = compressedData
+            }
+        }
+    }
+
+    private func showToast(_ message: String) {
+        let token = UUID()
+        toastToken = token
+
+        withAnimation(.easeInOut(duration: 0.18)) {
+            toastMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            guard toastToken == token else {
+                return
+            }
+
+            withAnimation(.easeInOut(duration: 0.18)) {
+                toastMessage = nil
+            }
+        }
     }
 
     private func generatedHandle(from name: String) -> String {
@@ -4516,43 +4647,12 @@ private struct EditProfileView: View {
         }
 
         Task {
-            guard let data = try? await selectedPhotoItem.loadTransferable(type: Data.self) else {
-                return
-            }
-
-            await MainActor.run {
-                guard let compressedData = compressedAvatarData(from: data) else {
-                    return
+            if let compressedData = await loadCompressedAvatarData(from: selectedPhotoItem) {
+                await MainActor.run {
+                    profile.avatarImageData = compressedData
                 }
-
-                profile.avatarImageData = compressedData
             }
         }
-    }
-
-    private func compressedAvatarData(from data: Data) -> Data? {
-        guard let image = UIImage(data: data) else {
-            return nil
-        }
-
-        let maxDimension: CGFloat = 512
-        let largestSide = max(image.size.width, image.size.height)
-        let scale = largestSide > 0 ? min(1, maxDimension / largestSide) : 1
-
-        let outputImage: UIImage
-        if scale < 1 {
-            let targetSize = CGSize(
-                width: image.size.width * scale,
-                height: image.size.height * scale
-            )
-            outputImage = UIGraphicsImageRenderer(size: targetSize).image { _ in
-                image.draw(in: CGRect(origin: .zero, size: targetSize))
-            }
-        } else {
-            outputImage = image
-        }
-
-        return outputImage.jpegData(compressionQuality: 0.82) ?? outputImage.pngData()
     }
 }
 
