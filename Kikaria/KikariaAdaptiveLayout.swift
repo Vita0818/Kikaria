@@ -1,0 +1,335 @@
+//
+//  KikariaAdaptiveLayout.swift
+//  Kikaria
+//
+//  Created by Codex on 2026/5/8.
+//
+
+import SwiftUI
+
+enum KikariaAdaptiveLayout {
+    enum WidthCategory {
+        case compact
+        case regularPad
+        case widePad
+    }
+
+    struct Metrics {
+        let size: CGSize
+
+        var width: CGFloat {
+            max(size.width, 1)
+        }
+
+        var height: CGFloat {
+            max(size.height, 1)
+        }
+
+        var widthCategory: WidthCategory {
+            KikariaAdaptiveLayout.widthCategory(for: width)
+        }
+
+        var isPadWidth: Bool {
+            widthCategory != .compact
+        }
+
+        var isPadPortrait: Bool {
+            isPadWidth && height >= width
+        }
+
+        var isPadLandscape: Bool {
+            isPadWidth && width > height
+        }
+
+        var horizontalPadding: CGFloat {
+            KikariaAdaptiveLayout.horizontalPadding(for: width)
+        }
+
+        var innerHorizontalPadding: CGFloat {
+            isPadPortrait ? 32 : horizontalPadding
+        }
+
+        var portraitPadMaxWidth: CGFloat {
+            portraitMainMaxWidth
+        }
+
+        var portraitHomeMaxWidth: CGFloat {
+            width >= 900 ? 760 : 720
+        }
+
+        var portraitMainMaxWidth: CGFloat {
+            width >= 900 ? 680 : 660
+        }
+
+        var portraitFormMaxWidth: CGFloat {
+            width >= 900 ? 620 : 600
+        }
+
+        var portraitReviewMaxWidth: CGFloat {
+            width >= 900 ? 720 : 700
+        }
+
+        var portraitScaleFactor: CGFloat {
+            guard isPadPortrait else {
+                return 1
+            }
+
+            return width >= 900 ? 1.36 : 1.30
+        }
+
+        var homeScale: CGFloat {
+            if isPadPortrait {
+                return width >= 900 ? 1.36 : 1.30
+            }
+
+            return isPadWidth ? 1.14 : 1
+        }
+
+        var homeHeaderScale: CGFloat {
+            if isPadPortrait {
+                return width >= 900 ? 1.20 : 1.16
+            }
+
+            return isPadWidth ? 1.14 : 1
+        }
+
+        var reviewScale: CGFloat {
+            if isPadPortrait {
+                return width >= 900 ? 1.20 : 1.18
+            }
+
+            return isPadWidth ? 1.15 : 1
+        }
+
+        var reviewButtonScale: CGFloat {
+            if isPadPortrait {
+                return width >= 900 ? 1.18 : 1.14
+            }
+
+            return 1
+        }
+
+        var cardScale: CGFloat {
+            if isPadPortrait {
+                return width >= 900 ? 1.24 : 1.18
+            }
+
+            return isPadWidth ? 1.05 : 1
+        }
+
+        var presetScale: CGFloat {
+            isPadPortrait ? (width >= 900 ? 1.18 : 1.12) : 1
+        }
+
+        var scopeScale: CGFloat {
+            isPadPortrait ? (width >= 900 ? 1.16 : 1.10) : 1
+        }
+
+        var overviewScale: CGFloat {
+            isPadPortrait ? (width >= 900 ? 1.18 : 1.12) : 1
+        }
+
+        var settingsScale: CGFloat {
+            isPadPortrait ? (width >= 900 ? 1.16 : 1.10) : 1
+        }
+
+        var settingsRowScale: CGFloat {
+            isPadPortrait ? (width >= 900 ? 1.14 : 1.08) : 1
+        }
+
+        var newPresetScale: CGFloat {
+            isPadPortrait ? (width >= 900 ? 1.16 : 1.10) : 1
+        }
+
+        var listCardScale: CGFloat {
+            isPadPortrait ? (width >= 900 ? 1.16 : 1.10) : 1
+        }
+
+        var presetOuterMaxWidth: CGFloat {
+            isPadPortrait ? (width >= 900 ? 760 : 720) : mainMaxWidth
+        }
+
+        var scopeOuterMaxWidth: CGFloat {
+            isPadPortrait ? (width >= 900 ? 760 : 720) : mainMaxWidth
+        }
+
+        var overviewOuterMaxWidth: CGFloat {
+            isPadPortrait ? (width >= 900 ? 760 : 720) : mainMaxWidth
+        }
+
+        var settingsOuterMaxWidth: CGFloat {
+            isPadPortrait ? (width >= 900 ? 740 : 700) : formMaxWidth
+        }
+
+        var newPresetOuterMaxWidth: CGFloat {
+            isPadPortrait ? (width >= 900 ? 740 : 700) : formMaxWidth
+        }
+
+        var scopeGridMinimumWidth: CGFloat {
+            isPadPortrait ? (width >= 900 ? 176 : 164) : 132
+        }
+
+        var scopeGridSpacing: CGFloat {
+            isPadPortrait ? 16 : 12
+        }
+
+        func effectiveContentWidth(for outerMaxWidth: CGFloat) -> CGFloat {
+            max(0, min(width, outerMaxWidth) - innerHorizontalPadding * 2)
+        }
+
+        var adaptiveBackButtonSize: CGFloat {
+            return 42
+        }
+
+        var adaptiveTopBarTrailingWidth: CGFloat {
+            isPadPortrait ? 64 : 42
+        }
+
+        var newPresetInputHeight: CGFloat {
+            isPadPortrait ? (width >= 900 ? 62 : 58) : 0
+        }
+
+        var newPresetTextEditorHeight: CGFloat {
+            isPadPortrait ? (width >= 900 ? 380 : 340) : 260
+        }
+
+        var homeMaxWidth: CGFloat {
+            if isPadPortrait {
+                return portraitHomeMaxWidth
+            }
+
+            switch widthCategory {
+            case .compact:
+                return .infinity
+            case .regularPad:
+                return 700
+            case .widePad:
+                return 780
+            }
+        }
+
+        var mainMaxWidth: CGFloat {
+            if isPadPortrait {
+                return portraitMainMaxWidth
+            }
+
+            switch widthCategory {
+            case .compact:
+                return .infinity
+            case .regularPad:
+                return 680
+            case .widePad:
+                return 760
+            }
+        }
+
+        var formMaxWidth: CGFloat {
+            if isPadPortrait {
+                return portraitFormMaxWidth
+            }
+
+            switch widthCategory {
+            case .compact:
+                return .infinity
+            case .regularPad:
+                return 600
+            case .widePad:
+                return 640
+            }
+        }
+
+        var reviewMaxWidth: CGFloat {
+            if isPadPortrait {
+                return portraitReviewMaxWidth
+            }
+
+            switch widthCategory {
+            case .compact:
+                return .infinity
+            case .regularPad:
+                return 760
+            case .widePad:
+                return 820
+            }
+        }
+
+        var reviewContentVerticalOffset: CGFloat {
+            if isPadPortrait {
+                return height < 760 ? 8 : 18
+            }
+
+            switch widthCategory {
+            case .compact:
+                return 0
+            case .regularPad:
+                return height < 620 ? 8 : 18
+            case .widePad:
+                return height < 620 ? 18 : 34
+            }
+        }
+
+        var reviewActionBottomPadding: CGFloat {
+            if isPadPortrait {
+                return height < 760 ? 24 : 34
+            }
+
+            switch widthCategory {
+            case .compact:
+                return 16
+            case .regularPad:
+                return height < 620 ? 24 : 34
+            case .widePad:
+                return height < 620 ? 32 : 52
+            }
+        }
+    }
+
+    static func metrics(for size: CGSize) -> Metrics {
+        Metrics(size: size)
+    }
+
+    static func widthCategory(for width: CGFloat) -> WidthCategory {
+        if width < 600 {
+            return .compact
+        }
+
+        if width < 900 {
+            return .regularPad
+        }
+
+        return .widePad
+    }
+
+    static func horizontalPadding(for width: CGFloat) -> CGFloat {
+        switch widthCategory(for: width) {
+        case .compact:
+            return width < 360 ? 20 : 24
+        case .regularPad:
+            return 32
+        case .widePad:
+            return 40
+        }
+    }
+}
+
+struct KikariaAdaptivePage<Content: View>: View {
+    private let content: (KikariaAdaptiveLayout.Metrics) -> Content
+
+    init(@ViewBuilder content: @escaping (KikariaAdaptiveLayout.Metrics) -> Content) {
+        self.content = content
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            content(KikariaAdaptiveLayout.metrics(for: proxy.size))
+                .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+    }
+}
+
+extension View {
+    func kikariaCenteredColumn(maxWidth: CGFloat) -> some View {
+        frame(maxWidth: maxWidth)
+            .frame(maxWidth: .infinity, alignment: .center)
+    }
+}

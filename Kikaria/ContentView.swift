@@ -884,66 +884,167 @@ struct ContentView: View {
         return "\(formatter.string(from: date)) \(day)\(ordinalSuffix(for: day))"
     }
 
+    private var homeDaysLeftText: String {
+        "\(countdownDayCount.map(String.init) ?? "--") Days Left"
+    }
+
+    private var homeProgressText: String {
+        "\(todayMarkedMasteredCount)/\(dailyGoal)"
+    }
+
+    private func padPortraitHomeContent(metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+        let isLargePortrait = metrics.width >= 900
+        let bubbleScale = min(metrics.homeScale, 1.32)
+        let topPadding: CGFloat = isLargePortrait ? 58 : 48
+        let bubbleSafeSpacing: CGFloat = isLargePortrait ? 36 : 30
+        let contentWidth = min(metrics.width, metrics.homeMaxWidth)
+        let cardEdgeInset = max(
+            metrics.horizontalPadding,
+            (metrics.width - contentWidth) / 2 + metrics.horizontalPadding
+        )
+
+        return VStack(spacing: 0) {
+            HStack(alignment: .center) {
+                Text("Kikaria")
+                    .font(KikariaTypography.appTitle(size: isLargePortrait ? 58 : 54))
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                Spacer(minLength: 24)
+
+                NavigationLink(value: AppRoute.settings) {
+                    ProfileAvatarView(
+                        systemName: userProfile.avatarSystemName,
+                        imageData: userProfile.avatarImageData,
+                        size: isLargePortrait ? 66 : 62
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("打开设置")
+            }
+
+            VStack(spacing: 0) {
+                Spacer(minLength: bubbleSafeSpacing)
+
+                NavigationLink(value: AppRoute.review) {
+                    StartReviewButton(
+                        dailyGoal: dailyGoal,
+                        masteredCount: masteredCount,
+                        countdownDays: countdownDayCount,
+                        visualScale: bubbleScale
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("开始背诵")
+
+                Spacer(minLength: bubbleSafeSpacing)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            VStack(spacing: 18) {
+                NavigationLink(value: AppRoute.todayOverview) {
+                    PadPortraitHomeProgressCard(
+                        dateText: homeDateTitle,
+                        daysLeftText: homeDaysLeftText,
+                        progressText: homeProgressText
+                    )
+                }
+                .buttonStyle(.plain)
+
+                PadPortraitHomeDashboardCard(
+                    scopeCountText: selectedScopeCountText,
+                    reinforcedCount: reinforcedCount,
+                    masteredCount: masteredCount,
+                    presetName: currentPreset.name
+                )
+            }
+        }
+        .padding(.top, topPadding)
+        .padding(.horizontal, metrics.horizontalPadding)
+        .padding(.bottom, cardEdgeInset)
+        .frame(maxWidth: metrics.homeMaxWidth)
+        .frame(maxWidth: .infinity, minHeight: metrics.height, alignment: .top)
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            ZStack {
-                KikariaTheme.pageGradient
-                    .ignoresSafeArea()
+            KikariaAdaptivePage { metrics in
+                let isExpanded = metrics.isPadWidth
+                let homeScale = metrics.homeScale
+                let headerScale = metrics.homeHeaderScale
+                let homeCardScale = metrics.isPadPortrait ? metrics.cardScale : 1
 
-                VStack(spacing: 0) {
-                    HStack(alignment: .center) {
-                        Text("Kikaria")
-                            .font(KikariaTypography.appTitle())
-                            .foregroundStyle(KikariaTheme.deepText)
+                ZStack {
+                    KikariaTheme.pageGradient
+                        .ignoresSafeArea()
 
-                        Spacer(minLength: 16)
+                    ScrollView(.vertical, showsIndicators: false) {
+                        if metrics.isPadPortrait {
+                            padPortraitHomeContent(metrics: metrics)
+                        } else {
+                            VStack(spacing: 0) {
+                                HStack(alignment: .center) {
+                                    Text("Kikaria")
+                                        .font(KikariaTypography.appTitle(size: 39 * headerScale))
+                                        .foregroundStyle(KikariaTheme.deepText)
 
-                        NavigationLink(value: AppRoute.settings) {
-                            ProfileAvatarView(
-                                systemName: userProfile.avatarSystemName,
-                                imageData: userProfile.avatarImageData,
-                                size: 44
-                            )
+                                    Spacer(minLength: 16)
+
+                                    NavigationLink(value: AppRoute.settings) {
+                                        ProfileAvatarView(
+                                            systemName: userProfile.avatarSystemName,
+                                            imageData: userProfile.avatarImageData,
+                                            size: 44 * headerScale
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("打开设置")
+                                }
+                                .padding(.top, 14)
+
+                                Spacer(minLength: 32)
+
+                                NavigationLink(value: AppRoute.review) {
+                                    StartReviewButton(
+                                        dailyGoal: dailyGoal,
+                                        masteredCount: masteredCount,
+                                        countdownDays: countdownDayCount,
+                                        visualScale: homeScale
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("开始背诵")
+
+                                Spacer(minLength: 30)
+
+                                VStack(spacing: 12) {
+                                    NavigationLink(value: AppRoute.todayOverview) {
+                                        TodayOverviewHomeProgressButton(
+                                            dateText: homeDateTitle,
+                                            daysLeftText: "\(countdownDayCount.map(String.init) ?? "--") Days Left",
+                                            progressText: "\(todayMarkedMasteredCount)/\(dailyGoal)",
+                                            isExpanded: isExpanded,
+                                            cardScale: homeCardScale
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    HomeDashboardGridCard(
+                                        scopeCountText: selectedScopeCountText,
+                                        reinforcedCount: reinforcedCount,
+                                        masteredCount: masteredCount,
+                                        presetName: currentPreset.name,
+                                        isExpanded: isExpanded,
+                                        cardScale: homeCardScale
+                                    )
+                                }
+                                .padding(.bottom, 12)
+                            }
+                            .padding(.horizontal, metrics.horizontalPadding)
+                            .frame(maxWidth: metrics.homeMaxWidth)
+                            .frame(maxWidth: .infinity, minHeight: metrics.height, alignment: .center)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("打开设置")
                     }
-                    .padding(.top, 14)
-
-                    Spacer(minLength: 32)
-
-                    NavigationLink(value: AppRoute.review) {
-                        StartReviewButton(
-                            dailyGoal: dailyGoal,
-                            masteredCount: masteredCount,
-                            countdownDays: countdownDayCount
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("开始背诵")
-
-                    Spacer(minLength: 30)
-
-                    VStack(spacing: 12) {
-                        NavigationLink(value: AppRoute.todayOverview) {
-                            TodayOverviewHomeProgressButton(
-                                dateText: homeDateTitle,
-                                daysLeftText: "\(countdownDayCount.map(String.init) ?? "--") Days Left",
-                                progressText: "\(todayMarkedMasteredCount)/\(dailyGoal)"
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        HomeDashboardGridCard(
-                            scopeCountText: selectedScopeCountText,
-                            reinforcedCount: reinforcedCount,
-                            masteredCount: masteredCount,
-                            presetName: currentPreset.name
-                        )
-                    }
-                    .padding(.bottom, 12)
                 }
-                .padding(.horizontal, 24)
             }
             .navigationBarHidden(true)
             .navigationDestination(for: AppRoute.self) { route in
@@ -1889,95 +1990,107 @@ private struct OnboardingView: View {
     ]
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let isExpanded = metrics.isPadWidth
+            let cardMaxWidth: CGFloat = metrics.isPadPortrait ? 620 : 600
 
-            VStack(spacing: 28) {
-                HStack {
-                    Text("Kikaria")
-                        .font(KikariaTypography.appTitle(size: 36))
-                        .foregroundStyle(KikariaTheme.deepText)
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-                    Spacer()
-                }
-                .padding(.horizontal, 28)
-                .padding(.top, 24)
+                VStack(spacing: 28) {
+                    HStack {
+                        Text("Kikaria")
+                            .font(KikariaTypography.appTitle(size: 36))
+                            .foregroundStyle(KikariaTheme.deepText)
 
-                TabView(selection: $selectedPage) {
-                    ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
-                        OnboardingPageCard(page: page)
-                            .tag(index)
-                            .padding(.horizontal, 28)
+                        Spacer()
                     }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .always))
-                .indexViewStyle(.page(backgroundDisplayMode: .interactive))
+                    .padding(.horizontal, metrics.horizontalPadding)
+                    .padding(.top, 24)
+                    .frame(maxWidth: metrics.homeMaxWidth)
+                    .frame(maxWidth: .infinity)
 
-                Button {
-                    if selectedPage < pages.count - 1 {
-                        withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
-                            selectedPage += 1
+                    TabView(selection: $selectedPage) {
+                        ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
+                            OnboardingPageCard(isExpanded: isExpanded, page: page)
+                                .frame(maxWidth: isExpanded ? cardMaxWidth : metrics.formMaxWidth)
+                                .frame(maxWidth: .infinity)
+                                .tag(index)
+                                .padding(.horizontal, metrics.horizontalPadding)
                         }
-                    } else {
-                        onComplete()
                     }
-                } label: {
-                    Text(selectedPage == pages.count - 1 ? "开始使用" : "下一步")
-                        .font(KikariaTypography.chineseButton(size: 18))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 17)
-                        .background(KikariaTheme.actionGradient, in: Capsule())
-                        .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 18, y: 10)
+                    .tabViewStyle(.page(indexDisplayMode: .always))
+                    .indexViewStyle(.page(backgroundDisplayMode: .interactive))
+
+                    Button {
+                        if selectedPage < pages.count - 1 {
+                            withAnimation(.spring(response: 0.36, dampingFraction: 0.88)) {
+                                selectedPage += 1
+                            }
+                        } else {
+                            onComplete()
+                        }
+                    } label: {
+                        Text(selectedPage == pages.count - 1 ? "开始使用" : "下一步")
+                            .font(KikariaTypography.chineseButton(size: isExpanded ? 19 : 18))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, isExpanded ? 19 : 17)
+                            .background(KikariaTheme.actionGradient, in: Capsule())
+                            .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 18, y: 10)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, metrics.horizontalPadding)
+                    .padding(.bottom, 28)
+                    .frame(maxWidth: isExpanded ? cardMaxWidth : metrics.formMaxWidth)
+                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 28)
-                .padding(.bottom, 28)
             }
         }
     }
 }
 
 private struct OnboardingPageCard: View {
+    var isExpanded = false
     let page: OnboardingPage
 
     var body: some View {
-        VStack(spacing: 26) {
+        VStack(spacing: isExpanded ? 30 : 26) {
             ZStack {
                 Circle()
                     .fill(KikariaTheme.actionGradient)
-                    .frame(width: 132, height: 132)
+                    .frame(width: isExpanded ? 156 : 132, height: isExpanded ? 156 : 132)
                     .background(.ultraThinMaterial, in: Circle())
-                    .shadow(color: KikariaTheme.sky.opacity(0.20), radius: 24, y: 14)
+                    .shadow(color: KikariaTheme.sky.opacity(0.20), radius: isExpanded ? 28 : 24, y: isExpanded ? 16 : 14)
 
                 Circle()
                     .fill(.white.opacity(0.24))
-                    .frame(width: 86, height: 86)
-                    .offset(x: 28, y: -26)
+                    .frame(width: isExpanded ? 102 : 86, height: isExpanded ? 102 : 86)
+                    .offset(x: isExpanded ? 32 : 28, y: isExpanded ? -30 : -26)
 
                 Image(systemName: page.systemImage)
-                    .font(.system(size: 54, weight: .semibold))
+                    .font(.system(size: isExpanded ? 62 : 54, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.96))
             }
 
-            VStack(spacing: 12) {
+            VStack(spacing: isExpanded ? 14 : 12) {
                 Text(page.title)
-                    .font(KikariaTypography.chineseTitle(size: 29, weight: .bold))
+                    .font(KikariaTypography.chineseTitle(size: isExpanded ? 32 : 29, weight: .bold))
                     .foregroundStyle(KikariaTheme.deepText)
                     .multilineTextAlignment(.center)
 
                 Text(page.subtitle)
-                    .font(KikariaTypography.chineseBody(size: 16, weight: .medium))
+                    .font(KikariaTypography.chineseBody(size: isExpanded ? 17 : 16, weight: .medium))
                     .foregroundStyle(KikariaTheme.softText)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(6)
+                    .lineSpacing(isExpanded ? 7 : 6)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 44)
-        .frame(maxWidth: .infinity, maxHeight: 430)
-        .liquidGlassCard(cornerRadius: 34, fillOpacity: 0.50, strokeOpacity: 0.48, shadowOpacity: 0.13, shadowRadius: 24, shadowY: 14)
+        .padding(.horizontal, isExpanded ? 34 : 24)
+        .padding(.vertical, isExpanded ? 54 : 44)
+        .frame(maxWidth: .infinity, maxHeight: isExpanded ? 520 : 430)
+        .liquidGlassCard(cornerRadius: isExpanded ? 38 : 34, fillOpacity: 0.50, strokeOpacity: 0.48, shadowOpacity: 0.13, shadowRadius: isExpanded ? 28 : 24, shadowY: isExpanded ? 16 : 14)
     }
 }
 
@@ -2007,15 +2120,18 @@ private extension KnowledgePoint {
 private struct KikariaSearchBar: View {
     @Binding var text: String
     var placeholder = "搜索知识点"
+    var scale: CGFloat = 1
 
     var body: some View {
-        HStack(spacing: 10) {
+        let resolvedScale = max(scale, 1)
+
+        HStack(spacing: 10 * resolvedScale) {
             Image(systemName: "magnifyingglass")
-                .font(.subheadline.weight(.semibold))
+                .font(.system(size: 15 * resolvedScale, weight: .semibold))
                 .foregroundStyle(KikariaTheme.blueGray)
 
             TextField(placeholder, text: $text)
-                .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
+                .font(KikariaTypography.chineseBody(size: 15 * resolvedScale, weight: .medium))
                 .foregroundStyle(KikariaTheme.deepText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -2025,15 +2141,67 @@ private struct KikariaSearchBar: View {
                     text = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.subheadline.weight(.semibold))
+                        .font(.system(size: 15 * resolvedScale, weight: .semibold))
                         .foregroundStyle(KikariaTheme.blueGray.opacity(0.75))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 16)
-        .frame(maxWidth: .infinity, minHeight: 50)
-        .liquidGlassCard(cornerRadius: 22, fillOpacity: 0.44, strokeOpacity: 0.40, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
+        .padding(.horizontal, 16 * resolvedScale)
+        .frame(maxWidth: .infinity, minHeight: 50 * resolvedScale)
+        .liquidGlassCard(cornerRadius: 22 * resolvedScale, fillOpacity: 0.44, strokeOpacity: 0.40, shadowOpacity: 0.08, shadowRadius: 12 * resolvedScale, shadowY: 7 * resolvedScale)
+    }
+}
+
+private struct KikariaAdaptiveBackButton: View {
+    let metrics: KikariaAdaptiveLayout.Metrics
+    let action: () -> Void
+
+    var body: some View {
+        let size: CGFloat = 42
+
+        Button(action: action) {
+            Image(systemName: "chevron.left")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(KikariaTheme.deepText)
+                .frame(width: size, height: size)
+                .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
+        }
+        .buttonStyle(.plain)
+        .frame(width: size, height: size)
+        .contentShape(Circle())
+        .accessibilityLabel("返回")
+    }
+}
+
+private struct KikariaAdaptiveNavigationChrome: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+    let metrics: KikariaAdaptiveLayout.Metrics
+    let outerMaxWidth: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(metrics.isPadPortrait)
+            .overlay(alignment: .topLeading) {
+                if metrics.isPadPortrait {
+                    KikariaAdaptiveBackButton(metrics: metrics) {
+                        dismiss()
+                    }
+                    .padding(.leading, metrics.horizontalPadding)
+                    .padding(.top, 12)
+                }
+            }
+    }
+}
+
+extension View {
+    func kikariaAdaptiveNavigationChrome(
+        metrics: KikariaAdaptiveLayout.Metrics,
+        outerMaxWidth: CGFloat
+    ) -> some View {
+        modifier(KikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: outerMaxWidth))
     }
 }
 
@@ -2122,81 +2290,92 @@ private struct TodayOverviewView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let scale = metrics.overviewScale
+            let columnMaxWidth = metrics.overviewOuterMaxWidth
+            let pagePadding = metrics.innerHorizontalPadding
+            let heroMinHeight: CGFloat? = metrics.isPadPortrait ? 176 * scale : nil
+            let metricMinHeight: CGFloat? = metrics.isPadPortrait ? 122 * scale : nil
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("今日概览")
-                            .font(KikariaTypography.chineseTitle())
-                            .foregroundStyle(KikariaTheme.deepText)
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-                        Text(presetName)
-                            .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
-                            .foregroundStyle(KikariaTheme.softText)
-                    }
-                    .padding(.top, 18)
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("今日新增已掌握")
-                            .font(KikariaTypography.chineseHeadline(size: 15))
-                            .foregroundStyle(KikariaTheme.softText)
-
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text("\(todaySummary.markedMasteredCount)")
-                                .font(KikariaTypography.number(size: 58, weight: .bold))
-                                .monospacedDigit()
-                                .foregroundStyle(KikariaTheme.masteredDeepGreen)
-
-                            Text("/ \(dailyGoal)")
-                                .font(KikariaTypography.number(size: 24, weight: .semibold))
-                                .foregroundStyle(KikariaTheme.softText)
-                        }
-
-                        Text(progressMessage)
-                            .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
-                            .foregroundStyle(KikariaTheme.deepText.opacity(0.82))
-                    }
-                    .padding(22)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .liquidGlassCard(cornerRadius: 30, fillOpacity: 0.48, strokeOpacity: 0.46, shadowOpacity: 0.13, shadowRadius: 22, shadowY: 12)
-
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        OverviewMetricCard(title: "查看答案", value: "\(todaySummary.reviewedAnswerCount)", detail: "今日次数")
-                        OverviewMetricCard(title: "总已掌握", value: "\(masteredTotal)", detail: "当前清单")
-                        OverviewMetricCard(title: "查看提示", value: "\(todaySummary.viewedHintCount)", detail: "今日次数")
-                        OverviewMetricCard(title: "倒数", value: countdownText(for: countdownEndDate), detail: "距结束日")
-                    }
-
-                    Button(action: onOpenHistory) {
-                        HStack(spacing: 12) {
-                            Text("复习历史")
-                                .font(KikariaTypography.chineseHeadline(size: 18))
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18 * scale) {
+                        VStack(alignment: .leading, spacing: 8 * scale) {
+                            Text("今日概览")
+                                .font(KikariaTypography.chineseTitle(size: 32 * scale))
                                 .foregroundStyle(KikariaTheme.deepText)
 
-                            Spacer()
-
-                            Image(systemName: "calendar")
-                                .font(.headline.weight(.semibold))
-                                .foregroundStyle(KikariaTheme.sky)
-
-                            Image(systemName: "chevron.right")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(KikariaTheme.blueGray)
+                            Text(presetName)
+                                .font(KikariaTypography.chineseBody(size: 15 * scale, weight: .medium))
+                                .foregroundStyle(KikariaTheme.softText)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 19)
-                        .liquidGlassCard(cornerRadius: 26, fillOpacity: 0.46, strokeOpacity: 0.42, shadowOpacity: 0.12, shadowRadius: 18, shadowY: 10)
+                        .padding(.top, 18 * scale)
+
+                        VStack(alignment: .leading, spacing: 12 * scale) {
+                            Text("今日新增已掌握")
+                                .font(KikariaTypography.chineseHeadline(size: 15 * scale))
+                                .foregroundStyle(KikariaTheme.softText)
+
+                            HStack(alignment: .firstTextBaseline, spacing: 8 * scale) {
+                                Text("\(todaySummary.markedMasteredCount)")
+                                    .font(KikariaTypography.number(size: 58 * scale, weight: .bold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(KikariaTheme.masteredDeepGreen)
+
+                                Text("/ \(dailyGoal)")
+                                    .font(KikariaTypography.number(size: 24 * scale, weight: .semibold))
+                                    .foregroundStyle(KikariaTheme.softText)
+                            }
+
+                            Text(progressMessage)
+                                .font(KikariaTypography.chineseBody(size: 15 * scale, weight: .medium))
+                                .foregroundStyle(KikariaTheme.deepText.opacity(0.82))
+                        }
+                        .padding(22 * scale)
+                        .frame(maxWidth: .infinity, minHeight: heroMinHeight, alignment: .leading)
+                        .liquidGlassCard(cornerRadius: 30 * scale, material: .thinMaterial, fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.11, shadowRadius: 20 * scale, shadowY: 11 * scale)
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12 * scale) {
+                            OverviewMetricCard(title: "查看答案", value: "\(todaySummary.reviewedAnswerCount)", detail: "今日次数", scale: scale, minHeight: metricMinHeight)
+                            OverviewMetricCard(title: "总已掌握", value: "\(masteredTotal)", detail: "当前清单", scale: scale, minHeight: metricMinHeight)
+                            OverviewMetricCard(title: "查看提示", value: "\(todaySummary.viewedHintCount)", detail: "今日次数", scale: scale, minHeight: metricMinHeight)
+                            OverviewMetricCard(title: "倒数", value: countdownText(for: countdownEndDate), detail: "距结束日", scale: scale, minHeight: metricMinHeight)
+                        }
+
+                        Button(action: onOpenHistory) {
+                            HStack(spacing: 12 * scale) {
+                                Text("复习历史")
+                                    .font(KikariaTypography.chineseHeadline(size: 18 * scale))
+                                    .foregroundStyle(KikariaTheme.deepText)
+
+                                Spacer()
+
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 18 * scale, weight: .semibold))
+                                    .foregroundStyle(KikariaTheme.sky)
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14 * scale, weight: .semibold))
+                                    .foregroundStyle(KikariaTheme.blueGray)
+                            }
+                            .padding(.horizontal, 20 * scale)
+                            .padding(.vertical, 19 * scale)
+                            .liquidGlassCard(cornerRadius: 26 * scale, material: .thinMaterial, fillOpacity: 0.38, strokeOpacity: 0.38, shadowOpacity: 0.10, shadowRadius: 16 * scale, shadowY: 9 * scale)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, pagePadding)
+                    .padding(.bottom, 32)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 22)
-                .padding(.bottom, 32)
             }
+            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: columnMaxWidth)
         }
-        .navigationTitle("今日概览")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -2205,27 +2384,31 @@ private struct OverviewMetricCard: View {
     let title: String
     let value: String
     let detail: String
+    var scale: CGFloat = 1
+    var minHeight: CGFloat? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let resolvedScale = max(scale, 1)
+
+        VStack(alignment: .leading, spacing: 8 * resolvedScale) {
             Text(title)
-                .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                .font(KikariaTypography.chineseCaption(size: 13 * resolvedScale, weight: .semibold))
                 .foregroundStyle(KikariaTheme.softText)
 
             Text(value)
-                .font(KikariaTypography.number(size: 25, weight: .bold))
+                .font(KikariaTypography.number(size: 25 * resolvedScale, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
 
             Text(detail)
-                .font(KikariaTypography.chineseCaption(size: 12, weight: .medium))
+                .font(KikariaTypography.chineseCaption(size: 12 * resolvedScale, weight: .medium))
                 .foregroundStyle(KikariaTheme.blueGray)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .liquidGlassCard(cornerRadius: 24, material: .thinMaterial, fillOpacity: 0.42, strokeOpacity: 0.36, shadowOpacity: 0.08, shadowRadius: 14, shadowY: 8)
+        .padding(18 * resolvedScale)
+        .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
+        .liquidGlassCard(cornerRadius: 24 * resolvedScale, material: .thinMaterial, fillOpacity: 0.34, strokeOpacity: 0.34, shadowOpacity: 0.08, shadowRadius: 14 * resolvedScale, shadowY: 8 * resolvedScale)
     }
 }
 
@@ -2238,82 +2421,87 @@ private struct ReviewHistoryView: View {
     private let weekdaySymbols = ["一", "二", "三", "四", "五", "六", "日"]
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text("复习历史")
-                        .font(KikariaTypography.chineseTitle())
-                        .foregroundStyle(KikariaTheme.deepText)
-                        .padding(.top, 18)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text("复习历史")
+                            .font(KikariaTypography.chineseTitle())
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .padding(.top, 18)
 
-                    VStack(spacing: 18) {
-                        HStack {
-                            Button {
-                                changeMonth(by: -1)
-                            } label: {
-                                Image(systemName: "chevron.left")
-                                    .font(.headline.weight(.semibold))
-                                    .foregroundStyle(KikariaTheme.sky)
-                                    .frame(width: 40, height: 40)
-                                    .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
-                            }
-                            .buttonStyle(.plain)
+                        VStack(spacing: 18) {
+                            HStack {
+                                Button {
+                                    changeMonth(by: -1)
+                                } label: {
+                                    Image(systemName: "chevron.left")
+                                        .font(.headline.weight(.semibold))
+                                        .foregroundStyle(KikariaTheme.sky)
+                                        .frame(width: 40, height: 40)
+                                        .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
+                                }
+                                .buttonStyle(.plain)
 
-                            Spacer()
+                                Spacer()
 
-                            Text(monthTitle)
-                                .font(KikariaTypography.chineseHeadline(size: 20))
-                                .foregroundStyle(KikariaTheme.deepText)
+                                Text(monthTitle)
+                                    .font(KikariaTypography.chineseHeadline(size: 20))
+                                    .foregroundStyle(KikariaTheme.deepText)
 
-                            Spacer()
+                                Spacer()
 
-                            Button {
-                                changeMonth(by: 1)
-                            } label: {
-                                Image(systemName: "chevron.right")
-                                    .font(.headline.weight(.semibold))
-                                    .foregroundStyle(KikariaTheme.sky)
-                                    .frame(width: 40, height: 40)
-                                    .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        LazyVGrid(columns: columns, spacing: 8) {
-                            ForEach(weekdaySymbols, id: \.self) { symbol in
-                                Text(symbol)
-                                    .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
-                                    .foregroundStyle(KikariaTheme.softText)
-                                    .frame(maxWidth: .infinity)
+                                Button {
+                                    changeMonth(by: 1)
+                                } label: {
+                                    Image(systemName: "chevron.right")
+                                        .font(.headline.weight(.semibold))
+                                        .foregroundStyle(KikariaTheme.sky)
+                                        .frame(width: 40, height: 40)
+                                        .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
+                                }
+                                .buttonStyle(.plain)
                             }
 
-                            ForEach(Array(monthCells.enumerated()), id: \.offset) { _, date in
-                                HistoryCalendarDayCell(
-                                    date: date,
-                                    count: date.map(recordCount(on:)) ?? 0,
-                                    isToday: date.map { Calendar.current.isDateInToday($0) } ?? false,
-                                    isSelected: date.map { Calendar.current.isDate($0, inSameDayAs: selectedDate) } ?? false
-                                ) {
-                                    if let date {
-                                        selectedDate = date
+                            LazyVGrid(columns: columns, spacing: 8) {
+                                ForEach(weekdaySymbols, id: \.self) { symbol in
+                                    Text(symbol)
+                                        .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                                        .foregroundStyle(KikariaTheme.softText)
+                                        .frame(maxWidth: .infinity)
+                                }
+
+                                ForEach(Array(monthCells.enumerated()), id: \.offset) { _, date in
+                                    HistoryCalendarDayCell(
+                                        date: date,
+                                        count: date.map(recordCount(on:)) ?? 0,
+                                        isToday: date.map { Calendar.current.isDateInToday($0) } ?? false,
+                                        isSelected: date.map { Calendar.current.isDate($0, inSameDayAs: selectedDate) } ?? false
+                                    ) {
+                                        if let date {
+                                            selectedDate = date
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    .padding(18)
-                    .liquidGlassCard(cornerRadius: 30, fillOpacity: 0.44, strokeOpacity: 0.42, shadowOpacity: 0.12, shadowRadius: 20, shadowY: 12)
+                        .padding(18)
+                        .liquidGlassCard(cornerRadius: 30, fillOpacity: 0.44, strokeOpacity: 0.42, shadowOpacity: 0.12, shadowRadius: 20, shadowY: 12)
 
-                    HistoryDaySummaryCard(date: selectedDate, summary: ActivitySummary.make(from: records(on: selectedDate)))
+                        HistoryDaySummaryCard(date: selectedDate, summary: ActivitySummary.make(from: records(on: selectedDate)))
+                    }
+                    .padding(.horizontal, metrics.horizontalPadding)
+                    .padding(.bottom, 32)
+                    .frame(maxWidth: metrics.mainMaxWidth)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 22)
-                .padding(.bottom, 32)
             }
+            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: metrics.mainMaxWidth)
         }
-        .navigationTitle("复习历史")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -2573,77 +2761,88 @@ private struct SettingsView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let scale = metrics.settingsScale
+            let rowScale = metrics.settingsRowScale
+            let columnMaxWidth = metrics.settingsOuterMaxWidth
+            let pagePadding = metrics.innerHorizontalPadding
 
-            VStack(spacing: 0) {
-                HStack {
-                    Text("设置")
-                        .font(KikariaTypography.chineseTitle(size: 30))
-                        .foregroundStyle(KikariaTheme.deepText)
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-                    Spacer()
-
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.headline.weight(.semibold))
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("设置")
+                            .font(KikariaTypography.chineseTitle(size: metrics.isPadPortrait ? 34 * scale : (metrics.isPadWidth ? 32 : 30)))
                             .foregroundStyle(KikariaTheme.deepText)
-                            .frame(width: 42, height: 42)
-                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.10, shadowRadius: 12, shadowY: 6)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 18)
-                .padding(.bottom, 18)
 
-                ScrollView {
-                    VStack(spacing: 22) {
-                        VStack(spacing: 12) {
+                        Spacer()
+
+                        Button(action: onClose) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: metrics.isPadPortrait ? 17 * scale : 17, weight: .semibold))
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .frame(width: metrics.isPadPortrait ? 46 * scale : (metrics.isPadWidth ? 46 : 42), height: metrics.isPadPortrait ? 46 * scale : (metrics.isPadWidth ? 46 : 42))
+                                .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.10, shadowRadius: 12 * scale, shadowY: 6 * scale)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, pagePadding)
+                    .padding(.top, 18 * scale)
+                    .padding(.bottom, 18 * scale)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
+
+                    ScrollView {
+                        VStack(spacing: 22 * scale) {
+                        VStack(spacing: 12 * scale) {
                             ProfileAvatarView(
                                 systemName: profile.avatarSystemName,
                                 imageData: profile.avatarImageData,
-                                size: 86
+                                size: metrics.isPadPortrait ? 112 : (metrics.isPadWidth ? 98 : 86)
                             )
 
-                            VStack(spacing: 4) {
+                            VStack(spacing: 4 * scale) {
                                 Text(profile.displayName)
-                                    .font(KikariaTypography.chineseTitle(size: 28, weight: .semibold))
+                                    .font(KikariaTypography.chineseTitle(size: metrics.isPadPortrait ? 31 * scale : (metrics.isPadWidth ? 30 : 28), weight: .semibold))
                                     .foregroundStyle(KikariaTheme.deepText)
 
                                 Text("@\(profile.userHandle)")
-                                    .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
+                                    .font(KikariaTypography.chineseBody(size: metrics.isPadPortrait ? 16 * scale : (metrics.isPadWidth ? 16 : 15), weight: .medium))
                                     .foregroundStyle(KikariaTheme.softText)
                             }
 
                             Button(action: onEditProfile) {
                                 Text("编辑个人资料")
-                                    .font(KikariaTypography.chineseButton(size: 16))
+                                    .font(KikariaTypography.chineseButton(size: metrics.isPadPortrait ? 17 * scale : (metrics.isPadWidth ? 17 : 16)))
                                     .foregroundStyle(KikariaTheme.deepText)
-                                    .padding(.horizontal, 24)
-                                    .padding(.vertical, 13)
-                                    .liquidGlassCapsule(fillOpacity: 0.44, strokeOpacity: 0.46, shadowOpacity: 0.10, shadowRadius: 14, shadowY: 8)
+                                    .padding(.horizontal, metrics.isPadPortrait ? 28 * scale : (metrics.isPadWidth ? 28 : 24))
+                                    .padding(.vertical, metrics.isPadPortrait ? 14 * scale : (metrics.isPadWidth ? 14 : 13))
+                                    .liquidGlassCapsule(fillOpacity: 0.36, strokeOpacity: 0.40, shadowOpacity: 0.08, shadowRadius: 13 * scale, shadowY: 7 * scale)
                             }
                             .buttonStyle(.plain)
-                            .padding(.top, 4)
+                            .padding(.top, 4 * scale)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 4)
-                        .padding(.bottom, 2)
+                        .padding(.top, 8 * scale)
+                        .padding(.bottom, 6 * scale)
+                        .liquidGlassCard(cornerRadius: 30 * scale, material: .thinMaterial, fillOpacity: 0.28, strokeOpacity: 0.30, shadowOpacity: 0.06, shadowRadius: 14 * scale, shadowY: 8 * scale)
 
-                        SettingsSectionCard(title: "当前预设") {
+                        SettingsSectionCard(title: "当前预设", scale: scale) {
                             SettingsListRow(
                                 title: "当前预设",
                                 valueText: currentPresetName,
-                                showsChevron: false
+                                showsChevron: false,
+                                scale: rowScale
                             )
 
-                            SettingsSectionDivider()
+                            SettingsSectionDivider(scale: scale)
 
                             SettingsListRow(
                                 title: "每日学习目标",
-                                valueText: "\(dailyGoal)"
+                                valueText: "\(dailyGoal)",
+                                scale: rowScale
                             ) {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                                     isShowingCountdownPicker = false
@@ -2653,11 +2852,12 @@ private struct SettingsView: View {
                                 }
                             }
 
-                            SettingsSectionDivider()
+                            SettingsSectionDivider(scale: scale)
 
                             SettingsListRow(
                                 title: "倒数日",
-                                valueText: countdownEndDate.map { "\(countdownDays(until: $0) ?? 0)天" } ?? "未设置"
+                                valueText: countdownEndDate.map { "\(countdownDays(until: $0) ?? 0)天" } ?? "未设置",
+                                scale: rowScale
                             ) {
                                 prepareCountdownDraft()
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
@@ -2668,11 +2868,12 @@ private struct SettingsView: View {
                                 }
                             }
 
-                            SettingsSectionDivider()
+                            SettingsSectionDivider(scale: scale)
 
                             SettingsListRow(
                                 title: "进度安全线",
-                                valueText: "\(dangerPercent)%"
+                                valueText: "\(dangerPercent)%",
+                                scale: rowScale
                             ) {
                                 withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                                     isShowingDailyGoalPicker = false
@@ -2683,10 +2884,11 @@ private struct SettingsView: View {
                             }
                         }
 
-                        SettingsSectionCard(title: "通知") {
+                        SettingsSectionCard(title: "通知", scale: scale) {
                             SettingsToggleRow(
                                 title: "学习进度通知",
-                                isOn: notificationsEnabled
+                                isOn: notificationsEnabled,
+                                scale: rowScale
                             ) { newValue in
                                 if !newValue {
                                     withAnimation(.easeOut(duration: 0.18)) {
@@ -2702,11 +2904,12 @@ private struct SettingsView: View {
                             }
 
                             if notificationsEnabled {
-                                SettingsSectionDivider()
+                                SettingsSectionDivider(scale: scale)
 
                                 SettingsListRow(
                                     title: "通知时间",
-                                    valueText: notificationTimeText
+                                    valueText: notificationTimeText,
+                                    scale: rowScale
                                 ) {
                                     withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
                                         isShowingDailyGoalPicker = false
@@ -2718,73 +2921,80 @@ private struct SettingsView: View {
 
                                 if countdownStartDate == nil || countdownEndDate == nil {
                                     Text("需设置倒数日")
-                                        .font(KikariaTypography.chineseCaption(size: 12, weight: .medium))
+                                        .font(KikariaTypography.chineseCaption(size: 12 * scale, weight: .medium))
                                         .foregroundStyle(KikariaTheme.softText)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.horizontal, 18)
-                                        .padding(.bottom, 10)
+                                        .padding(.horizontal, 18 * scale)
+                                        .padding(.bottom, 10 * scale)
                                 }
 
                                 #if DEBUG
-                                SettingsSectionDivider()
+                                SettingsSectionDivider(scale: scale)
 
                                 Button {
                                     onSendTestNotification { message in
                                         showToast(message)
                                     }
                                 } label: {
-                                    SettingsRowContent(title: "预览提醒", valueText: "")
+                                    SettingsRowContent(title: "预览提醒", valueText: "", scale: rowScale)
                                 }
                                 .buttonStyle(.plain)
                                 #endif
                             }
                         }
 
-                        SettingsSectionCard(title: "帮助") {
+                        SettingsSectionCard(title: "帮助", scale: scale) {
                             SettingsListRow(
                                 title: "新手引导",
-                                valueText: ""
+                                valueText: "",
+                                scale: rowScale
                             ) {
                                 onOpenOnboarding()
                             }
 
-                            SettingsSectionDivider()
+                            SettingsSectionDivider(scale: scale)
 
                             SettingsListRow(
                                 title: "Markdown 格式",
-                                valueText: ""
+                                valueText: "",
+                                scale: rowScale
                             ) {
                                 onOpenMarkdownGuide()
                             }
                         }
 
-                        SettingsSectionCard(title: "关于") {
+                        SettingsSectionCard(title: "关于", scale: scale) {
                             SettingsListRow(
                                 title: "隐私政策",
-                                valueText: ""
+                                valueText: "",
+                                scale: rowScale
                             ) {
                                 isShowingPrivacyPolicy = true
                             }
 
-                            SettingsSectionDivider()
+                            SettingsSectionDivider(scale: scale)
 
                             SettingsListRow(
                                 title: "版权声明",
                                 valueText: "© 2026 Vita",
-                                showsChevron: false
+                                showsChevron: false,
+                                scale: rowScale
                             )
 
-                            SettingsSectionDivider()
+                            SettingsSectionDivider(scale: scale)
 
                             SettingsListRow(
                                 title: "版本",
                                 valueText: versionText,
-                                showsChevron: false
+                                showsChevron: false,
+                                scale: rowScale
                             )
                         }
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 34)
+                    .padding(.horizontal, pagePadding)
+                    .padding(.bottom, 34 * scale)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
                 }
             }
 
@@ -2799,8 +3009,12 @@ private struct SettingsView: View {
                     .transition(.opacity)
 
                 VStack {
-                    Spacer()
-                        .frame(height: 352)
+                    if metrics.isPadWidth {
+                        Spacer()
+                    } else {
+                        Spacer()
+                            .frame(height: 352)
+                    }
 
                     DailyGoalPickerBubble(dailyGoal: $dailyGoal) {
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
@@ -2825,8 +3039,12 @@ private struct SettingsView: View {
                     .transition(.opacity)
 
                 VStack {
-                    Spacer()
-                        .frame(height: 332)
+                    if metrics.isPadWidth {
+                        Spacer()
+                    } else {
+                        Spacer()
+                            .frame(height: 332)
+                    }
 
                     CountdownDateRangePickerBubble(
                         startDate: $countdownDraftStartDate,
@@ -2875,8 +3093,12 @@ private struct SettingsView: View {
                     .transition(.opacity)
 
                 VStack {
-                    Spacer()
-                        .frame(height: 492)
+                    if metrics.isPadWidth {
+                        Spacer()
+                    } else {
+                        Spacer()
+                            .frame(height: 492)
+                    }
 
                     DangerPercentPickerBubble(dangerPercent: $dangerPercent) {
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
@@ -2901,8 +3123,12 @@ private struct SettingsView: View {
                     .transition(.opacity)
 
                 VStack {
-                    Spacer()
-                        .frame(height: 456)
+                    if metrics.isPadWidth {
+                        Spacer()
+                    } else {
+                        Spacer()
+                            .frame(height: 456)
+                    }
 
                     NotificationTimePickerBubble(notificationTime: $notificationTime) {
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
@@ -2920,6 +3146,7 @@ private struct SettingsView: View {
                 KikariaToastLayer(message: toastMessage)
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
+        }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
@@ -2959,35 +3186,43 @@ private struct SettingsView: View {
 
 private struct SettingsSectionCard<Content: View>: View {
     let title: String
+    var scale: CGFloat = 1
     let content: Content
 
-    init(title: String, @ViewBuilder content: () -> Content) {
+    init(title: String, scale: CGFloat = 1, @ViewBuilder content: () -> Content) {
         self.title = title
+        self.scale = scale
         self.content = content()
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let resolvedScale = max(scale, 1)
+
+        VStack(alignment: .leading, spacing: 8 * resolvedScale) {
             Text(title)
-                .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                .font(KikariaTypography.chineseCaption(size: 13 * resolvedScale, weight: .semibold))
                 .foregroundStyle(KikariaTheme.softText)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 4 * resolvedScale)
 
             VStack(spacing: 0) {
                 content
             }
-            .liquidGlassCard(cornerRadius: 28, fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.10, shadowRadius: 16, shadowY: 9)
+            .liquidGlassCard(cornerRadius: 28 * resolvedScale, material: .thinMaterial, fillOpacity: 0.32, strokeOpacity: 0.34, shadowOpacity: 0.08, shadowRadius: 15 * resolvedScale, shadowY: 8 * resolvedScale)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 private struct SettingsSectionDivider: View {
+    var scale: CGFloat = 1
+
     var body: some View {
+        let resolvedScale = max(scale, 1)
+
         Rectangle()
-            .fill(KikariaTheme.blueGray.opacity(0.13))
+            .fill(KikariaTheme.blueGray.opacity(0.10))
             .frame(height: 1)
-            .padding(.leading, 18)
+            .padding(.leading, 18 * resolvedScale)
     }
 }
 
@@ -2995,20 +3230,23 @@ private struct SettingsRowContent: View {
     let title: String
     let valueText: String
     var showsChevron = true
+    var scale: CGFloat = 1
 
     var body: some View {
-        HStack(spacing: 14) {
+        let resolvedScale = max(scale, 1)
+
+        HStack(spacing: 14 * resolvedScale) {
             Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 16))
+                .font(KikariaTypography.chineseHeadline(size: 16 * resolvedScale))
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.84)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 12 * resolvedScale)
 
             if !valueText.isEmpty {
                 Text(valueText)
-                    .font(KikariaTypography.chineseHeadline(size: 16))
+                    .font(KikariaTypography.chineseHeadline(size: 16 * resolvedScale))
                     .foregroundStyle(showsChevron ? KikariaTheme.sky : KikariaTheme.softText)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -3017,12 +3255,12 @@ private struct SettingsRowContent: View {
 
             if showsChevron {
                 Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 13 * resolvedScale, weight: .semibold))
                     .foregroundStyle(KikariaTheme.blueGray)
             }
         }
-        .padding(.horizontal, 18)
-        .frame(maxWidth: .infinity, minHeight: 58)
+        .padding(.horizontal, 18 * resolvedScale)
+        .frame(maxWidth: .infinity, minHeight: 58 * resolvedScale)
         .contentShape(Rectangle())
     }
 }
@@ -3031,17 +3269,18 @@ private struct SettingsListRow: View {
     let title: String
     let valueText: String
     var showsChevron = true
+    var scale: CGFloat = 1
     var action: (() -> Void)? = nil
 
     var body: some View {
         Group {
             if let action {
                 Button(action: action) {
-                    SettingsRowContent(title: title, valueText: valueText, showsChevron: showsChevron)
+                    SettingsRowContent(title: title, valueText: valueText, showsChevron: showsChevron, scale: scale)
                 }
                 .buttonStyle(.plain)
             } else {
-                SettingsRowContent(title: title, valueText: valueText, showsChevron: false)
+                SettingsRowContent(title: title, valueText: valueText, showsChevron: false, scale: scale)
             }
         }
     }
@@ -3050,12 +3289,15 @@ private struct SettingsListRow: View {
 private struct SettingsToggleRow: View {
     let title: String
     let isOn: Bool
+    var scale: CGFloat = 1
     let onChange: (Bool) -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
+        let resolvedScale = max(scale, 1)
+
+        HStack(spacing: 14 * resolvedScale) {
             Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 17))
+                .font(KikariaTypography.chineseHeadline(size: 17 * resolvedScale))
                 .foregroundStyle(KikariaTheme.deepText)
 
             Spacer()
@@ -3070,8 +3312,8 @@ private struct SettingsToggleRow: View {
             .labelsHidden()
             .tint(KikariaTheme.sky)
         }
-        .padding(.horizontal, 18)
-        .frame(maxWidth: .infinity, minHeight: 58)
+        .padding(.horizontal, 18 * resolvedScale)
+        .frame(maxWidth: .infinity, minHeight: 58 * resolvedScale)
     }
 }
 
@@ -3587,64 +3829,88 @@ private struct PresetSelectionView: View {
     @State private var toastToken = UUID()
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let scale = metrics.presetScale
+            let columnMaxWidth = metrics.presetOuterMaxWidth
+            let pagePadding = metrics.innerHorizontalPadding
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text("切换预设")
-                        .font(KikariaTypography.chineseTitle())
-                        .foregroundStyle(KikariaTheme.deepText)
-                        .padding(.top, 18)
-                        .padding(.bottom, 2)
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-                    Button(action: onUploadNewPreset) {
-                        HStack {
-                            Text("上传新预设")
-                                .font(KikariaTypography.chineseButton())
-                            Spacer()
-                            Image(systemName: "plus")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 20)
-                        .frame(maxWidth: .infinity, minHeight: 58)
-                        .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 16, y: 8)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.bottom, 2)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18 * scale) {
+                        Text("切换预设")
+                            .font(KikariaTypography.chineseTitle(size: 32 * scale))
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .padding(.top, 18 * scale)
+                            .padding(.bottom, 2 * scale)
 
-                    ForEach(presets) { preset in
-                        PresetCard(
-                            preset: preset,
-                            isCurrent: preset.id == currentPresetID,
-                            onSelect: {
-                                if preset.id != currentPresetID {
-                                    pendingPreset = preset
-                                }
-                            },
-                            onEdit: {
-                                onEditPreset(preset)
-                            },
-                            onDelete: {
-                                pendingDeletePreset = preset
+                        Button(action: onUploadNewPreset) {
+                            HStack(spacing: 12 * scale) {
+                                Text("上传新预设")
+                                    .font(KikariaTypography.chineseButton(size: 17 * scale))
+                                Spacer()
+                                Image(systemName: "plus")
+                                    .font(.system(size: 15 * scale, weight: .semibold))
                             }
-                        )
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 20 * scale)
+                            .frame(maxWidth: .infinity, minHeight: 58 * scale)
+                            .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 22 * scale, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 22 * scale, style: .continuous)
+                                    .stroke(
+                                        LinearGradient(
+                                            colors: [
+                                                Color.white.opacity(0.36),
+                                                Color.white.opacity(0.10)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ),
+                                        lineWidth: 1
+                                    )
+                            }
+                            .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 16 * scale, y: 8 * scale)
+                        }
                         .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 34)
-            }
+                        .padding(.bottom, 2 * scale)
 
-            if let toastMessage {
-                KikariaToastLayer(message: toastMessage)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                        ForEach(presets) { preset in
+                            PresetCard(
+                                preset: preset,
+                                isCurrent: preset.id == currentPresetID,
+                                cardScale: metrics.listCardScale,
+                                onSelect: {
+                                    if preset.id != currentPresetID {
+                                        pendingPreset = preset
+                                    }
+                                },
+                                onEdit: {
+                                    onEditPreset(preset)
+                                },
+                                onDelete: {
+                                    pendingDeletePreset = preset
+                                }
+                            )
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, pagePadding)
+                    .padding(.bottom, 34)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
+                }
+
+                if let toastMessage {
+                    KikariaToastLayer(message: toastMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
+            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: columnMaxWidth)
         }
-        .navigationTitle("切换预设")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .alert("切换预设？", isPresented: isConfirmingPreset) {
             Button("取消", role: .cancel) {
@@ -3746,73 +4012,76 @@ private struct PresetSelectionView: View {
 private struct PresetCard: View {
     let preset: KnowledgePreset
     let isCurrent: Bool
+    var cardScale: CGFloat = 1
     let onSelect: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
+        let scale = max(cardScale, 1)
+
+        VStack(alignment: .leading, spacing: 11 * scale) {
+            HStack(alignment: .top, spacing: 12 * scale) {
+                VStack(alignment: .leading, spacing: 8 * scale) {
+                    HStack(spacing: 8 * scale) {
                         Text(preset.name)
-                            .font(KikariaTypography.chineseHeadline(size: 20))
+                            .font(KikariaTypography.chineseHeadline(size: 20 * scale))
                             .foregroundStyle(KikariaTheme.deepText)
                             .lineLimit(1)
                             .minimumScaleFactor(0.82)
 
                         if isCurrent {
                             Text("当前")
-                                .font(KikariaTypography.tag(size: 11, weight: .bold))
+                                .font(KikariaTypography.tag(size: 11 * scale, weight: .bold))
                                 .foregroundStyle(KikariaTheme.sky)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .liquidGlassCapsule(fillOpacity: 0.42, strokeOpacity: 0.40, shadowOpacity: 0.04, shadowRadius: 6, shadowY: 3)
+                                .padding(.horizontal, 8 * scale)
+                                .padding(.vertical, 4 * scale)
+                                .liquidGlassCapsule(fillOpacity: 0.34, strokeOpacity: 0.38, shadowOpacity: 0.04, shadowRadius: 6 * scale, shadowY: 3 * scale)
                         }
                     }
 
-                    HStack(spacing: 9) {
+                    HStack(spacing: 9 * scale) {
                         Text("\(preset.knowledgePointCount) 个知识点")
-                            .font(KikariaTypography.tag(size: 12, weight: .semibold))
+                            .font(KikariaTypography.tag(size: 12 * scale, weight: .semibold))
                             .foregroundStyle(KikariaTheme.softText)
                     }
                 }
 
                 Spacer()
 
-                HStack(spacing: 8) {
+                HStack(spacing: 8 * scale) {
                     Button(action: onEdit) {
                         Image(systemName: "pencil")
-                            .font(.subheadline.weight(.semibold))
+                            .font(.system(size: 15 * scale, weight: .semibold))
                             .foregroundStyle(KikariaTheme.deepText)
-                            .frame(width: 34, height: 34)
-                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 8, shadowY: 4)
+                            .frame(width: 34 * scale, height: 34 * scale)
+                            .liquidGlassCircle(fillOpacity: 0.34, strokeOpacity: 0.36, shadowOpacity: 0.07, shadowRadius: 8 * scale, shadowY: 4 * scale)
                     }
                     .buttonStyle(.plain)
 
                     Button(action: onDelete) {
                         Image(systemName: "trash")
-                            .font(.subheadline.weight(.semibold))
+                            .font(.system(size: 15 * scale, weight: .semibold))
                             .foregroundStyle(KikariaTheme.removeCoral)
-                            .frame(width: 34, height: 34)
-                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 8, shadowY: 4)
+                            .frame(width: 34 * scale, height: 34 * scale)
+                            .liquidGlassCircle(fillOpacity: 0.34, strokeOpacity: 0.36, shadowOpacity: 0.07, shadowRadius: 8 * scale, shadowY: 4 * scale)
                     }
                     .buttonStyle(.plain)
                 }
             }
 
             Text(preset.description)
-                .font(KikariaTypography.chineseBody(size: 14))
+                .font(KikariaTypography.chineseBody(size: 14 * scale))
                 .foregroundStyle(KikariaTheme.softText)
                 .lineLimit(2)
-                .lineSpacing(3)
+                .lineSpacing(3 * scale)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(18)
+        .padding(18 * scale)
         .frame(maxWidth: .infinity)
-        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 24 * scale, style: .continuous))
         .onTapGesture(perform: onSelect)
-        .liquidGlassCard(cornerRadius: 24, fillOpacity: isCurrent ? 0.52 : 0.42, strokeOpacity: isCurrent ? 0.62 : 0.38, shadowOpacity: isCurrent ? 0.15 : 0.09, shadowRadius: 18, shadowY: 10)
+        .liquidGlassCard(cornerRadius: 24 * scale, material: .thinMaterial, fillOpacity: isCurrent ? 0.42 : 0.34, strokeOpacity: isCurrent ? 0.52 : 0.34, shadowOpacity: isCurrent ? 0.12 : 0.08, shadowRadius: 17 * scale, shadowY: 9 * scale)
     }
 }
 
@@ -3839,105 +4108,110 @@ private struct NewPresetView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let scale = metrics.newPresetScale
+            let columnMaxWidth = metrics.newPresetOuterMaxWidth
+            let pagePadding = metrics.innerHorizontalPadding
+            let inputHeight: CGFloat? = metrics.isPadPortrait ? metrics.newPresetInputHeight : nil
+            let textEditorHeight = metrics.newPresetTextEditorHeight
 
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(KikariaTheme.deepText)
-                            .frame(width: 42, height: 42)
-                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
-                    }
-                    .buttonStyle(.plain)
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-                    Spacer()
-
-                    Text("上传新预设")
-                        .font(KikariaTypography.chineseHeadline())
-                        .foregroundStyle(KikariaTheme.deepText)
-
-                    Spacer()
-
-                    Button("保存") {
-                        savePreset()
-                    }
-                    .font(KikariaTypography.chineseButton())
-                    .foregroundStyle(KikariaTheme.sky)
-                    .frame(width: 42, alignment: .trailing)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 18)
-                .padding(.bottom, 16)
-
-                ScrollView {
-                    VStack(spacing: 16) {
-                        ProfileTextField(title: "预设名称", text: $name)
-                        ProfileTextField(title: "分类", text: $category)
-                        ProfileTextField(title: "简短描述", text: $description)
-
-                        Button {
-                            isImportingFile = true
-                        } label: {
-                            Label("选择 .md / .txt 文件", systemImage: "doc.badge.plus")
-                                .font(KikariaTypography.chineseButton())
-                                .foregroundStyle(KikariaTheme.deepText)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 15)
-                                .liquidGlassCard(cornerRadius: 22, fillOpacity: 0.42, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
+                VStack(spacing: 0) {
+                    HStack {
+                        KikariaAdaptiveBackButton(metrics: metrics) {
+                            dismiss()
                         }
-                        .buttonStyle(.plain)
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(alignment: .center) {
-                                Text("Markdown 文本")
-                                    .font(KikariaTypography.chineseHeadline(size: 14))
-                                    .foregroundStyle(KikariaTheme.softText)
+                        Spacer()
 
-                                Spacer()
+                        Text("上传新预设")
+                            .font(KikariaTypography.chineseHeadline(size: 17 * scale))
+                            .foregroundStyle(KikariaTheme.deepText)
 
-                                NavigationLink(value: AppRoute.markdownFormatGuide) {
-                                    Text("如何编写 Markdown 预设？")
-                                        .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
-                                        .foregroundStyle(KikariaTheme.sky)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 7)
-                                        .liquidGlassCapsule(fillOpacity: 0.38, strokeOpacity: 0.36, shadowOpacity: 0.04, shadowRadius: 6, shadowY: 3)
+                        Spacer()
+
+                        Button("保存") {
+                            savePreset()
+                        }
+                        .font(KikariaTypography.chineseButton(size: 17 * scale))
+                        .foregroundStyle(KikariaTheme.sky)
+                        .frame(width: metrics.adaptiveTopBarTrailingWidth, alignment: .trailing)
+                    }
+                    .padding(.horizontal, pagePadding)
+                    .padding(.top, 18 * scale)
+                    .padding(.bottom, 16 * scale)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
+
+                    ScrollView {
+                        VStack(spacing: 16 * scale) {
+                            ProfileTextField(title: "预设名称", text: $name, scale: scale, minHeight: inputHeight)
+                            ProfileTextField(title: "分类", text: $category, scale: scale, minHeight: inputHeight)
+                            ProfileTextField(title: "简短描述", text: $description, scale: scale, minHeight: inputHeight)
+
+                            Button {
+                                isImportingFile = true
+                            } label: {
+                                Label("选择 .md / .txt 文件", systemImage: "doc.badge.plus")
+                                    .font(KikariaTypography.chineseButton(size: 17 * scale))
+                                    .foregroundStyle(KikariaTheme.deepText)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 15 * scale)
+                                    .liquidGlassCard(cornerRadius: 22 * scale, fillOpacity: 0.42, strokeOpacity: 0.38, shadowOpacity: 0.08, shadowRadius: 12 * scale, shadowY: 7 * scale)
+                            }
+                            .buttonStyle(.plain)
+
+                            VStack(alignment: .leading, spacing: 8 * scale) {
+                                HStack(alignment: .center) {
+                                    Text("Markdown 文本")
+                                        .font(KikariaTypography.chineseHeadline(size: 14 * scale))
+                                        .foregroundStyle(KikariaTheme.softText)
+
+                                    Spacer()
+
+                                    NavigationLink(value: AppRoute.markdownFormatGuide) {
+                                        Text("如何编写 Markdown 预设？")
+                                            .font(KikariaTypography.chineseCaption(size: 12 * scale, weight: .semibold))
+                                            .foregroundStyle(KikariaTheme.sky)
+                                            .padding(.horizontal, 12 * scale)
+                                            .padding(.vertical, 7 * scale)
+                                            .liquidGlassCapsule(fillOpacity: 0.38, strokeOpacity: 0.36, shadowOpacity: 0.04, shadowRadius: 6 * scale, shadowY: 3 * scale)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
+
+                                TextEditor(text: $markdownText)
+                                    .font(.system(size: 17 * scale, weight: .regular, design: .serif))
+                                    .foregroundStyle(KikariaTheme.deepText)
+                                    .scrollContentBackground(.hidden)
+                                    .padding(14 * scale)
+                                    .frame(minHeight: textEditorHeight)
+                                    .liquidGlassCard(cornerRadius: 24 * scale, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.34, shadowOpacity: 0.10, shadowRadius: 14 * scale, shadowY: 8 * scale)
                             }
 
-                            TextEditor(text: $markdownText)
-                                .font(.system(.body, design: .serif))
-                                .foregroundStyle(KikariaTheme.deepText)
-                                .scrollContentBackground(.hidden)
-                                .padding(14)
-                                .frame(minHeight: 260)
-                                .liquidGlassCard(cornerRadius: 24, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.34, shadowOpacity: 0.10, shadowRadius: 14, shadowY: 8)
+                            if let errorMessage {
+                                Text(errorMessage)
+                                    .font(KikariaTypography.chineseBody(size: 14 * scale, weight: .semibold))
+                                    .foregroundStyle(KikariaTheme.removeCoral)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(14 * scale)
+                                    .liquidGlassCard(cornerRadius: 18 * scale, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8 * scale, shadowY: 4 * scale)
+                            }
                         }
-
-                        if let errorMessage {
-                            Text(errorMessage)
-                                .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
-                                .foregroundStyle(KikariaTheme.removeCoral)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14)
-                                .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
-                        }
+                        .padding(.horizontal, pagePadding)
+                        .padding(.bottom, 32 * scale)
+                        .frame(maxWidth: columnMaxWidth)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
                 }
-            }
 
-            if let toastMessage {
-                KikariaToastLayer(message: toastMessage)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                if let toastMessage {
+                    KikariaToastLayer(message: toastMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -4084,110 +4358,113 @@ private struct MarkdownFormatGuideView: View {
     """
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let scale = metrics.newPresetScale
+            let columnMaxWidth = metrics.formMaxWidth
+            let pagePadding = metrics.innerHorizontalPadding
 
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.headline.weight(.semibold))
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    HStack {
+                        KikariaAdaptiveBackButton(metrics: metrics) {
+                            dismiss()
+                        }
+
+                        Spacer()
+
+                        Text("Markdown 格式说明")
+                            .font(KikariaTypography.chineseHeadline(size: 17 * scale))
                             .foregroundStyle(KikariaTheme.deepText)
-                            .frame(width: 42, height: 42)
-                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
+
+                        Spacer()
+
+                        Color.clear
+                            .frame(width: metrics.adaptiveTopBarTrailingWidth, height: metrics.adaptiveBackButtonSize)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, pagePadding)
+                    .padding(.top, 18 * scale)
+                    .padding(.bottom, 12 * scale)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
 
-                    Spacer()
-
-                    Text("Markdown 格式说明")
-                        .font(KikariaTypography.chineseHeadline())
-                        .foregroundStyle(KikariaTheme.deepText)
-
-                    Spacer()
-
-                    Color.clear
-                        .frame(width: 42, height: 42)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 18)
-                .padding(.bottom, 12)
-
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        MarkdownGuideCard {
-                            Text("Kikaria 使用结构化 Markdown 来导入知识点。每个知识点由标题、标签、提示和答案组成。多个知识点之间使用 --- 分隔。")
-                                .font(KikariaTypography.chineseBody(size: 15))
-                                .foregroundStyle(KikariaTheme.deepText)
-                                .lineSpacing(5)
-                        }
-
-                        MarkdownGuideCard(title: "格式规则") {
-                            MarkdownCodeBlock(text: Self.formatTemplate)
-
-                            Text("多个知识点之间用一行 --- 分隔。")
-                                .font(KikariaTypography.chineseBody(size: 14, weight: .medium))
-                                .foregroundStyle(KikariaTheme.softText)
-                        }
-
-                        MarkdownGuideCard(title: "规则说明") {
-                            VStack(alignment: .leading, spacing: 9) {
-                                MarkdownRuleText("标题必须以 # 开头。")
-                                MarkdownRuleText("tags: 后面写标签，多个标签用英文逗号或中文逗号分隔。")
-                                MarkdownRuleText("hint: 后面写提示。")
-                                MarkdownRuleText("content: 后面写完整内容。")
-                                MarkdownRuleText("每个知识点之间用单独一行 --- 分隔。")
-                                MarkdownRuleText("建议每个知识点不要太长，适合一次背诵。")
-                                MarkdownRuleText("标签可以用于后续选择背诵范围。")
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            MarkdownGuideCard {
+                                Text("Kikaria 使用结构化 Markdown 来导入知识点。每个知识点由标题、标签、提示和答案组成。多个知识点之间使用 --- 分隔。")
+                                    .font(KikariaTypography.chineseBody(size: 15))
+                                    .foregroundStyle(KikariaTheme.deepText)
+                                    .lineSpacing(5)
                             }
-                        }
 
-                        MarkdownGuideCard(title: "完整示例") {
-                            MarkdownCodeBlock(text: Self.completeExample)
-                        }
+                            MarkdownGuideCard(title: "格式规则") {
+                                MarkdownCodeBlock(text: Self.formatTemplate)
 
-                        MarkdownGuideCard {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .center) {
-                                    Text("给 AI 助手的 Prompt")
-                                        .font(KikariaTypography.chineseHeadline(size: 18))
-                                        .foregroundStyle(KikariaTheme.deepText)
-
-                                    Spacer()
-
-                                    Button {
-                                        copyPrompt()
-                                    } label: {
-                                        Label("复制 Prompt", systemImage: "doc.on.doc")
-                                            .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
-                                            .foregroundStyle(.white)
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                            .background(KikariaTheme.actionGradient, in: Capsule())
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-
-                                Text("你可以把下面这段 prompt 复制给 AI 助手，并附上你的课本、讲义、笔记或照片识别出的文本，让 AI 帮你整理成 Kikaria 支持的 Markdown 格式。")
-                                    .font(KikariaTypography.chineseBody(size: 14))
+                                Text("多个知识点之间用一行 --- 分隔。")
+                                    .font(KikariaTypography.chineseBody(size: 14, weight: .medium))
                                     .foregroundStyle(KikariaTheme.softText)
-                                    .lineSpacing(4)
+                            }
 
-                                MarkdownCodeBlock(text: Self.aiPrompt)
+                            MarkdownGuideCard(title: "规则说明") {
+                                VStack(alignment: .leading, spacing: 9) {
+                                    MarkdownRuleText("标题必须以 # 开头。")
+                                    MarkdownRuleText("tags: 后面写标签，多个标签用英文逗号或中文逗号分隔。")
+                                    MarkdownRuleText("hint: 后面写提示。")
+                                    MarkdownRuleText("content: 后面写完整内容。")
+                                    MarkdownRuleText("每个知识点之间用单独一行 --- 分隔。")
+                                    MarkdownRuleText("建议每个知识点不要太长，适合一次背诵。")
+                                    MarkdownRuleText("标签可以用于后续选择背诵范围。")
+                                }
+                            }
+
+                            MarkdownGuideCard(title: "完整示例") {
+                                MarkdownCodeBlock(text: Self.completeExample)
+                            }
+
+                            MarkdownGuideCard {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack(alignment: .center) {
+                                        Text("给 AI 助手的 Prompt")
+                                            .font(KikariaTypography.chineseHeadline(size: 18))
+                                            .foregroundStyle(KikariaTheme.deepText)
+
+                                        Spacer()
+
+                                        Button {
+                                            copyPrompt()
+                                        } label: {
+                                            Label("复制 Prompt", systemImage: "doc.on.doc")
+                                                .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                                                .foregroundStyle(.white)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 8)
+                                                .background(KikariaTheme.actionGradient, in: Capsule())
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+
+                                    Text("你可以把下面这段 prompt 复制给 AI 助手，并附上你的课本、讲义、笔记或照片识别出的文本，让 AI 帮你整理成 Kikaria 支持的 Markdown 格式。")
+                                        .font(KikariaTypography.chineseBody(size: 14))
+                                        .foregroundStyle(KikariaTheme.softText)
+                                        .lineSpacing(4)
+
+                                    MarkdownCodeBlock(text: Self.aiPrompt)
+                                }
                             }
                         }
+                        .padding(.horizontal, metrics.horizontalPadding)
+                        .padding(.bottom, 34)
+                        .frame(maxWidth: metrics.formMaxWidth)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 34)
                 }
-            }
 
-            if let toastMessage {
-                KikariaToastLayer(message: toastMessage)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                if let toastMessage {
+                    KikariaToastLayer(message: toastMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -4328,45 +4605,45 @@ private struct EditPresetView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let scale = metrics.newPresetScale
+            let columnMaxWidth = metrics.formMaxWidth
+            let pagePadding = metrics.innerHorizontalPadding
 
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.headline.weight(.semibold))
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    HStack {
+                        KikariaAdaptiveBackButton(metrics: metrics) {
+                            dismiss()
+                        }
+
+                        Spacer()
+
+                        Text("编辑预设")
+                            .font(KikariaTypography.chineseHeadline(size: 17 * scale))
                             .foregroundStyle(KikariaTheme.deepText)
-                            .frame(width: 42, height: 42)
-                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
+
+                        Spacer()
+
+                        Button("保存") {
+                            onSavePreset(preset.id, name, category, description)
+                            dismiss()
+                        }
+                        .font(KikariaTypography.chineseButton(size: 17 * scale))
+                        .foregroundStyle(KikariaTheme.sky)
+                        .frame(width: metrics.adaptiveTopBarTrailingWidth, alignment: .trailing)
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, pagePadding)
+                    .padding(.top, 18 * scale)
+                    .padding(.bottom, 16 * scale)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
 
-                    Spacer()
-
-                    Text("编辑预设")
-                        .font(KikariaTypography.chineseHeadline())
-                        .foregroundStyle(KikariaTheme.deepText)
-
-                    Spacer()
-
-                    Button("保存") {
-                        onSavePreset(preset.id, name, category, description)
-                        dismiss()
-                    }
-                    .font(KikariaTypography.chineseButton())
-                    .foregroundStyle(KikariaTheme.sky)
-                    .frame(width: 42, alignment: .trailing)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 18)
-                .padding(.bottom, 16)
-
-                ScrollView {
-                    VStack(spacing: 16) {
+                    ScrollView {
+                        VStack(spacing: 16) {
                         ProfileTextField(title: "预设名称", text: $name)
                         ProfileTextField(title: "分类", text: $category)
                         ProfileTextField(title: "简短描述", text: $description)
@@ -4459,15 +4736,18 @@ private struct EditPresetView: View {
                             .buttonStyle(.plain)
                             .padding(.top, 6)
                         }
+                        }
+                        .padding(.horizontal, metrics.horizontalPadding)
+                        .padding(.bottom, 34)
+                        .frame(maxWidth: metrics.formMaxWidth)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 34)
                 }
-            }
 
-            if let toastMessage {
-                KikariaToastLayer(message: toastMessage)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                if let toastMessage {
+                    KikariaToastLayer(message: toastMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -4567,66 +4847,69 @@ private struct EditKnowledgePointView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let scale = metrics.newPresetScale
+            let columnMaxWidth = metrics.formMaxWidth
+            let pagePadding = metrics.innerHorizontalPadding
 
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(KikariaTheme.deepText)
-                            .frame(width: 42, height: 42)
-                            .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.08, shadowRadius: 10, shadowY: 5)
-                    }
-                    .buttonStyle(.plain)
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-                    Spacer()
-
-                    Text(point == nil ? "添加知识点" : "编辑知识点")
-                        .font(KikariaTypography.chineseHeadline())
-                        .foregroundStyle(KikariaTheme.deepText)
-
-                    Spacer()
-
-                    Button("保存") {
-                        savePoint()
-                    }
-                    .font(KikariaTypography.chineseButton())
-                    .foregroundStyle(KikariaTheme.sky)
-                    .frame(width: 42, alignment: .trailing)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 18)
-                .padding(.bottom, 16)
-
-                ScrollView {
-                    VStack(spacing: 16) {
-                        Text(presetName)
-                            .font(KikariaTypography.chineseTitle(size: 26, weight: .semibold))
-                            .foregroundStyle(KikariaTheme.deepText)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        ProfileTextField(title: "标题", text: $title)
-                        ProfileTextField(title: "标签，用逗号分隔", text: $tagsText)
-
-                        EditableLongTextField(title: "提示", text: $hint, minHeight: 150)
-                        EditableLongTextField(title: "答案", text: $content, minHeight: 220)
-
-                        if let errorMessage {
-                            Text(errorMessage)
-                                .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
-                                .foregroundStyle(KikariaTheme.removeCoral)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14)
-                                .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
+                VStack(spacing: 0) {
+                    HStack {
+                        KikariaAdaptiveBackButton(metrics: metrics) {
+                            dismiss()
                         }
+
+                        Spacer()
+
+                        Text(point == nil ? "添加知识点" : "编辑知识点")
+                            .font(KikariaTypography.chineseHeadline(size: 17 * scale))
+                            .foregroundStyle(KikariaTheme.deepText)
+
+                        Spacer()
+
+                        Button("保存") {
+                            savePoint()
+                        }
+                        .font(KikariaTypography.chineseButton(size: 17 * scale))
+                        .foregroundStyle(KikariaTheme.sky)
+                        .frame(width: metrics.adaptiveTopBarTrailingWidth, alignment: .trailing)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 34)
+                    .padding(.horizontal, pagePadding)
+                    .padding(.top, 18 * scale)
+                    .padding(.bottom, 16 * scale)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
+
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            Text(presetName)
+                                .font(KikariaTypography.chineseTitle(size: 26, weight: .semibold))
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            ProfileTextField(title: "标题", text: $title)
+                            ProfileTextField(title: "标签，用逗号分隔", text: $tagsText)
+
+                            EditableLongTextField(title: "提示", text: $hint, minHeight: 150)
+                            EditableLongTextField(title: "答案", text: $content, minHeight: 220)
+
+                            if let errorMessage {
+                                Text(errorMessage)
+                                    .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
+                                    .foregroundStyle(KikariaTheme.removeCoral)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(14)
+                                    .liquidGlassCard(cornerRadius: 18, fillOpacity: 0.50, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
+                            }
+                        }
+                        .padding(.horizontal, metrics.horizontalPadding)
+                        .padding(.bottom, 34)
+                        .frame(maxWidth: metrics.formMaxWidth)
+                        .frame(maxWidth: .infinity)
+                    }
                 }
             }
         }
@@ -4709,75 +4992,86 @@ private struct InitialProfileSetupView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let isExpanded = metrics.isPadWidth
+            let setupCardMaxWidth: CGFloat = metrics.isPadPortrait ? 500 : (isExpanded ? 480 : 370)
+            let avatarSize: CGFloat = metrics.isPadPortrait ? 116 : (isExpanded ? 108 : 88)
 
-            VStack(spacing: 22) {
-                VStack(spacing: 10) {
-                    Text("欢迎使用 Kikaria")
-                        .font(KikariaTypography.chineseTitle(size: 30, weight: .bold))
-                        .foregroundStyle(KikariaTheme.deepText)
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-                    Text("先设置你的个人资料")
-                        .font(KikariaTypography.chineseBody(size: 16, weight: .medium))
-                        .foregroundStyle(KikariaTheme.softText)
-                }
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: isExpanded ? 28 : 22) {
+                        VStack(spacing: isExpanded ? 12 : 10) {
+                            Text("欢迎使用 Kikaria")
+                                .font(KikariaTypography.chineseTitle(size: isExpanded ? 34 : 30, weight: .bold))
+                                .foregroundStyle(KikariaTheme.deepText)
 
-                ZStack(alignment: .bottomTrailing) {
-                    ProfileAvatarView(
-                        systemName: profile.avatarSystemName,
-                        imageData: avatarImageData ?? profile.avatarImageData,
-                        size: 88
-                    )
+                            Text("先设置你的个人资料")
+                                .font(KikariaTypography.chineseBody(size: isExpanded ? 18 : 16, weight: .medium))
+                                .foregroundStyle(KikariaTheme.softText)
+                        }
 
-                    PhotosPicker(
-                        selection: $selectedPhotoItem,
-                        matching: .images
-                    ) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
-                            .background(KikariaTheme.actionGradient, in: Circle())
-                            .overlay {
-                                Circle()
-                                    .stroke(.white.opacity(0.72), lineWidth: 1)
+                        ZStack(alignment: .bottomTrailing) {
+                            ProfileAvatarView(
+                                systemName: profile.avatarSystemName,
+                                imageData: avatarImageData ?? profile.avatarImageData,
+                                size: avatarSize
+                            )
+
+                            PhotosPicker(
+                                selection: $selectedPhotoItem,
+                                matching: .images
+                            ) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: isExpanded ? 17 : 15, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: isExpanded ? 34 : 30, height: isExpanded ? 34 : 30)
+                                    .background(KikariaTheme.actionGradient, in: Circle())
+                                    .overlay {
+                                        Circle()
+                                            .stroke(.white.opacity(0.72), lineWidth: 1)
+                                    }
+                                    .shadow(color: KikariaTheme.sky.opacity(0.26), radius: 10, y: 5)
                             }
-                            .shadow(color: KikariaTheme.sky.opacity(0.26), radius: 10, y: 5)
+                            .buttonStyle(.plain)
+                            .offset(x: 3, y: 3)
+                            .accessibilityLabel("选择头像")
+                        }
+                        .padding(.top, 4)
+
+                        VStack(spacing: isExpanded ? 16 : 14) {
+                            ProfileTextField(title: "昵称", text: $displayName)
+                            ProfileTextField(title: "用户名", text: $userHandle)
+                        }
+
+                        Button(action: saveProfile) {
+                            Text("开始使用")
+                                .font(KikariaTypography.chineseButton(size: isExpanded ? 18 : 17))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, isExpanded ? 18 : 16)
+                                .background(KikariaTheme.actionGradient, in: Capsule())
+                                .shadow(color: KikariaTheme.sky.opacity(canSave ? 0.22 : 0.04), radius: 16, y: 8)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!canSave)
+                        .opacity(canSave ? 1 : 0.48)
+                        .padding(.top, 4)
                     }
-                    .buttonStyle(.plain)
-                    .offset(x: 3, y: 3)
-                    .accessibilityLabel("选择头像")
-                }
-                .padding(.top, 4)
-
-                VStack(spacing: 14) {
-                    ProfileTextField(title: "昵称", text: $displayName)
-                    ProfileTextField(title: "用户名", text: $userHandle)
+                    .padding(isExpanded ? 32 : 24)
+                    .frame(maxWidth: setupCardMaxWidth)
+                    .liquidGlassCard(cornerRadius: isExpanded ? 38 : 34, material: .regularMaterial, fillOpacity: 0.46, strokeOpacity: 0.46, shadowOpacity: 0.16, shadowRadius: isExpanded ? 28 : 24, shadowY: isExpanded ? 16 : 14)
+                    .padding(.horizontal, metrics.horizontalPadding)
+                    .frame(maxWidth: metrics.formMaxWidth)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: metrics.height, alignment: .center)
                 }
 
-                Button(action: saveProfile) {
-                    Text("开始使用")
-                        .font(KikariaTypography.chineseButton(size: 17))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(KikariaTheme.actionGradient, in: Capsule())
-                        .shadow(color: KikariaTheme.sky.opacity(canSave ? 0.22 : 0.04), radius: 16, y: 8)
+                if let toastMessage {
+                    KikariaToastLayer(message: toastMessage)
                 }
-                .buttonStyle(.plain)
-                .disabled(!canSave)
-                .opacity(canSave ? 1 : 0.48)
-                .padding(.top, 4)
-            }
-            .padding(24)
-            .frame(maxWidth: 370)
-            .liquidGlassCard(cornerRadius: 34, material: .regularMaterial, fillOpacity: 0.46, strokeOpacity: 0.46, shadowOpacity: 0.16, shadowRadius: 24, shadowY: 14)
-            .padding(.horizontal, 24)
-
-            if let toastMessage {
-                KikariaToastLayer(message: toastMessage)
             }
         }
         .onAppear {
@@ -4991,21 +5285,26 @@ private struct EditProfileView: View {
 private struct ProfileTextField: View {
     let title: String
     @Binding var text: String
+    var scale: CGFloat = 1
+    var minHeight: CGFloat? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let resolvedScale = max(scale, 1)
+
+        VStack(alignment: .leading, spacing: 8 * resolvedScale) {
             Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 14))
+                .font(KikariaTypography.chineseHeadline(size: 14 * resolvedScale))
                 .foregroundStyle(KikariaTheme.softText)
 
             TextField(title, text: $text)
-                .font(KikariaTypography.chineseBody(size: 16))
+                .font(KikariaTypography.chineseBody(size: 16 * resolvedScale))
                 .foregroundStyle(KikariaTheme.deepText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .padding(.horizontal, 16)
-                .padding(.vertical, 15)
-                .liquidGlassCard(cornerRadius: 20, fillOpacity: 0.50, strokeOpacity: 0.34, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
+                .padding(.horizontal, 16 * resolvedScale)
+                .padding(.vertical, 15 * resolvedScale)
+                .frame(minHeight: minHeight)
+                .liquidGlassCard(cornerRadius: 20 * resolvedScale, fillOpacity: 0.50, strokeOpacity: 0.34, shadowOpacity: 0.08, shadowRadius: 12 * resolvedScale, shadowY: 7 * resolvedScale)
         }
     }
 }
@@ -5147,59 +5446,62 @@ private struct StartReviewButton: View {
     let dailyGoal: Int
     let masteredCount: Int
     let countdownDays: Int?
+    var visualScale: CGFloat = 1
     @State private var isBreathing = false
     @State private var hasStartedBreathingAnimation = false
     private let orbitDuration: TimeInterval = 150
 
     var body: some View {
+        let scale = max(visualScale, 0.1)
+
         TimelineView(.animation) { timeline in
             let orbitDegrees = orbitAngle(for: timeline.date)
 
             ZStack {
                 ZStack {
                     DecorativeBubble(
-                        size: 92,
+                        size: 92 * scale,
                         colors: [KikariaTheme.cyan, KikariaTheme.bubbleMint],
                         opacity: 0.48
                     )
                     .rotationEffect(.degrees(-orbitDegrees))
                     .scaleEffect(isBreathing ? 1.035 : 0.985)
-                    .offset(x: -96, y: -68)
+                    .offset(x: -96 * scale, y: -68 * scale)
 
                     DecorativeBubble(
-                        size: 80,
+                        size: 80 * scale,
                         colors: [KikariaTheme.bubbleLavender, KikariaTheme.mist],
                         opacity: 0.42
                     )
                     .rotationEffect(.degrees(-orbitDegrees))
                     .scaleEffect(isBreathing ? 0.985 : 1.04)
-                    .offset(x: 102, y: -56)
+                    .offset(x: 102 * scale, y: -56 * scale)
 
                     DecorativeBubble(
-                        size: 78,
+                        size: 78 * scale,
                         colors: [KikariaTheme.bubbleGreen, KikariaTheme.cyan],
                         opacity: 0.38
                     )
                     .rotationEffect(.degrees(-orbitDegrees))
                     .scaleEffect(isBreathing ? 1.035 : 0.985)
-                    .offset(x: 92, y: 80)
+                    .offset(x: 92 * scale, y: 80 * scale)
 
                     DecorativeBubble(
-                        size: 74,
+                        size: 74 * scale,
                         colors: [KikariaTheme.sky, KikariaTheme.bubbleWhite],
                         opacity: 0.36
                     )
                     .rotationEffect(.degrees(-orbitDegrees))
                     .scaleEffect(isBreathing ? 0.99 : 1.045)
-                    .offset(x: -106, y: 78)
+                    .offset(x: -106 * scale, y: 78 * scale)
                 }
                 .rotationEffect(.degrees(orbitDegrees))
 
                 Circle()
                     .fill(KikariaTheme.actionGradient)
-                    .frame(width: 190, height: 190)
+                    .frame(width: 190 * scale, height: 190 * scale)
                     .background(.ultraThinMaterial, in: Circle())
-                    .shadow(color: KikariaTheme.sky.opacity(0.28), radius: 28, x: 0, y: 18)
+                    .shadow(color: KikariaTheme.sky.opacity(0.28), radius: 28 * scale, x: 0, y: 18 * scale)
                     .scaleEffect(isBreathing ? 1.018 : 0.992)
                     .overlay {
                         Circle()
@@ -5211,11 +5513,11 @@ private struct StartReviewButton: View {
                                         Color.white.opacity(0.02)
                                     ],
                                     center: .topLeading,
-                                    startRadius: 12,
-                                    endRadius: 150
+                                    startRadius: 12 * scale,
+                                    endRadius: 150 * scale
                                 )
                             )
-                            .padding(1)
+                            .padding(scale)
                     }
                     .overlay {
                         Circle()
@@ -5229,19 +5531,19 @@ private struct StartReviewButton: View {
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                                lineWidth: 1.1
+                                lineWidth: 1.1 * scale
                             )
                     }
 
                 Image(systemName: "arrow.right")
-                    .font(.system(size: 70, weight: .regular))
+                    .font(.system(size: 70 * scale, weight: .regular))
                     .foregroundStyle(.white.opacity(0.96))
-                    .shadow(color: KikariaTheme.deepText.opacity(0.10), radius: 8, y: 4)
+                    .shadow(color: KikariaTheme.deepText.opacity(0.10), radius: 8 * scale, y: 4 * scale)
             }
         }
-        .frame(width: 272, height: 260)
+        .frame(width: 272 * scale, height: 260 * scale)
         .scaleEffect(isBreathing ? 1.012 : 0.996)
-        .offset(y: isBreathing ? -5 : 2)
+        .offset(y: (isBreathing ? -5 : 2) * scale)
         .onAppear {
             guard !hasStartedBreathingAnimation else {
                 return
@@ -5359,42 +5661,196 @@ private struct TodayOverviewHomeProgressButton: View {
     let dateText: String
     let daysLeftText: String
     let progressText: String
+    var isExpanded = false
+    var cardScale: CGFloat = 1
 
     var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 5) {
+        let scale = max(cardScale, 1)
+
+        HStack(alignment: .center, spacing: (isExpanded ? 18 : 14) * scale) {
+            VStack(alignment: .leading, spacing: (isExpanded ? 6 : 5) * scale) {
                 Text(dateText)
-                    .font(.system(size: 23, weight: .semibold, design: .serif))
+                    .font(.system(size: (isExpanded ? 27 : 23) * scale, weight: .semibold, design: .serif))
                     .foregroundStyle(KikariaTheme.deepText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
 
                 Text(daysLeftText)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: (isExpanded ? 14 : 13) * scale, weight: .semibold, design: .rounded))
                     .foregroundStyle(KikariaTheme.softText)
                     .lineLimit(1)
             }
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 12 * scale)
 
             Text(progressText)
-                .font(KikariaTypography.number(size: 25, weight: .bold))
+                .font(KikariaTypography.number(size: (isExpanded ? 30 : 25) * scale, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.masteredDeepGreen)
                 .lineLimit(1)
 
             Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
+                .font(.system(size: (isExpanded ? 15 : 12) * scale, weight: .semibold))
                 .foregroundStyle(KikariaTheme.blueGray.opacity(0.52))
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 20)
+        .padding(.horizontal, (isExpanded ? 24 : 20) * scale)
+        .padding(.vertical, (isExpanded ? 24 : 20) * scale)
         .frame(maxWidth: .infinity)
-        .liquidGlassCard(cornerRadius: 25, fillOpacity: 0.42, strokeOpacity: 0.46, shadowOpacity: 0.11, shadowRadius: 17, shadowY: 9)
+        .liquidGlassCard(cornerRadius: (isExpanded ? 28 : 25) * scale, fillOpacity: 0.42, strokeOpacity: 0.46, shadowOpacity: 0.11, shadowRadius: (isExpanded ? 19 : 17) * scale, shadowY: (isExpanded ? 10 : 9) * scale)
     }
 }
 
 private struct HomeDashboardGridCard: View {
+    let scopeCountText: String
+    let reinforcedCount: Int
+    let masteredCount: Int
+    let presetName: String
+    var isExpanded = false
+    var cardScale: CGFloat = 1
+
+    var body: some View {
+        let scale = max(cardScale, 1)
+
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                NavigationLink(value: AppRoute.scope) {
+                    HomeDashboardMetricColumn(title: "范围", valueText: scopeCountText, tint: KikariaTheme.sky, isExpanded: isExpanded, cardScale: scale)
+                }
+                .buttonStyle(.plain)
+
+                HomeDashboardDivider(isExpanded: isExpanded, cardScale: scale)
+
+                NavigationLink(value: AppRoute.reinforcement) {
+                    HomeDashboardMetricColumn(title: "重点集锦", valueText: "\(reinforcedCount)", tint: KikariaTheme.cyan, isExpanded: isExpanded, cardScale: scale)
+                }
+                .buttonStyle(.plain)
+
+                HomeDashboardDivider(isExpanded: isExpanded, cardScale: scale)
+
+                NavigationLink(value: AppRoute.mastered) {
+                    HomeDashboardMetricColumn(title: "已掌握", valueText: "\(masteredCount)", tint: KikariaTheme.masteredGreen, isExpanded: isExpanded, cardScale: scale)
+                }
+                .buttonStyle(.plain)
+            }
+
+            Rectangle()
+                .fill(KikariaTheme.blueGray.opacity(0.12))
+                .frame(height: 1)
+                .padding(.horizontal, 18 * scale)
+
+            NavigationLink(value: AppRoute.presetSelection) {
+                HStack(spacing: 8 * scale) {
+                    Text(presetName)
+                        .font(KikariaTypography.chineseHeadline(size: (isExpanded ? 18 : 16) * scale))
+                        .foregroundStyle(KikariaTheme.deepText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.74)
+
+                    Text("当前预设")
+                        .font(KikariaTypography.chineseCaption(size: (isExpanded ? 13 : 12) * scale, weight: .semibold))
+                        .foregroundStyle(KikariaTheme.softText)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12 * scale, weight: .semibold))
+                        .foregroundStyle(KikariaTheme.blueGray.opacity(0.58))
+                }
+                .padding(.horizontal, (isExpanded ? 24 : 20) * scale)
+                .frame(maxWidth: .infinity, minHeight: (isExpanded ? 64 : 56) * scale)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .liquidGlassCard(cornerRadius: (isExpanded ? 30 : 28) * scale, fillOpacity: 0.40, strokeOpacity: 0.44, shadowOpacity: 0.12, shadowRadius: (isExpanded ? 20 : 18) * scale, shadowY: (isExpanded ? 11 : 10) * scale)
+    }
+}
+
+private struct HomeDashboardMetricColumn: View {
+    let title: String
+    let valueText: String
+    let tint: Color
+    var isExpanded = false
+    var cardScale: CGFloat = 1
+
+    var body: some View {
+        let scale = max(cardScale, 1)
+
+        VStack(spacing: (isExpanded ? 10 : 8) * scale) {
+            Text(title)
+                .font(KikariaTypography.chineseCaption(size: (isExpanded ? 14 : 13) * scale, weight: .semibold))
+                .foregroundStyle(KikariaTheme.softText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+
+            Text(valueText)
+                .font(KikariaTypography.number(size: (isExpanded ? 29 : 24) * scale, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, minHeight: (isExpanded ? 98 : 82) * scale)
+        .contentShape(Rectangle())
+    }
+}
+
+private struct HomeDashboardDivider: View {
+    var isExpanded = false
+    var cardScale: CGFloat = 1
+
+    var body: some View {
+        let scale = max(cardScale, 1)
+
+        Rectangle()
+            .fill(KikariaTheme.blueGray.opacity(0.16))
+            .frame(width: 1, height: (isExpanded ? 50 : 42) * scale)
+    }
+}
+
+private struct PadPortraitHomeProgressCard: View {
+    let dateText: String
+    let daysLeftText: String
+    let progressText: String
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 28) {
+            VStack(alignment: .leading, spacing: 9) {
+                Text(dateText)
+                    .font(.system(size: 42, weight: .semibold, design: .serif))
+                    .foregroundStyle(KikariaTheme.deepText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+
+                Text(daysLeftText)
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundStyle(KikariaTheme.softText)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 24)
+
+            Text(progressText)
+                .font(.system(size: 54, weight: .bold, design: .serif))
+                .monospacedDigit()
+                .foregroundStyle(KikariaTheme.masteredDeepGreen)
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(KikariaTheme.blueGray.opacity(0.54))
+        }
+        .padding(.horizontal, 36)
+        .padding(.vertical, 30)
+        .frame(maxWidth: .infinity, minHeight: 136)
+        .contentShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
+        .liquidGlassCard(cornerRadius: 40, fillOpacity: 0.42, strokeOpacity: 0.46, shadowOpacity: 0.12, shadowRadius: 24, shadowY: 14)
+    }
+}
+
+private struct PadPortraitHomeDashboardCard: View {
     let scopeCountText: String
     let reinforcedCount: Int
     let masteredCount: Int
@@ -5404,89 +5860,103 @@ private struct HomeDashboardGridCard: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 NavigationLink(value: AppRoute.scope) {
-                    HomeDashboardMetricColumn(title: "范围", valueText: scopeCountText, tint: KikariaTheme.sky)
+                    PadPortraitHomeMetricColumn(
+                        title: "范围",
+                        valueText: scopeCountText,
+                        tint: KikariaTheme.sky
+                    )
                 }
                 .buttonStyle(.plain)
 
-                HomeDashboardDivider()
+                PadPortraitHomeDashboardDivider()
 
                 NavigationLink(value: AppRoute.reinforcement) {
-                    HomeDashboardMetricColumn(title: "重点集锦", valueText: "\(reinforcedCount)", tint: KikariaTheme.cyan)
+                    PadPortraitHomeMetricColumn(
+                        title: "重点集锦",
+                        valueText: "\(reinforcedCount)",
+                        tint: KikariaTheme.cyan
+                    )
                 }
                 .buttonStyle(.plain)
 
-                HomeDashboardDivider()
+                PadPortraitHomeDashboardDivider()
 
                 NavigationLink(value: AppRoute.mastered) {
-                    HomeDashboardMetricColumn(title: "已掌握", valueText: "\(masteredCount)", tint: KikariaTheme.masteredGreen)
+                    PadPortraitHomeMetricColumn(
+                        title: "已掌握",
+                        valueText: "\(masteredCount)",
+                        tint: KikariaTheme.masteredGreen
+                    )
                 }
                 .buttonStyle(.plain)
             }
+            .frame(minHeight: 154)
 
             Rectangle()
                 .fill(KikariaTheme.blueGray.opacity(0.12))
                 .frame(height: 1)
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 30)
 
             NavigationLink(value: AppRoute.presetSelection) {
-                HStack(spacing: 8) {
+                HStack(spacing: 11) {
                     Text(presetName)
-                        .font(KikariaTypography.chineseHeadline(size: 16))
+                        .font(KikariaTypography.chineseHeadline(size: 22))
                         .foregroundStyle(KikariaTheme.deepText)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.74)
+                        .minimumScaleFactor(0.72)
 
                     Text("当前预设")
-                        .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                        .font(KikariaTypography.chineseCaption(size: 15, weight: .semibold))
                         .foregroundStyle(KikariaTheme.softText)
+                        .lineLimit(1)
 
-                    Spacer()
+                    Spacer(minLength: 18)
 
                     Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(KikariaTheme.blueGray.opacity(0.58))
                 }
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity, minHeight: 56)
+                .padding(.horizontal, 34)
+                .frame(maxWidth: .infinity, minHeight: 82)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity)
-        .liquidGlassCard(cornerRadius: 28, fillOpacity: 0.40, strokeOpacity: 0.44, shadowOpacity: 0.12, shadowRadius: 18, shadowY: 10)
+        .liquidGlassCard(cornerRadius: 40, fillOpacity: 0.40, strokeOpacity: 0.44, shadowOpacity: 0.12, shadowRadius: 24, shadowY: 14)
     }
 }
 
-private struct HomeDashboardMetricColumn: View {
+private struct PadPortraitHomeMetricColumn: View {
     let title: String
     let valueText: String
     let tint: Color
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 12) {
             Text(title)
-                .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+                .font(KikariaTypography.chineseCaption(size: 17, weight: .semibold))
                 .foregroundStyle(KikariaTheme.softText)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .minimumScaleFactor(0.74)
 
             Text(valueText)
-                .font(KikariaTypography.number(size: 24, weight: .bold))
+                .font(KikariaTypography.number(size: 46, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(tint)
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                .minimumScaleFactor(0.70)
         }
-        .frame(maxWidth: .infinity, minHeight: 82)
+        .frame(maxWidth: .infinity, minHeight: 154)
         .contentShape(Rectangle())
     }
 }
 
-private struct HomeDashboardDivider: View {
+private struct PadPortraitHomeDashboardDivider: View {
     var body: some View {
         Rectangle()
             .fill(KikariaTheme.blueGray.opacity(0.16))
-            .frame(width: 1, height: 42)
+            .frame(width: 1, height: 82)
     }
 }
 
@@ -5497,10 +5967,6 @@ struct ScopeSelectionView: View {
     let allTags: [String]
     var onDone: (() -> Void)? = nil
     @State private var searchText = ""
-
-    private let columns = [
-        GridItem(.adaptive(minimum: 132), spacing: 12)
-    ]
 
     private var filteredTags: [String] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -5521,74 +5987,95 @@ struct ScopeSelectionView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            let scale = metrics.scopeScale
+            let columnMaxWidth = metrics.scopeOuterMaxWidth
+            let pagePadding = metrics.innerHorizontalPadding
+            let gridSpacing = metrics.scopeGridSpacing
+            let doneButtonBottomPadding = metrics.isPadPortrait ? 18 * scale + 18 : 18 * scale
+            let effectiveContentWidth = metrics.effectiveContentWidth(for: columnMaxWidth)
+            let tagMinimumWidth = metrics.isPadPortrait
+                ? min(max(effectiveContentWidth / 4, metrics.scopeGridMinimumWidth), 190)
+                : metrics.scopeGridMinimumWidth
+            let columns = [
+                GridItem(.adaptive(minimum: tagMinimumWidth), spacing: gridSpacing)
+            ]
 
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("选择范围")
-                                .font(KikariaTypography.chineseTitle())
-                                .foregroundStyle(KikariaTheme.deepText)
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-                            Text(selectedTags.isEmpty ? "未选择标签时，会默认使用全部知识点。" : "已选择 \(selectedTags.count) 个标签。")
-                                .font(KikariaTypography.chineseBody(size: 15))
-                                .foregroundStyle(KikariaTheme.softText)
-                        }
-                        .padding(.top, 16)
+                VStack(spacing: 0) {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24 * scale) {
+                            VStack(alignment: .leading, spacing: 8 * scale) {
+                                Text("选择范围")
+                                    .font(KikariaTypography.chineseTitle(size: 32 * scale))
+                                    .foregroundStyle(KikariaTheme.deepText)
 
-                        KikariaSearchBar(text: $searchText, placeholder: "搜索标签或知识点")
+                                Text(selectedTags.isEmpty ? "未选择标签时，会默认使用全部知识点。" : "已选择 \(selectedTags.count) 个标签。")
+                                    .font(KikariaTypography.chineseBody(size: 15 * scale))
+                                    .foregroundStyle(KikariaTheme.softText)
+                            }
+                            .padding(.top, 16 * scale)
 
-                        if filteredTags.isEmpty {
-                            SoftEmptyState(
-                                title: "没有找到相关标签",
-                                subtitle: "换个关键词试试看。",
-                                systemImage: "magnifyingglass"
-                            )
-                            .padding(.top, 18)
-                        } else {
-                            LazyVGrid(columns: columns, spacing: 12) {
-                                ForEach(filteredTags, id: \.self) { tag in
-                                    Button {
-                                        toggleTag(tag)
-                                    } label: {
-                                        ScopeTagChip(
-                                            title: tag,
-                                            isSelected: selectedTags.contains(tag)
-                                        )
+                            KikariaSearchBar(text: $searchText, placeholder: "搜索标签或知识点", scale: scale)
+
+                            if filteredTags.isEmpty {
+                                SoftEmptyState(
+                                    title: "没有找到相关标签",
+                                    subtitle: "换个关键词试试看。",
+                                    systemImage: "magnifyingglass"
+                                )
+                                .padding(.top, 18 * scale)
+                            } else {
+                                LazyVGrid(columns: columns, spacing: gridSpacing) {
+                                    ForEach(filteredTags, id: \.self) { tag in
+                                        Button {
+                                            toggleTag(tag)
+                                        } label: {
+                                            ScopeTagChip(
+                                                title: tag,
+                                                isSelected: selectedTags.contains(tag),
+                                                scale: scale
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                         }
-                    }
-                    .padding(24)
-                    .padding(.bottom, 96)
-                }
-
-                Button {
-                    if let onDone {
-                        onDone()
-                    } else {
-                        dismiss()
-                    }
-                } label: {
-                    Text("完成")
-                        .font(KikariaTypography.chineseButton())
+                        .padding(.horizontal, pagePadding)
+                        .padding(.top, 24 * scale)
+                        .padding(.bottom, 96)
+                        .frame(maxWidth: columnMaxWidth)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .foregroundStyle(.white)
-                        .background(KikariaTheme.actionGradient, in: Capsule())
-                        .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 18, y: 9)
+                    }
+
+                    Button {
+                        if let onDone {
+                            onDone()
+                        } else {
+                            dismiss()
+                        }
+                    } label: {
+                        Text("完成")
+                            .font(KikariaTypography.chineseButton(size: 17 * scale))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18 * scale)
+                            .foregroundStyle(.white)
+                            .background(KikariaTheme.actionGradient, in: Capsule())
+                            .shadow(color: KikariaTheme.sky.opacity(0.22), radius: 18 * scale, y: 9 * scale)
+                    }
+                    .padding(.horizontal, pagePadding)
+                    .padding(.bottom, doneButtonBottomPadding)
+                    .frame(maxWidth: columnMaxWidth)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 18)
-                .background(.ultraThinMaterial)
             }
+            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: columnMaxWidth)
         }
-        .navigationTitle("Scope")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -5604,24 +6091,44 @@ struct ScopeSelectionView: View {
 private struct ScopeTagChip: View {
     let title: String
     let isSelected: Bool
+    var scale: CGFloat = 1
 
     var body: some View {
+        let resolvedScale = max(scale, 1)
+        let shape = RoundedRectangle(cornerRadius: 20 * resolvedScale, style: .continuous)
+
         Text(title)
-            .font(KikariaTypography.tag(size: 13))
+            .font(KikariaTypography.tag(size: 13 * resolvedScale))
             .foregroundStyle(isSelected ? .white : KikariaTheme.deepText)
             .lineLimit(2)
             .minimumScaleFactor(0.82)
-            .frame(maxWidth: .infinity, minHeight: 54)
-            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 54 * resolvedScale)
+            .padding(.horizontal, 14 * resolvedScale)
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(isSelected ? KikariaTheme.sky : KikariaTheme.glassSurface.opacity(0.76))
+                if isSelected {
+                    shape
+                        .fill(KikariaTheme.actionGradient)
+                } else {
+                    shape
+                        .fill(KikariaTheme.glassSurface.opacity(0.34))
+                }
             }
+            .background(.ultraThinMaterial, in: shape)
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(isSelected ? KikariaTheme.cyan.opacity(0.95) : KikariaTheme.cyan.opacity(0.28), lineWidth: 1.5)
+                shape
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isSelected ? 0.36 : 0.30),
+                                KikariaTheme.cyan.opacity(isSelected ? 0.62 : 0.22)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.2 * resolvedScale
+                    )
             }
-            .shadow(color: KikariaTheme.sky.opacity(isSelected ? 0.18 : 0.08), radius: 12, y: 7)
+            .shadow(color: KikariaTheme.sky.opacity(isSelected ? 0.18 : 0.06), radius: 12 * resolvedScale, y: 7 * resolvedScale)
     }
 }
 
@@ -5690,12 +6197,17 @@ struct ReviewView: View {
         .spring(response: 0.42, dampingFraction: 0.88)
     }
 
-    private var revealButtons: some View {
-        VStack(spacing: 14) {
+    private func revealButtons(isExpanded: Bool, buttonScale: CGFloat) -> some View {
+        let minButtonHeight: CGFloat? = isExpanded ? 76 * buttonScale : nil
+
+        return VStack(spacing: (isExpanded ? 16 : 14) * buttonScale) {
             ReviewActionButton(
                 title: "查看提示",
                 systemImage: "lightbulb",
-                isPrimary: false
+                isPrimary: false,
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
+                minHeight: minButtonHeight
             ) {
                 withAnimation(revealAnimation) {
                     revealHint()
@@ -5707,7 +6219,10 @@ struct ReviewView: View {
             ReviewActionButton(
                 title: "查看答案",
                 systemImage: "doc.text",
-                isPrimary: true
+                isPrimary: true,
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
+                minHeight: minButtonHeight
             ) {
                 withAnimation(revealAnimation) {
                     revealContent()
@@ -5718,10 +6233,12 @@ struct ReviewView: View {
     }
 
     @ViewBuilder
-    private func answeredActionGrid(for currentPoint: KnowledgePoint) -> some View {
+    private func answeredActionGrid(for currentPoint: KnowledgePoint, isExpanded: Bool, buttonScale: CGFloat) -> some View {
         if mode.isReinforcement {
             ReinforcementReviewAnsweredActionGrid(
                 point: currentPoint,
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
                 removeFromReinforcement: {
                     removeCurrentPointFromReinforcement(shouldShowToast: true)
                     withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
@@ -5743,6 +6260,8 @@ struct ReviewView: View {
         } else if mode.isMastered {
             MasteredReviewAnsweredActionGrid(
                 point: currentPoint,
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
                 addToReinforcement: {
                     addCurrentPointToReinforcementAndAdvance()
                 },
@@ -5761,6 +6280,8 @@ struct ReviewView: View {
         } else {
             NormalReviewAnsweredActionGrid(
                 point: currentPoint,
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
                 addToReinforcement: {
                     addCurrentPointToReinforcementAndAdvance()
                 },
@@ -5779,37 +6300,43 @@ struct ReviewView: View {
         }
     }
 
-    private var actionRegionMinimumHeight: CGFloat {
-        156
+    private func actionRegionMinimumHeight(isExpanded: Bool, buttonScale: CGFloat) -> CGFloat {
+        (isExpanded ? 178 : 156) * buttonScale
     }
 
-    private func titleGroup(for currentPoint: KnowledgePoint) -> some View {
-        VStack(spacing: 18) {
+    private func titleGroup(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+        let isExpanded = metrics.isPadWidth
+        let titleSize = 40 * metrics.reviewScale
+
+        return VStack(spacing: isExpanded ? 20 : 18) {
             Text(currentPoint.title)
-                .font(.system(size: 40, weight: .semibold, design: .serif))
+                .font(.system(size: titleSize, weight: .semibold, design: .serif))
                 .foregroundStyle(KikariaTheme.deepText)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.72)
-                .padding(.horizontal, 22)
+                .padding(.horizontal, isExpanded ? 26 : 22)
 
-            LightTagRow(tags: currentPoint.tags)
+            LightTagRow(tags: currentPoint.tags, isExpanded: isExpanded)
 
-            TodayReviewCountPill(count: currentTodayReviewCount)
+            TodayReviewCountPill(count: currentTodayReviewCount, isExpanded: isExpanded)
         }
         .frame(maxWidth: .infinity)
     }
 
-    private func centralContentStack(for currentPoint: KnowledgePoint) -> some View {
-        VStack(spacing: 14) {
-            titleGroup(for: currentPoint)
+    private func centralContentStack(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+        let isExpanded = metrics.isPadWidth
+        let stackSpacing: CGFloat = metrics.isPadPortrait ? 20 : (isExpanded ? 18 : 14)
+
+        return VStack(spacing: stackSpacing) {
+            titleGroup(for: currentPoint, metrics: metrics)
 
             if isShowingHint {
-                FloatingInfoCard(title: "提示", text: currentPoint.hint)
+                FloatingInfoCard(title: "提示", text: currentPoint.hint, isExpanded: isExpanded)
                     .transition(.move(edge: .bottom))
             }
 
             if isShowingContent {
-                FloatingInfoCard(title: "答案", text: currentPoint.content)
+                FloatingInfoCard(title: "答案", text: currentPoint.content, isExpanded: isExpanded)
                     .transition(.move(edge: .bottom))
             }
         }
@@ -5818,91 +6345,127 @@ struct ReviewView: View {
         .animation(revealAnimation, value: isShowingContent)
     }
 
-    private func contentRegion(for currentPoint: KnowledgePoint) -> some View {
+    private func contentRegion(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
         GeometryReader { proxy in
             ScrollView {
-                centralContentStack(for: currentPoint)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 24)
+                centralContentStack(for: currentPoint, metrics: metrics)
+                    .padding(.horizontal, metrics.horizontalPadding)
+                    .padding(.vertical, metrics.isPadPortrait ? 34 : (metrics.isPadWidth ? 30 : 24))
+                    .frame(maxWidth: metrics.reviewMaxWidth)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: proxy.size.height, alignment: .center)
+                    .frame(
+                        minHeight: proxy.size.height + metrics.reviewContentVerticalOffset * 2,
+                        alignment: .center
+                    )
             }
             .scrollIndicators(.hidden)
         }
         .highPriorityGestureIf(!isShowingContent, preAnswerSwipeUpGesture)
     }
 
-    private func actionRegion(for currentPoint: KnowledgePoint) -> some View {
-        ZStack {
-            revealButtons
+    private func actionRegion(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+        let isExpanded = metrics.isPadWidth
+        let buttonScale = metrics.reviewButtonScale
+
+        return ZStack {
+            revealButtons(isExpanded: isExpanded, buttonScale: buttonScale)
                 .opacity(isShowingContent ? 0 : 1)
                 .allowsHitTesting(!isShowingContent)
 
-            answeredActionGrid(for: currentPoint)
+            answeredActionGrid(for: currentPoint, isExpanded: isExpanded, buttonScale: buttonScale)
                 .opacity(isShowingContent ? 1 : 0)
                 .allowsHitTesting(isShowingContent)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: actionRegionMinimumHeight, alignment: .bottom)
+        .frame(height: actionRegionMinimumHeight(isExpanded: isExpanded, buttonScale: buttonScale), alignment: .bottom)
         .animation(.easeInOut(duration: 0.18), value: isShowingContent)
     }
 
+    private func reviewBackButton(metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+        return VStack {
+            HStack {
+                KikariaAdaptiveBackButton(metrics: metrics) {
+                    dismiss()
+                }
+
+                Spacer()
+            }
+            .padding(.leading, metrics.horizontalPadding)
+            .padding(.top, 12)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-            if matchingPoints.isEmpty {
-                if mode.isReinforcement || mode.isMastered {
-                    ReinforcementCompletionView {
-                        if let onReturnHome {
-                            onReturnHome()
-                        } else {
-                            dismiss()
+                if matchingPoints.isEmpty {
+                    if mode.isReinforcement || mode.isMastered {
+                        ReinforcementCompletionView {
+                            if let onReturnHome {
+                                onReturnHome()
+                            } else {
+                                dismiss()
+                            }
                         }
+                        .padding(metrics.horizontalPadding)
+                        .frame(maxWidth: metrics.reviewMaxWidth)
+                    } else {
+                        SoftEmptyState(
+                            title: "暂无知识点",
+                            subtitle: "请返回后调整选择范围。",
+                            systemImage: "tag.slash"
+                        )
+                        .padding(metrics.horizontalPadding)
+                        .frame(maxWidth: metrics.reviewMaxWidth)
                     }
-                    .padding(24)
+                } else if let currentPoint {
+                    VStack(spacing: 0) {
+                        contentRegion(for: currentPoint, metrics: metrics)
+
+                        actionRegion(for: currentPoint, metrics: metrics)
+                            .padding(.horizontal, metrics.horizontalPadding)
+                            .padding(.top, 12)
+                            .padding(.bottom, metrics.reviewActionBottomPadding)
+                            .frame(maxWidth: metrics.reviewMaxWidth)
+                            .frame(maxWidth: .infinity)
+                    }
                 } else {
-                    SoftEmptyState(
-                        title: "暂无知识点",
-                        subtitle: "请返回后调整选择范围。",
-                        systemImage: "tag.slash"
-                    )
-                    .padding(24)
+                    ProgressView()
                 }
-            } else if let currentPoint {
-                VStack(spacing: 0) {
-                    contentRegion(for: currentPoint)
 
-                    actionRegion(for: currentPoint)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 12)
-                        .padding(.bottom, 16)
-                }
-            } else {
-                ProgressView()
-            }
-
-            if isShowingScopePanel {
-                ScopeSelectionView(
-                    selectedTags: $selectedTags,
-                    knowledgePoints: knowledgePoints,
-                    allTags: allTags,
-                    onDone: {
-                        withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
-                            isShowingScopePanel = false
+                if isShowingScopePanel {
+                    ScopeSelectionView(
+                        selectedTags: $selectedTags,
+                        knowledgePoints: knowledgePoints,
+                        allTags: allTags,
+                        onDone: {
+                            withAnimation(.spring(response: 0.42, dampingFraction: 0.88)) {
+                                isShowingScopePanel = false
+                            }
                         }
-                    }
-                )
-                .transition(.move(edge: .leading).combined(with: .opacity))
-                .zIndex(4)
-            }
+                    )
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+                    .zIndex(4)
+                }
 
-            if let toastMessage {
-                KikariaToastLayer(message: toastMessage)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .zIndex(5)
+                if let toastMessage {
+                    KikariaToastLayer(message: toastMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .zIndex(5)
+                }
+
+                if metrics.isPadPortrait {
+                    reviewBackButton(metrics: metrics)
+                        .zIndex(6)
+                }
             }
+            .navigationBarBackButtonHidden(metrics.isPadPortrait)
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -6330,25 +6893,33 @@ private enum ReviewActionTone {
 
 private struct ReviewAnsweredActionGrid<TopButton: View, BottomButton: View>: View {
     let next: () -> Void
+    var isExpanded = false
+    var buttonScale: CGFloat = 1
     private let topButton: () -> TopButton
     private let bottomButton: () -> BottomButton
 
     init(
         next: @escaping () -> Void,
+        isExpanded: Bool = false,
+        buttonScale: CGFloat = 1,
         @ViewBuilder topButton: @escaping () -> TopButton,
         @ViewBuilder bottomButton: @escaping () -> BottomButton
     ) {
         self.next = next
+        self.isExpanded = isExpanded
+        self.buttonScale = buttonScale
         self.topButton = topButton
         self.bottomButton = bottomButton
     }
 
     var body: some View {
         GeometryReader { proxy in
-            let spacing: CGFloat = 12
+            let scale = max(buttonScale, 1)
+            let spacing: CGFloat = (isExpanded ? 14 : 12) * scale
             let availableWidth = max(0, proxy.size.width - spacing)
             let leftWidth = availableWidth * 0.65
             let rightWidth = availableWidth - leftWidth
+            let gridHeight = (isExpanded ? 166 : 144) * scale
 
             HStack(spacing: spacing) {
                 VStack(spacing: spacing) {
@@ -6363,35 +6934,44 @@ private struct ReviewAnsweredActionGrid<TopButton: View, BottomButton: View>: Vi
                     isPrimary: false,
                     tone: .amber,
                     isVerticalContent: true,
-                    minHeight: 144
+                    isExpanded: isExpanded,
+                    buttonScale: scale,
+                    minHeight: gridHeight
                 ) {
                     next()
                 }
                 .frame(width: rightWidth)
             }
         }
-        .frame(height: 144)
+        .frame(height: (isExpanded ? 166 : 144) * max(buttonScale, 1))
     }
 }
 
 private struct NormalReviewAnsweredActionGrid: View {
     let point: KnowledgePoint
+    var isExpanded = false
+    var buttonScale: CGFloat = 1
     let addToReinforcement: () -> Void
     let markAsMastered: () -> Void
     let next: () -> Void
 
     var body: some View {
-        ReviewAnsweredActionGrid(next: next) {
+        let scale = max(buttonScale, 1)
+        let buttonHeight = (isExpanded ? 76 : 66) * scale
+
+        ReviewAnsweredActionGrid(next: next, isExpanded: isExpanded, buttonScale: scale) {
             ReviewActionButton(
                 title: point.reinforcementCount > 0 ? "再次加入 ×\(point.reinforcementCount)" : "加入重点集锦",
                 systemImage: "plus.circle.fill",
                 isPrimary: true,
-                minHeight: 66
+                isExpanded: isExpanded,
+                buttonScale: scale,
+                minHeight: buttonHeight
             ) {
                 addToReinforcement()
             }
         } bottomButton: {
-            MasteredReviewButton(isMastered: point.isMastered, minHeight: 66) {
+            MasteredReviewButton(isMastered: point.isMastered, isExpanded: isExpanded, buttonScale: scale, minHeight: buttonHeight) {
                 markAsMastered()
             }
         }
@@ -6400,23 +6980,30 @@ private struct NormalReviewAnsweredActionGrid: View {
 
 private struct ReinforcementReviewAnsweredActionGrid: View {
     let point: KnowledgePoint
+    var isExpanded = false
+    var buttonScale: CGFloat = 1
     let removeFromReinforcement: () -> Void
     let markAsMastered: () -> Void
     let next: () -> Void
 
     var body: some View {
-        ReviewAnsweredActionGrid(next: next) {
+        let scale = max(buttonScale, 1)
+        let buttonHeight = (isExpanded ? 76 : 66) * scale
+
+        ReviewAnsweredActionGrid(next: next, isExpanded: isExpanded, buttonScale: scale) {
             ReviewActionButton(
                 title: "移出重点集锦",
                 systemImage: "minus.circle.fill",
                 isPrimary: true,
                 tone: .red,
-                minHeight: 66
+                isExpanded: isExpanded,
+                buttonScale: scale,
+                minHeight: buttonHeight
             ) {
                 removeFromReinforcement()
             }
         } bottomButton: {
-            MasteredReviewButton(isMastered: point.isMastered, minHeight: 66) {
+            MasteredReviewButton(isMastered: point.isMastered, isExpanded: isExpanded, buttonScale: scale, minHeight: buttonHeight) {
                 markAsMastered()
             }
         }
@@ -6425,17 +7012,24 @@ private struct ReinforcementReviewAnsweredActionGrid: View {
 
 private struct MasteredReviewAnsweredActionGrid: View {
     let point: KnowledgePoint
+    var isExpanded = false
+    var buttonScale: CGFloat = 1
     let addToReinforcement: () -> Void
     let removeFromMastered: () -> Void
     let next: () -> Void
 
     var body: some View {
-        ReviewAnsweredActionGrid(next: next) {
+        let scale = max(buttonScale, 1)
+        let buttonHeight = (isExpanded ? 76 : 66) * scale
+
+        ReviewAnsweredActionGrid(next: next, isExpanded: isExpanded, buttonScale: scale) {
             ReviewActionButton(
                 title: point.reinforcementCount > 0 ? "再次加入 ×\(point.reinforcementCount)" : "加入重点集锦",
                 systemImage: "plus.circle.fill",
                 isPrimary: true,
-                minHeight: 66
+                isExpanded: isExpanded,
+                buttonScale: scale,
+                minHeight: buttonHeight
             ) {
                 addToReinforcement()
             }
@@ -6445,7 +7039,9 @@ private struct MasteredReviewAnsweredActionGrid: View {
                 systemImage: "minus.circle.fill",
                 isPrimary: true,
                 tone: .red,
-                minHeight: 66
+                isExpanded: isExpanded,
+                buttonScale: scale,
+                minHeight: buttonHeight
             ) {
                 removeFromMastered()
             }
@@ -6461,6 +7057,8 @@ private struct ReviewActionButton: View {
     var tone: ReviewActionTone = .blue
     var isEnabled = true
     var isVerticalContent = false
+    var isExpanded = false
+    var buttonScale: CGFloat = 1
     var minHeight: CGFloat? = nil
     let action: () -> Void
 
@@ -6560,20 +7158,23 @@ private struct ReviewActionButton: View {
     }
 
     var body: some View {
+        let scale = max(buttonScale, 1)
+        let cornerRadius = (isExpanded ? 28 : 26) * scale
+
         Button(action: action) {
             content
                 .foregroundStyle(foregroundColor)
                 .shadow(color: textShadowColor, radius: tone == .amber ? 4 : 0, y: tone == .amber ? 1 : 0)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 19)
+                .padding(.vertical, (isExpanded ? 22 : 19) * scale)
                 .frame(minHeight: minHeight)
                 .background {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(isPrimary ? primaryFill : secondaryFill)
                 }
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .stroke(
                             LinearGradient(
                                 colors: [
@@ -6584,10 +7185,10 @@ private struct ReviewActionButton: View {
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             ),
-                            lineWidth: 1
+                            lineWidth: scale
                         )
                 }
-                .shadow(color: shadowColor.opacity(buttonShadowOpacity), radius: 16, y: 9)
+                .shadow(color: shadowColor.opacity(buttonShadowOpacity), radius: 16 * scale, y: 9 * scale)
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
@@ -6596,18 +7197,20 @@ private struct ReviewActionButton: View {
 
     @ViewBuilder
     private var content: some View {
+        let scale = max(buttonScale, 1)
+
         if isVerticalContent {
-            VStack(spacing: 8) {
+            VStack(spacing: (isExpanded ? 10 : 8) * scale) {
                 Image(systemName: systemImage)
-                    .font(.title3.weight(.semibold))
+                    .font(.system(size: (isExpanded ? 28 : 20) * scale, weight: .semibold))
 
                 Text(title)
-                    .font(KikariaTypography.chineseButton())
+                    .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
             }
             .frame(maxWidth: .infinity)
         } else {
             Label(title, systemImage: systemImage)
-                .font(KikariaTypography.chineseButton())
+                .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
         }
     }
 }
@@ -6615,34 +7218,39 @@ private struct ReviewActionButton: View {
 private struct MasteredReviewButton: View {
     @Environment(\.colorScheme) private var colorScheme
     let isMastered: Bool
+    var isExpanded = false
+    var buttonScale: CGFloat = 1
     var minHeight: CGFloat? = nil
     let action: () -> Void
 
     var body: some View {
+        let scale = max(buttonScale, 1)
+        let cornerRadius = (isExpanded ? 28 : 26) * scale
+
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: (isExpanded ? 10 : 8) * scale) {
                 Image(systemName: isMastered ? "checkmark.seal.fill" : "plus.circle.fill")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: (isExpanded ? 18 : 15) * scale, weight: .semibold))
                     .foregroundStyle(isMastered ? KikariaTheme.masteredGreen.opacity(0.9) : .white)
 
                 Text(isMastered ? "已设定为掌握" : "加入已掌握")
-                    .font(KikariaTypography.chineseButton())
+                    .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
             }
             .foregroundStyle(isMastered ? KikariaTheme.softText : .white)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 19)
+            .padding(.vertical, (isExpanded ? 22 : 19) * scale)
             .frame(minHeight: minHeight)
             .background {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(
                         isMastered
                             ? AnyShapeStyle(KikariaTheme.glassSurface.opacity(colorScheme == .dark ? 0.34 : 0.42))
                             : AnyShapeStyle(KikariaTheme.masteredActionGradient)
                     )
             }
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(
                         LinearGradient(
                             colors: [
@@ -6653,15 +7261,15 @@ private struct MasteredReviewButton: View {
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ),
-                        lineWidth: 1
+                        lineWidth: scale
                     )
             }
             .shadow(
                 color: isMastered
                     ? KikariaTheme.blueGray.opacity(0.10)
                     : KikariaTheme.masteredGreen.opacity(0.20),
-                radius: 16,
-                y: 9
+                radius: 16 * scale,
+                y: 9 * scale
             )
         }
         .buttonStyle(.plain)
@@ -6729,66 +7337,74 @@ struct ReinforcementView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-            if reinforcedPoints.isEmpty {
-                SoftEmptyState(
-                    title: "还没有重点",
-                    subtitle: "在背诵时查看答案后，可以把知识点加入这里。",
-                    systemImage: "sparkles"
-                )
-                .padding(24)
-            } else {
-                VStack(spacing: 0) {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 18) {
-                            Text("重点集锦")
-                                .font(KikariaTypography.chineseTitle())
-                                .foregroundStyle(KikariaTheme.deepText)
-                                .padding(.top, 18)
+                if reinforcedPoints.isEmpty {
+                    SoftEmptyState(
+                        title: "还没有重点",
+                        subtitle: "在背诵时查看答案后，可以把知识点加入这里。",
+                        systemImage: "sparkles"
+                    )
+                    .padding(metrics.horizontalPadding)
+                    .frame(maxWidth: metrics.mainMaxWidth)
+                } else {
+                    VStack(spacing: 0) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 18) {
+                                Text("重点集锦")
+                                    .font(KikariaTypography.chineseTitle())
+                                    .foregroundStyle(KikariaTheme.deepText)
+                                    .padding(.top, 18)
 
-                            KikariaSearchBar(text: $searchText)
+                                KikariaSearchBar(text: $searchText)
 
-                            if filteredReinforcedPoints.isEmpty {
-                                SoftEmptyState(
-                                    title: "没有找到相关知识点",
-                                    subtitle: "换个关键词试试看。",
-                                    systemImage: "magnifyingglass"
-                                )
-                                .padding(.top, 12)
-                            } else {
-                                ForEach(filteredReinforcedPoints) { point in
-                                    ReinforcementCard(point: point) {
-                                        removeFromReinforcement(point)
+                                if filteredReinforcedPoints.isEmpty {
+                                    SoftEmptyState(
+                                        title: "没有找到相关知识点",
+                                        subtitle: "换个关键词试试看。",
+                                        systemImage: "magnifyingglass"
+                                    )
+                                    .padding(.top, 12)
+                                } else {
+                                    ForEach(filteredReinforcedPoints) { point in
+                                        ReinforcementCard(point: point) {
+                                            removeFromReinforcement(point)
+                                        }
                                     }
                                 }
                             }
+                            .padding(.horizontal, metrics.horizontalPadding)
+                            .padding(.bottom, 150)
+                            .frame(maxWidth: metrics.mainMaxWidth)
+                            .frame(maxWidth: .infinity)
                         }
-                        .padding(.horizontal, 22)
-                        .padding(.bottom, 150)
-                    }
 
-                    VStack(spacing: 0) {
-                        Button(action: onStartReview) {
-                            ReinforcementStartButton(count: reinforcedPoints.count)
+                        VStack(spacing: 0) {
+                            Button(action: onStartReview) {
+                                ReinforcementStartButton(count: reinforcedPoints.count)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                        .padding(.top, 18)
+                        .padding(.horizontal, metrics.horizontalPadding)
+                        .padding(.bottom, 20)
+                        .frame(maxWidth: metrics.mainMaxWidth)
+                        .frame(maxWidth: .infinity)
+                        .background(.ultraThinMaterial)
                     }
-                    .padding(.top, 18)
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 20)
-                    .background(.ultraThinMaterial)
+                }
+
+                if let toastMessage {
+                    KikariaToastLayer(message: toastMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-
-            if let toastMessage {
-                KikariaToastLayer(message: toastMessage)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
+            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: metrics.mainMaxWidth)
         }
-        .navigationTitle("重点集锦")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -6842,71 +7458,79 @@ struct MasteredView: View {
     }
 
     var body: some View {
-        ZStack {
-            KikariaTheme.pageGradient
-                .ignoresSafeArea()
+        KikariaAdaptivePage { metrics in
+            ZStack {
+                KikariaTheme.pageGradient
+                    .ignoresSafeArea()
 
-            if masteredPoints.isEmpty {
-                SoftEmptyState(
-                    title: "还没有已掌握",
-                    subtitle: "在背诵时查看答案后，可以把真正熟悉的知识点标记到这里。",
-                    systemImage: "checkmark.seal"
-                )
-                .padding(24)
-            } else {
-                VStack(spacing: 0) {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 18) {
-                            Text("已掌握")
-                                .font(KikariaTypography.chineseTitle())
-                                .foregroundStyle(KikariaTheme.deepText)
-                                .padding(.top, 18)
+                if masteredPoints.isEmpty {
+                    SoftEmptyState(
+                        title: "还没有已掌握",
+                        subtitle: "在背诵时查看答案后，可以把真正熟悉的知识点标记到这里。",
+                        systemImage: "checkmark.seal"
+                    )
+                    .padding(metrics.horizontalPadding)
+                    .frame(maxWidth: metrics.mainMaxWidth)
+                } else {
+                    VStack(spacing: 0) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 18) {
+                                Text("已掌握")
+                                    .font(KikariaTypography.chineseTitle())
+                                    .foregroundStyle(KikariaTheme.deepText)
+                                    .padding(.top, 18)
 
-                            KikariaSearchBar(text: $searchText)
+                                KikariaSearchBar(text: $searchText)
 
-                            if filteredMasteredPoints.isEmpty {
-                                SoftEmptyState(
-                                    title: "没有找到相关知识点",
-                                    subtitle: "换个关键词试试看。",
-                                    systemImage: "magnifyingglass"
-                                )
-                                .padding(.top, 12)
-                            } else {
-                                ForEach(filteredMasteredPoints) { point in
-                                    ReinforcementCard(
-                                        point: point,
-                                        removeTitle: "移出已掌握",
-                                        removeSystemImage: "minus.circle.fill",
-                                        showsReinforcementCountBadge: false
-                                    ) {
-                                        removeFromMastered(point)
+                                if filteredMasteredPoints.isEmpty {
+                                    SoftEmptyState(
+                                        title: "没有找到相关知识点",
+                                        subtitle: "换个关键词试试看。",
+                                        systemImage: "magnifyingglass"
+                                    )
+                                    .padding(.top, 12)
+                                } else {
+                                    ForEach(filteredMasteredPoints) { point in
+                                        ReinforcementCard(
+                                            point: point,
+                                            removeTitle: "移出已掌握",
+                                            removeSystemImage: "minus.circle.fill",
+                                            showsReinforcementCountBadge: false
+                                        ) {
+                                            removeFromMastered(point)
+                                        }
                                     }
                                 }
                             }
+                            .padding(.horizontal, metrics.horizontalPadding)
+                            .padding(.bottom, 150)
+                            .frame(maxWidth: metrics.mainMaxWidth)
+                            .frame(maxWidth: .infinity)
                         }
-                        .padding(.horizontal, 22)
-                        .padding(.bottom, 150)
-                    }
 
-                    VStack(spacing: 0) {
-                        Button(action: onStartReview) {
-                            MasteredStartButton(count: masteredPoints.count)
+                        VStack(spacing: 0) {
+                            Button(action: onStartReview) {
+                                MasteredStartButton(count: masteredPoints.count)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                        .padding(.top, 18)
+                        .padding(.horizontal, metrics.horizontalPadding)
+                        .padding(.bottom, 20)
+                        .frame(maxWidth: metrics.mainMaxWidth)
+                        .frame(maxWidth: .infinity)
+                        .background(.ultraThinMaterial)
                     }
-                    .padding(.top, 18)
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 20)
-                    .background(.ultraThinMaterial)
+                }
+
+                if let toastMessage {
+                    KikariaToastLayer(message: toastMessage)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-
-            if let toastMessage {
-                KikariaToastLayer(message: toastMessage)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
+            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: metrics.mainMaxWidth)
         }
-        .navigationTitle("已掌握")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -7138,36 +7762,39 @@ private struct KikariaToastLayer: View {
 private struct FloatingInfoCard: View {
     let title: String
     let text: String
+    var isExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: isExpanded ? 12 : 10) {
             Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 14, weight: .bold))
+                .font(KikariaTypography.chineseHeadline(size: isExpanded ? 15 : 14, weight: .bold))
                 .foregroundStyle(KikariaTheme.sky)
 
             Text(text)
-                .font(.system(.body, design: .serif))
+                .font(isExpanded ? .system(size: 18, weight: .regular, design: .serif) : .system(.body, design: .serif))
                 .foregroundStyle(KikariaTheme.deepText)
-                .lineSpacing(3)
+                .lineSpacing(isExpanded ? 4 : 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(18)
-        .liquidGlassCard(cornerRadius: 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.42, shadowOpacity: 0.14, shadowRadius: 18, shadowY: 10)
+        .padding(isExpanded ? 22 : 18)
+        .frame(maxWidth: isExpanded ? 820 : 700)
+        .liquidGlassCard(cornerRadius: isExpanded ? 28 : 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.42, shadowOpacity: 0.14, shadowRadius: isExpanded ? 20 : 18, shadowY: isExpanded ? 11 : 10)
     }
 }
 
 private struct LightTagRow: View {
     let tags: [String]
+    var isExpanded = false
 
     var body: some View {
-        CenteredTagFlow(spacing: 8, rowSpacing: 8) {
+        CenteredTagFlow(spacing: isExpanded ? 10 : 8, rowSpacing: isExpanded ? 9 : 8) {
             ForEach(tags, id: \.self) { tag in
                 Text(tag)
-                    .font(KikariaTypography.tag(size: 12))
+                    .font(KikariaTypography.tag(size: isExpanded ? 13 : 12))
                     .foregroundStyle(KikariaTheme.softText)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, isExpanded ? 13 : 11)
+                    .padding(.vertical, isExpanded ? 7 : 6)
                     .liquidGlassCapsule(fillOpacity: 0.38, strokeOpacity: 0.34, shadowOpacity: 0.04, shadowRadius: 6, shadowY: 3)
             }
         }
@@ -7177,15 +7804,16 @@ private struct LightTagRow: View {
 
 private struct TodayReviewCountPill: View {
     let count: Int
+    var isExpanded = false
 
     var body: some View {
         Text("该知识点今日复习 \(count) 次")
-            .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+            .font(KikariaTypography.chineseCaption(size: isExpanded ? 13 : 12, weight: .semibold))
             .foregroundStyle(KikariaTheme.deepText.opacity(0.78))
             .monospacedDigit()
-            .padding(.horizontal, 18)
-            .padding(.vertical, 8)
-            .liquidGlassCapsule(fillOpacity: 0.42, strokeOpacity: 0.38, shadowOpacity: 0.10, shadowRadius: 12, shadowY: 6)
+            .padding(.horizontal, isExpanded ? 20 : 18)
+            .padding(.vertical, isExpanded ? 9 : 8)
+            .liquidGlassCapsule(fillOpacity: 0.42, strokeOpacity: 0.38, shadowOpacity: 0.10, shadowRadius: isExpanded ? 14 : 12, shadowY: isExpanded ? 7 : 6)
             .accessibilityLabel("该知识点今日复习 \(count) 次")
     }
 }
