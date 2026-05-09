@@ -157,6 +157,54 @@ enum KikariaAdaptiveLayout {
             isPadPortrait ? (width >= 900 ? 760 : 720) : mainMaxWidth
         }
 
+        var ipadPortraitListPageTopInset: CGFloat {
+            isPadPortrait ? (width >= 900 ? 46 : 38) : 0
+        }
+
+        var ipadPortraitOverviewTopInset: CGFloat {
+            isPadPortrait ? (width >= 900 ? 44 : 36) : 0
+        }
+
+        var ipadPortraitFormPageTopInset: CGFloat {
+            isPadPortrait ? (width >= 900 ? 46 : 38) : 0
+        }
+
+        var ipadPortraitSettingsTopInset: CGFloat {
+            isPadPortrait ? (width >= 900 ? 46 : 38) : 0
+        }
+
+        var ipadPortraitPageTitleTopInset: CGFloat {
+            isPadPortrait ? (width >= 900 ? 96 : 84) : 0
+        }
+
+        var ipadPortraitPageTitleFontSize: CGFloat {
+            isPadPortrait ? (width >= 900 ? 36 : 35) : 32
+        }
+
+        var ipadPortraitPageTitleSpacing: CGFloat {
+            isPadPortrait ? 24 : 18
+        }
+
+        var ipadPortraitPageSubtitleSpacing: CGFloat {
+            isPadPortrait ? 10 : 8
+        }
+
+        func pageTitleTopPadding(defaultValue: CGFloat) -> CGFloat {
+            isPadPortrait ? ipadPortraitPageTitleTopInset : defaultValue
+        }
+
+        func pageTitleFontSize(defaultValue: CGFloat) -> CGFloat {
+            isPadPortrait ? ipadPortraitPageTitleFontSize : defaultValue
+        }
+
+        func pageTitleSpacing(defaultValue: CGFloat) -> CGFloat {
+            isPadPortrait ? ipadPortraitPageTitleSpacing : defaultValue
+        }
+
+        func pageTitleSubtitleSpacing(defaultValue: CGFloat) -> CGFloat {
+            isPadPortrait ? ipadPortraitPageSubtitleSpacing : defaultValue
+        }
+
         var settingsOuterMaxWidth: CGFloat {
             isPadPortrait ? (width >= 900 ? 740 : 700) : formMaxWidth
         }

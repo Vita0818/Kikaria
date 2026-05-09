@@ -2312,7 +2312,7 @@ private struct TodayOverviewView: View {
                                 .font(KikariaTypography.chineseBody(size: 15 * scale, weight: .medium))
                                 .foregroundStyle(KikariaTheme.softText)
                         }
-                        .padding(.top, 18 * scale)
+                        .padding(.top, 18 * scale + metrics.ipadPortraitOverviewTopInset)
 
                         VStack(alignment: .leading, spacing: 12 * scale) {
                             Text("今日新增已掌握")
@@ -2789,7 +2789,7 @@ private struct SettingsView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.horizontal, pagePadding)
-                    .padding(.top, 18 * scale)
+                    .padding(.top, 18 * scale + metrics.ipadPortraitSettingsTopInset)
                     .padding(.bottom, 18 * scale)
                     .frame(maxWidth: columnMaxWidth)
                     .frame(maxWidth: .infinity)
@@ -2827,7 +2827,6 @@ private struct SettingsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 8 * scale)
                         .padding(.bottom, 6 * scale)
-                        .liquidGlassCard(cornerRadius: 30 * scale, material: .thinMaterial, fillOpacity: 0.28, strokeOpacity: 0.30, shadowOpacity: 0.06, shadowRadius: 14 * scale, shadowY: 8 * scale)
 
                         SettingsSectionCard(title: "当前预设", scale: scale) {
                             SettingsListRow(
@@ -3833,18 +3832,21 @@ private struct PresetSelectionView: View {
             let scale = metrics.presetScale
             let columnMaxWidth = metrics.presetOuterMaxWidth
             let pagePadding = metrics.innerHorizontalPadding
+            let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32 * scale)
+            let titleTopPadding = metrics.pageTitleTopPadding(defaultValue: 18 * scale)
+            let titleSpacing = metrics.pageTitleSpacing(defaultValue: 18 * scale)
 
             ZStack {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 18 * scale) {
+                    VStack(alignment: .leading, spacing: titleSpacing) {
                         Text("切换预设")
-                            .font(KikariaTypography.chineseTitle(size: 32 * scale))
+                            .font(KikariaTypography.chineseTitle(size: titleFontSize))
                             .foregroundStyle(KikariaTheme.deepText)
-                            .padding(.top, 18 * scale)
-                            .padding(.bottom, 2 * scale)
+                            .padding(.top, titleTopPadding)
+                            .padding(.bottom, metrics.isPadPortrait ? 0 : 2 * scale)
 
                         Button(action: onUploadNewPreset) {
                             HStack(spacing: 12 * scale) {
@@ -4202,6 +4204,7 @@ private struct NewPresetView: View {
                             }
                         }
                         .padding(.horizontal, pagePadding)
+                        .padding(.top, metrics.ipadPortraitFormPageTopInset)
                         .padding(.bottom, 32 * scale)
                         .frame(maxWidth: columnMaxWidth)
                         .frame(maxWidth: .infinity)
@@ -5994,6 +5997,10 @@ struct ScopeSelectionView: View {
             let gridSpacing = metrics.scopeGridSpacing
             let doneButtonBottomPadding = metrics.isPadPortrait ? 18 * scale + 18 : 18 * scale
             let effectiveContentWidth = metrics.effectiveContentWidth(for: columnMaxWidth)
+            let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32 * scale)
+            let titleTopPadding = metrics.pageTitleTopPadding(defaultValue: 24 * scale + metrics.ipadPortraitListPageTopInset)
+            let titleSpacing = metrics.pageTitleSpacing(defaultValue: 24 * scale)
+            let subtitleSpacing = metrics.pageTitleSubtitleSpacing(defaultValue: 8 * scale)
             let tagMinimumWidth = metrics.isPadPortrait
                 ? min(max(effectiveContentWidth / 4, metrics.scopeGridMinimumWidth), 190)
                 : metrics.scopeGridMinimumWidth
@@ -6007,17 +6014,17 @@ struct ScopeSelectionView: View {
 
                 VStack(spacing: 0) {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 24 * scale) {
-                            VStack(alignment: .leading, spacing: 8 * scale) {
+                        VStack(alignment: .leading, spacing: titleSpacing) {
+                            VStack(alignment: .leading, spacing: subtitleSpacing) {
                                 Text("选择范围")
-                                    .font(KikariaTypography.chineseTitle(size: 32 * scale))
+                                    .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
 
                                 Text(selectedTags.isEmpty ? "未选择标签时，会默认使用全部知识点。" : "已选择 \(selectedTags.count) 个标签。")
                                     .font(KikariaTypography.chineseBody(size: 15 * scale))
                                     .foregroundStyle(KikariaTheme.softText)
                             }
-                            .padding(.top, 16 * scale)
+                            .padding(.top, metrics.isPadPortrait ? 0 : 16 * scale)
 
                             KikariaSearchBar(text: $searchText, placeholder: "搜索标签或知识点", scale: scale)
 
@@ -6046,7 +6053,7 @@ struct ScopeSelectionView: View {
                             }
                         }
                         .padding(.horizontal, pagePadding)
-                        .padding(.top, 24 * scale)
+                        .padding(.top, titleTopPadding)
                         .padding(.bottom, 96)
                         .frame(maxWidth: columnMaxWidth)
                         .frame(maxWidth: .infinity)
@@ -7338,6 +7345,10 @@ struct ReinforcementView: View {
 
     var body: some View {
         KikariaAdaptivePage { metrics in
+            let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32)
+            let titleTopPadding = metrics.pageTitleTopPadding(defaultValue: 18)
+            let titleSpacing = metrics.pageTitleSpacing(defaultValue: 18)
+
             ZStack {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
@@ -7353,11 +7364,11 @@ struct ReinforcementView: View {
                 } else {
                     VStack(spacing: 0) {
                         ScrollView {
-                            VStack(alignment: .leading, spacing: 18) {
+                            VStack(alignment: .leading, spacing: titleSpacing) {
                                 Text("重点集锦")
-                                    .font(KikariaTypography.chineseTitle())
+                                    .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
-                                    .padding(.top, 18)
+                                    .padding(.top, titleTopPadding)
 
                                 KikariaSearchBar(text: $searchText)
 
@@ -7459,6 +7470,10 @@ struct MasteredView: View {
 
     var body: some View {
         KikariaAdaptivePage { metrics in
+            let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32)
+            let titleTopPadding = metrics.pageTitleTopPadding(defaultValue: 18)
+            let titleSpacing = metrics.pageTitleSpacing(defaultValue: 18)
+
             ZStack {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
@@ -7474,11 +7489,11 @@ struct MasteredView: View {
                 } else {
                     VStack(spacing: 0) {
                         ScrollView {
-                            VStack(alignment: .leading, spacing: 18) {
+                            VStack(alignment: .leading, spacing: titleSpacing) {
                                 Text("已掌握")
-                                    .font(KikariaTypography.chineseTitle())
+                                    .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
-                                    .padding(.top, 18)
+                                    .padding(.top, titleTopPadding)
 
                                 KikariaSearchBar(text: $searchText)
 
