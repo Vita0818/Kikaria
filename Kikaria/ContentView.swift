@@ -4326,6 +4326,24 @@ private struct MarkdownFormatGuideView: View {
     若函数 f(x) 在 [a,b] 上连续，在 (a,b) 内可导，且 f(a)=f(b)，则至少存在一点 ξ∈(a,b)，使得 f'(ξ)=0。
     """
 
+    private static let latexExample = """
+    Kikaria 使用本地 SwiftMath 渲染公式，不会联网处理。
+
+    推荐：中文说明放在公式外
+
+    函数 $f(x)=x^2$ 的导数是 $2x$。
+
+    当 x 接近 0 时，有：
+
+    $$
+    \\lim_{x\\to0}\\frac{\\sin x}{x}=1
+    $$
+
+    不推荐：没有 $ 包裹的 LaTeX 不会渲染
+
+    \\Delta\\varphi=0
+    """
+
     private static let aiPrompt = """
     请你把我提供的学习资料整理成 Kikaria 背诵 App 支持的结构化 Markdown 知识点。
 
@@ -4354,6 +4372,10 @@ private struct MarkdownFormatGuideView: View {
     8. 不要把多个知识点混在一起。
     9. 如果原资料太长，请拆分成多个小知识点。
     10. 输出结果只保留 Markdown 内容，不要添加寒暄或说明。
+    11. 数学公式可以使用 LaTeX，Kikaria 会用本地 SwiftMath 渲染，不会联网处理。
+    12. 只有 $...$ 和 $$...$$ 中的内容会渲染为公式；没有包裹的 LaTeX 命令会按普通文本保留。
+    13. 行内公式用 $...$，块级公式用 $$...$$。
+    14. 公式环境中不要混入中文，中文解释要写在公式外；必要时可少量使用 \\text{...}。
 
     下面是需要整理的资料：
 
@@ -4419,6 +4441,22 @@ private struct MarkdownFormatGuideView: View {
                                     MarkdownRuleText("每个知识点之间用单独一行 --- 分隔。")
                                     MarkdownRuleText("建议每个知识点不要太长，适合一次背诵。")
                                     MarkdownRuleText("标签可以用于后续选择背诵范围。")
+                                }
+                            }
+
+                            MarkdownGuideCard(title: "LaTeX 公式") {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    MarkdownRuleText("Kikaria 使用本地 SwiftMath 渲染公式，不会联网处理。")
+                                    MarkdownRuleText("行内公式必须写成：$f(x)=x^2$。")
+                                    MarkdownRuleText("块级公式必须写成：用 $$...$$ 单独成块。")
+                                    MarkdownRuleText("只有 $...$ 和 $$...$$ 中的内容会渲染为公式。")
+                                    MarkdownRuleText("没有包裹的 LaTeX 命令不会自动识别，会按普通文本显示。")
+                                    MarkdownRuleText("公式环境中不要混入中文，中文说明应放在公式外。")
+                                    MarkdownRuleText("App 会尽量渲染 \\text{...}，但不建议在复杂公式里滥用中文。")
+                                    MarkdownRuleText("矩阵、cases、align 等复杂结构会尽量交给 SwiftMath 渲染；失败时显示原始源码。")
+                                    MarkdownRuleText("导入、编辑和导出都会保留原始 LaTeX 源码。")
+
+                                    MarkdownCodeBlock(text: Self.latexExample)
                                 }
                             }
 
@@ -6139,6 +6177,11 @@ private struct ScopeTagChip: View {
     }
 }
 
+private enum ReviewGestureSuppressionReason {
+    case mathHorizontalScroll
+    case contentVerticalScroll
+}
+
 struct ReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var knowledgePoints: [KnowledgePoint]
@@ -6158,6 +6201,8 @@ struct ReviewView: View {
     @State private var isShowingScopePanel = false
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
+    @State private var activeGestureSuppressionReason: ReviewGestureSuppressionReason?
+    @State private var gestureSuppressionToken = UUID()
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
@@ -6338,12 +6383,32 @@ struct ReviewView: View {
             titleGroup(for: currentPoint, metrics: metrics)
 
             if isShowingHint {
-                FloatingInfoCard(title: "提示", text: currentPoint.hint, isExpanded: isExpanded)
+                FloatingInfoCard(
+                    title: "提示",
+                    text: currentPoint.hint,
+                    isExpanded: isExpanded,
+                    onVerticalContentDrag: {
+                        suppressReviewGesture(.contentVerticalScroll)
+                    },
+                    onHorizontalMathDrag: {
+                        suppressReviewGesture(.mathHorizontalScroll)
+                    }
+                )
                     .transition(.move(edge: .bottom))
             }
 
             if isShowingContent {
-                FloatingInfoCard(title: "答案", text: currentPoint.content, isExpanded: isExpanded)
+                FloatingInfoCard(
+                    title: "答案",
+                    text: currentPoint.content,
+                    isExpanded: isExpanded,
+                    onVerticalContentDrag: {
+                        suppressReviewGesture(.contentVerticalScroll)
+                    },
+                    onHorizontalMathDrag: {
+                        suppressReviewGesture(.mathHorizontalScroll)
+                    }
+                )
                     .transition(.move(edge: .bottom))
             }
         }
@@ -6492,6 +6557,10 @@ struct ReviewView: View {
     private var reviewDragGesture: some Gesture {
         DragGesture(minimumDistance: 28, coordinateSpace: .local)
             .onEnded { value in
+                guard !isReviewGlobalGestureSuppressed else {
+                    return
+                }
+
                 handleDragGesture(translation: value.translation, startLocation: value.startLocation)
             }
     }
@@ -6499,7 +6568,10 @@ struct ReviewView: View {
     private var preAnswerSwipeUpGesture: some Gesture {
         DragGesture(minimumDistance: 24, coordinateSpace: .local)
             .onEnded { value in
-                guard !isShowingScopePanel, !isShowingContent else {
+                guard !isShowingScopePanel,
+                      !isShowingContent,
+                      !isReviewGlobalGestureSuppressed
+                else {
                     return
                 }
 
@@ -6522,8 +6594,28 @@ struct ReviewView: View {
             }
     }
 
+    private var isReviewGlobalGestureSuppressed: Bool {
+        activeGestureSuppressionReason != nil
+    }
+
+    private func suppressReviewGesture(_ reason: ReviewGestureSuppressionReason) {
+        activeGestureSuppressionReason = reason
+        let token = UUID()
+        gestureSuppressionToken = token
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+            guard gestureSuppressionToken == token else {
+                return
+            }
+
+            activeGestureSuppressionReason = nil
+        }
+    }
+
     private func handleDragGesture(translation: CGSize, startLocation: CGPoint) {
-        guard !isShowingScopePanel else {
+        guard !isShowingScopePanel,
+              !isReviewGlobalGestureSuppressed
+        else {
             return
         }
 
@@ -7778,6 +7870,8 @@ private struct FloatingInfoCard: View {
     let title: String
     let text: String
     var isExpanded = false
+    var onVerticalContentDrag: (() -> Void)?
+    var onHorizontalMathDrag: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: isExpanded ? 12 : 10) {
@@ -7785,16 +7879,43 @@ private struct FloatingInfoCard: View {
                 .font(KikariaTypography.chineseHeadline(size: isExpanded ? 15 : 14, weight: .bold))
                 .foregroundStyle(KikariaTheme.sky)
 
-            Text(text)
-                .font(isExpanded ? .system(size: 18, weight: .regular, design: .serif) : .system(.body, design: .serif))
-                .foregroundStyle(KikariaTheme.deepText)
-                .lineSpacing(isExpanded ? 4 : 3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+            KikariaMathText(
+                text,
+                fontSize: isExpanded ? 18 : 17,
+                textColor: KikariaTheme.deepText,
+                accentColor: KikariaTheme.sky,
+                lineSpacing: isExpanded ? 4 : 3,
+                onHorizontalMathDrag: onHorizontalMathDrag
+            )
         }
+        .simultaneousGesture(contentVerticalDragSuppressionGesture)
         .padding(isExpanded ? 22 : 18)
         .frame(maxWidth: isExpanded ? 820 : 700)
         .liquidGlassCard(cornerRadius: isExpanded ? 28 : 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.42, shadowOpacity: 0.14, shadowRadius: isExpanded ? 20 : 18, shadowY: isExpanded ? 11 : 10)
+    }
+
+    private var contentVerticalDragSuppressionGesture: some Gesture {
+        DragGesture(minimumDistance: 12, coordinateSpace: .local)
+            .onChanged { value in
+                guard isVerticalContentDrag(value.translation) else {
+                    return
+                }
+
+                onVerticalContentDrag?()
+            }
+            .onEnded { value in
+                guard isVerticalContentDrag(value.translation) else {
+                    return
+                }
+
+                onVerticalContentDrag?()
+            }
+    }
+
+    private func isVerticalContentDrag(_ translation: CGSize) -> Bool {
+        let horizontal = abs(translation.width)
+        let vertical = abs(translation.height)
+        return vertical > 16 && vertical > horizontal * 1.2
     }
 }
 
