@@ -317,6 +317,15 @@ private extension View {
             self
         }
     }
+
+    @ViewBuilder
+    func simultaneousGestureIf<GestureType: Gesture>(_ isActive: Bool, _ gesture: GestureType) -> some View {
+        if isActive {
+            simultaneousGesture(gesture)
+        } else {
+            self
+        }
+    }
 }
 
 private enum AppRoute: Hashable {
@@ -965,6 +974,79 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, minHeight: metrics.height, alignment: .top)
     }
 
+    private func homeLandscapeContent(metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+        let leftWidth = metrics.homeLandscapeLeftWidth
+        let rightWidth = metrics.homeLandscapeRightWidth
+        let cardScale = metrics.homeLandscapeCardScale
+        let columnHeight = min(max(metrics.height - 112, 460), 640)
+
+        return ZStack(alignment: .topTrailing) {
+            HStack(alignment: .center, spacing: metrics.homeLandscapeColumnSpacing) {
+                VStack(spacing: 0) {
+                    Text("Kikaria")
+                        .font(KikariaTypography.appTitle(size: 39 * metrics.homeHeaderScale))
+                        .foregroundStyle(KikariaTheme.deepText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Spacer(minLength: 34)
+
+                    NavigationLink(value: AppRoute.review) {
+                        StartReviewButton(
+                            dailyGoal: dailyGoal,
+                            masteredCount: masteredCount,
+                            countdownDays: countdownDayCount,
+                            visualScale: metrics.homeLandscapeBubbleScale
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("开始背诵")
+
+                    Spacer(minLength: 34)
+                }
+                .frame(width: leftWidth)
+                .frame(minHeight: columnHeight, alignment: .center)
+
+                VStack(spacing: 14 * cardScale) {
+                    NavigationLink(value: AppRoute.todayOverview) {
+                        TodayOverviewHomeProgressButton(
+                            dateText: homeDateTitle,
+                            daysLeftText: homeDaysLeftText,
+                            progressText: homeProgressText,
+                            isExpanded: true,
+                            cardScale: cardScale
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    HomeDashboardGridCard(
+                        scopeCountText: selectedScopeCountText,
+                        reinforcedCount: reinforcedCount,
+                        masteredCount: masteredCount,
+                        presetName: currentPreset.name,
+                        isExpanded: true,
+                        cardScale: cardScale
+                    )
+                }
+                .frame(width: rightWidth)
+            }
+            .frame(maxWidth: metrics.homeLandscapeMaxWidth)
+
+            NavigationLink(value: AppRoute.settings) {
+                ProfileAvatarView(
+                    systemName: userProfile.avatarSystemName,
+                    imageData: userProfile.avatarImageData,
+                    size: 48 * metrics.homeLandscapeCardScale
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("打开设置")
+            .padding(.top, 26)
+        }
+        .padding(.horizontal, metrics.horizontalPadding)
+        .padding(.vertical, 36)
+        .frame(maxWidth: .infinity, minHeight: metrics.height, alignment: .center)
+    }
+
     var body: some View {
         NavigationStack(path: $navigationPath) {
             KikariaAdaptivePage { metrics in
@@ -978,7 +1060,9 @@ struct ContentView: View {
                         .ignoresSafeArea()
 
                     ScrollView(.vertical, showsIndicators: false) {
-                        if metrics.isPadPortrait {
+                        if metrics.homeUsesTwoColumnLayout {
+                            homeLandscapeContent(metrics: metrics)
+                        } else if metrics.isPadPortrait {
                             padPortraitHomeContent(metrics: metrics)
                         } else {
                             VStack(spacing: 0) {
@@ -2760,6 +2844,267 @@ private struct SettingsView: View {
         return formatter.string(from: notificationTime)
     }
 
+    private func settingsCloseButton(metrics: KikariaAdaptiveLayout.Metrics, scale: CGFloat) -> some View {
+        Button(action: onClose) {
+            Image(systemName: "xmark")
+                .font(.system(size: metrics.isPadPortrait ? 17 * scale : 17, weight: .semibold))
+                .foregroundStyle(KikariaTheme.deepText)
+                .frame(
+                    width: metrics.isPadPortrait ? 46 * scale : (metrics.isPadWidth ? 46 : 42),
+                    height: metrics.isPadPortrait ? 46 * scale : (metrics.isPadWidth ? 46 : 42)
+                )
+                .liquidGlassCircle(fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.10, shadowRadius: 12 * scale, shadowY: 6 * scale)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func settingsProfileSummary(metrics: KikariaAdaptiveLayout.Metrics, scale: CGFloat) -> some View {
+        VStack(spacing: 12 * scale) {
+            ProfileAvatarView(
+                systemName: profile.avatarSystemName,
+                imageData: profile.avatarImageData,
+                size: metrics.isPadPortrait ? 112 : (metrics.isPadWidth ? 98 : 86)
+            )
+
+            VStack(spacing: 4 * scale) {
+                Text(profile.displayName)
+                    .font(KikariaTypography.chineseTitle(size: metrics.isPadPortrait ? 31 * scale : (metrics.isPadWidth ? 30 : 28), weight: .semibold))
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                Text("@\(profile.userHandle)")
+                    .font(KikariaTypography.chineseBody(size: metrics.isPadPortrait ? 16 * scale : (metrics.isPadWidth ? 16 : 15), weight: .medium))
+                    .foregroundStyle(KikariaTheme.softText)
+            }
+
+            Button(action: onEditProfile) {
+                Text("编辑个人资料")
+                    .font(KikariaTypography.chineseButton(size: metrics.isPadPortrait ? 17 * scale : (metrics.isPadWidth ? 17 : 16)))
+                    .foregroundStyle(KikariaTheme.deepText)
+                    .padding(.horizontal, metrics.isPadPortrait ? 28 * scale : (metrics.isPadWidth ? 28 : 24))
+                    .padding(.vertical, metrics.isPadPortrait ? 14 * scale : (metrics.isPadWidth ? 14 : 13))
+                    .liquidGlassCapsule(fillOpacity: 0.36, strokeOpacity: 0.40, shadowOpacity: 0.08, shadowRadius: 13 * scale, shadowY: 7 * scale)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4 * scale)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func currentPresetOnlySection(scale: CGFloat, rowScale: CGFloat) -> some View {
+        SettingsSectionCard(title: "当前预设", scale: scale) {
+            SettingsListRow(
+                title: "当前预设",
+                valueText: currentPresetName,
+                showsChevron: false,
+                scale: rowScale
+            )
+        }
+    }
+
+    private func learningSettingsSection(scale: CGFloat, rowScale: CGFloat) -> some View {
+        SettingsSectionCard(title: "学习", scale: scale) {
+            SettingsListRow(
+                title: "每日学习目标",
+                valueText: "\(dailyGoal)",
+                scale: rowScale
+            ) {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                    isShowingCountdownPicker = false
+                    isShowingDangerPicker = false
+                    isShowingNotificationTimePicker = false
+                    isShowingDailyGoalPicker.toggle()
+                }
+            }
+
+            SettingsSectionDivider(scale: scale)
+
+            SettingsListRow(
+                title: "倒数日",
+                valueText: countdownEndDate.map { "\(countdownDays(until: $0) ?? 0)天" } ?? "未设置",
+                scale: rowScale
+            ) {
+                prepareCountdownDraft()
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                    isShowingDailyGoalPicker = false
+                    isShowingDangerPicker = false
+                    isShowingNotificationTimePicker = false
+                    isShowingCountdownPicker.toggle()
+                }
+            }
+
+            SettingsSectionDivider(scale: scale)
+
+            SettingsListRow(
+                title: "进度安全线",
+                valueText: "\(dangerPercent)%",
+                scale: rowScale
+            ) {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                    isShowingDailyGoalPicker = false
+                    isShowingCountdownPicker = false
+                    isShowingNotificationTimePicker = false
+                    isShowingDangerPicker.toggle()
+                }
+            }
+        }
+    }
+
+    private func notificationSettingsSection(scale: CGFloat, rowScale: CGFloat) -> some View {
+        SettingsSectionCard(title: "通知", scale: scale) {
+            SettingsToggleRow(
+                title: "学习进度通知",
+                isOn: notificationsEnabled,
+                scale: rowScale
+            ) { newValue in
+                if !newValue {
+                    withAnimation(.easeOut(duration: 0.18)) {
+                        isShowingNotificationTimePicker = false
+                    }
+                }
+
+                onSetNotificationsEnabled(newValue) { _, message in
+                    if let message {
+                        showToast(message)
+                    }
+                }
+            }
+
+            if notificationsEnabled {
+                SettingsSectionDivider(scale: scale)
+
+                SettingsListRow(
+                    title: "通知时间",
+                    valueText: notificationTimeText,
+                    scale: rowScale
+                ) {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                        isShowingDailyGoalPicker = false
+                        isShowingCountdownPicker = false
+                        isShowingDangerPicker = false
+                        isShowingNotificationTimePicker.toggle()
+                    }
+                }
+
+                if countdownStartDate == nil || countdownEndDate == nil {
+                    Text("需设置倒数日")
+                        .font(KikariaTypography.chineseCaption(size: 12 * scale, weight: .medium))
+                        .foregroundStyle(KikariaTheme.softText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 18 * scale)
+                        .padding(.bottom, 10 * scale)
+                }
+
+                #if DEBUG
+                SettingsSectionDivider(scale: scale)
+
+                Button {
+                    onSendTestNotification { message in
+                        showToast(message)
+                    }
+                } label: {
+                    SettingsRowContent(title: "预览提醒", valueText: "", scale: rowScale)
+                }
+                .buttonStyle(.plain)
+                #endif
+            }
+        }
+    }
+
+    private func helpSettingsSection(scale: CGFloat, rowScale: CGFloat) -> some View {
+        SettingsSectionCard(title: "帮助", scale: scale) {
+            SettingsListRow(
+                title: "新手引导",
+                valueText: "",
+                scale: rowScale
+            ) {
+                onOpenOnboarding()
+            }
+
+            SettingsSectionDivider(scale: scale)
+
+            SettingsListRow(
+                title: "Markdown 格式",
+                valueText: "",
+                scale: rowScale
+            ) {
+                onOpenMarkdownGuide()
+            }
+        }
+    }
+
+    private func aboutSettingsSection(scale: CGFloat, rowScale: CGFloat) -> some View {
+        SettingsSectionCard(title: "关于", scale: scale) {
+            SettingsListRow(
+                title: "隐私政策",
+                valueText: "",
+                scale: rowScale
+            ) {
+                isShowingPrivacyPolicy = true
+            }
+
+            SettingsSectionDivider(scale: scale)
+
+            SettingsListRow(
+                title: "版权声明",
+                valueText: "© 2026 Vita",
+                showsChevron: false,
+                scale: rowScale
+            )
+
+            SettingsSectionDivider(scale: scale)
+
+            SettingsListRow(
+                title: "版本",
+                valueText: versionText,
+                showsChevron: false,
+                scale: rowScale
+            )
+        }
+    }
+
+    private func settingsLandscapeContent(
+        metrics: KikariaAdaptiveLayout.Metrics,
+        scale: CGFloat,
+        rowScale: CGFloat
+    ) -> some View {
+        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 26 * scale) {
+                Text("设置")
+                    .font(KikariaTypography.chineseTitle(size: metrics.isPadWidth ? 32 : 30))
+                    .foregroundStyle(KikariaTheme.deepText)
+                    .padding(.top, 18 * scale)
+                    .padding(.trailing, 72)
+
+                HStack(alignment: .center, spacing: metrics.settingsLandscapeColumnSpacing) {
+                    settingsProfileSummary(metrics: metrics, scale: scale)
+                        .frame(width: metrics.settingsLandscapeLeftWidth)
+                        .frame(maxHeight: .infinity, alignment: .center)
+
+                    ScrollView {
+                        VStack(spacing: 20 * scale) {
+                            currentPresetOnlySection(scale: scale, rowScale: rowScale)
+                            learningSettingsSection(scale: scale, rowScale: rowScale)
+                            notificationSettingsSection(scale: scale, rowScale: rowScale)
+                            helpSettingsSection(scale: scale, rowScale: rowScale)
+                            aboutSettingsSection(scale: scale, rowScale: rowScale)
+                        }
+                        .padding(.bottom, 34 * scale)
+                        .frame(width: metrics.settingsLandscapeRightWidth)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                .frame(maxHeight: .infinity, alignment: .center)
+            }
+            .frame(maxWidth: metrics.settingsLandscapeMaxWidth)
+            .padding(.horizontal, metrics.horizontalPadding)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            settingsCloseButton(metrics: metrics, scale: scale)
+                .padding(.top, 18 * scale)
+                .padding(.trailing, metrics.horizontalPadding)
+        }
+    }
+
     var body: some View {
         KikariaAdaptivePage { metrics in
             let scale = metrics.settingsScale
@@ -2771,7 +3116,10 @@ private struct SettingsView: View {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
 
-                VStack(spacing: 0) {
+                if metrics.settingsUsesTwoColumnLayout {
+                    settingsLandscapeContent(metrics: metrics, scale: scale, rowScale: rowScale)
+                } else {
+                    VStack(spacing: 0) {
                     HStack {
                         Text("设置")
                             .font(KikariaTypography.chineseTitle(size: metrics.isPadPortrait ? 34 * scale : (metrics.isPadWidth ? 32 : 30)))
@@ -2994,6 +3342,7 @@ private struct SettingsView: View {
                     .padding(.bottom, 34 * scale)
                     .frame(maxWidth: columnMaxWidth)
                     .frame(maxWidth: .infinity)
+                    }
                 }
             }
 
@@ -3827,10 +4176,98 @@ private struct PresetSelectionView: View {
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
 
+    private func landscapeContent(
+        metrics: KikariaAdaptiveLayout.Metrics,
+        scale: CGFloat,
+        titleFontSize: CGFloat
+    ) -> some View {
+        let gridSpacing = min(max(metrics.collectionLandscapeAvailableWidth * 0.026, 24), 32)
+        let gridColumns = [
+            GridItem(.flexible(), spacing: gridSpacing, alignment: .top),
+            GridItem(.flexible(), spacing: gridSpacing, alignment: .top)
+        ]
+        let uploadButtonWidth = min(max(metrics.collectionLandscapeAvailableWidth * 0.22, 220), 260)
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: metrics.pageTitleSpacing(defaultValue: 18 * scale)) {
+                HStack(alignment: .center, spacing: 20 * scale) {
+                    Text("切换预设")
+                        .font(KikariaTypography.chineseTitle(size: titleFontSize))
+                        .foregroundStyle(KikariaTheme.deepText)
+
+                    Spacer()
+
+                    Button(action: onUploadNewPreset) {
+                        HStack(spacing: 12 * scale) {
+                            Text("上传新预设")
+                                .font(KikariaTypography.chineseButton(size: 17 * scale))
+                            Spacer()
+                            Image(systemName: "plus")
+                                .font(.system(size: 15 * scale, weight: .semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20 * scale)
+                        .frame(maxWidth: .infinity, minHeight: 58 * scale)
+                        .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 22 * scale, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 22 * scale, style: .continuous)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.36),
+                                            Color.white.opacity(0.10)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        }
+                        .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 16 * scale, y: 8 * scale)
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: uploadButtonWidth)
+                }
+                    .padding(.top, metrics.pageTitleTopPadding(defaultValue: 18 * scale))
+
+                LazyVGrid(columns: gridColumns, alignment: .center, spacing: 20) {
+                    ForEach(presets) { preset in
+                        PresetCard(
+                            preset: preset,
+                            isCurrent: preset.id == currentPresetID,
+                            cardScale: metrics.listCardScale,
+                            onSelect: {
+                                if preset.id != currentPresetID {
+                                    pendingPreset = preset
+                                }
+                            },
+                            onEdit: {
+                                onEditPreset(preset)
+                            },
+                            onDelete: {
+                                pendingDeletePreset = preset
+                            }
+                        )
+                        .buttonStyle(.plain)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    }
+                }
+                .padding(.top, 4)
+            }
+            .padding(.horizontal, metrics.horizontalPadding)
+            .padding(.bottom, 34)
+            .frame(maxWidth: metrics.collectionLandscapeMaxWidth)
+            .frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     var body: some View {
         KikariaAdaptivePage { metrics in
             let scale = metrics.presetScale
             let columnMaxWidth = metrics.presetOuterMaxWidth
+            let outerMaxWidth = metrics.collectionUsesTwoColumnLayout ? metrics.collectionLandscapeMaxWidth : columnMaxWidth
             let pagePadding = metrics.innerHorizontalPadding
             let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32 * scale)
             let titleTopPadding = metrics.pageTitleTopPadding(defaultValue: 18 * scale)
@@ -3840,77 +4277,81 @@ private struct PresetSelectionView: View {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: titleSpacing) {
-                        Text("切换预设")
-                            .font(KikariaTypography.chineseTitle(size: titleFontSize))
-                            .foregroundStyle(KikariaTheme.deepText)
-                            .padding(.top, titleTopPadding)
-                            .padding(.bottom, metrics.isPadPortrait ? 0 : 2 * scale)
+                if metrics.collectionUsesTwoColumnLayout {
+                    landscapeContent(metrics: metrics, scale: scale, titleFontSize: titleFontSize)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: titleSpacing) {
+                            Text("切换预设")
+                                .font(KikariaTypography.chineseTitle(size: titleFontSize))
+                                .foregroundStyle(KikariaTheme.deepText)
+                                .padding(.top, titleTopPadding)
+                                .padding(.bottom, metrics.isPadPortrait ? 0 : 2 * scale)
 
-                        Button(action: onUploadNewPreset) {
-                            HStack(spacing: 12 * scale) {
-                                Text("上传新预设")
-                                    .font(KikariaTypography.chineseButton(size: 17 * scale))
-                                Spacer()
-                                Image(systemName: "plus")
-                                    .font(.system(size: 15 * scale, weight: .semibold))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20 * scale)
-                            .frame(maxWidth: .infinity, minHeight: 58 * scale)
-                            .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 22 * scale, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 22 * scale, style: .continuous)
-                                    .stroke(
-                                        LinearGradient(
-                                            colors: [
-                                                Color.white.opacity(0.36),
-                                                Color.white.opacity(0.10)
-                                            ],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        ),
-                                        lineWidth: 1
-                                    )
-                            }
-                            .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 16 * scale, y: 8 * scale)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.bottom, 2 * scale)
-
-                        ForEach(presets) { preset in
-                            PresetCard(
-                                preset: preset,
-                                isCurrent: preset.id == currentPresetID,
-                                cardScale: metrics.listCardScale,
-                                onSelect: {
-                                    if preset.id != currentPresetID {
-                                        pendingPreset = preset
-                                    }
-                                },
-                                onEdit: {
-                                    onEditPreset(preset)
-                                },
-                                onDelete: {
-                                    pendingDeletePreset = preset
+                            Button(action: onUploadNewPreset) {
+                                HStack(spacing: 12 * scale) {
+                                    Text("上传新预设")
+                                        .font(KikariaTypography.chineseButton(size: 17 * scale))
+                                    Spacer()
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 15 * scale, weight: .semibold))
                                 }
-                            )
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 20 * scale)
+                                .frame(maxWidth: .infinity, minHeight: 58 * scale)
+                                .background(KikariaTheme.actionGradient, in: RoundedRectangle(cornerRadius: 22 * scale, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 22 * scale, style: .continuous)
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color.white.opacity(0.36),
+                                                    Color.white.opacity(0.10)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1
+                                        )
+                                }
+                                .shadow(color: KikariaTheme.sky.opacity(0.18), radius: 16 * scale, y: 8 * scale)
+                            }
                             .buttonStyle(.plain)
+                            .padding(.bottom, 2 * scale)
+
+                            ForEach(presets) { preset in
+                                PresetCard(
+                                    preset: preset,
+                                    isCurrent: preset.id == currentPresetID,
+                                    cardScale: metrics.listCardScale,
+                                    onSelect: {
+                                        if preset.id != currentPresetID {
+                                            pendingPreset = preset
+                                        }
+                                    },
+                                    onEdit: {
+                                        onEditPreset(preset)
+                                    },
+                                    onDelete: {
+                                        pendingDeletePreset = preset
+                                    }
+                                )
+                                .buttonStyle(.plain)
+                            }
                         }
+                        .padding(.horizontal, pagePadding)
+                        .padding(.bottom, 34)
+                        .frame(maxWidth: columnMaxWidth)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, pagePadding)
-                    .padding(.bottom, 34)
-                    .frame(maxWidth: columnMaxWidth)
-                    .frame(maxWidth: .infinity)
                 }
 
                 if let toastMessage {
                     KikariaToastLayer(message: toastMessage)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: columnMaxWidth)
+            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: outerMaxWidth)
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -6435,11 +6876,37 @@ struct ReviewView: View {
         .highPriorityGestureIf(!isShowingContent, preAnswerSwipeUpGesture)
     }
 
-    private func actionRegion(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
-        let isExpanded = metrics.isPadWidth
-        let buttonScale = metrics.reviewButtonScale
+    private func reviewLandscapeReadingColumn(
+        for currentPoint: KnowledgePoint,
+        metrics: KikariaAdaptiveLayout.Metrics
+    ) -> some View {
+        GeometryReader { proxy in
+            let safeTop = proxy.safeAreaInsets.top
+            let safeBottom = proxy.safeAreaInsets.bottom
+            let safeContentHeight = max(0, proxy.size.height - safeTop - safeBottom)
 
-        return ZStack {
+            ScrollView {
+                centralContentStack(for: currentPoint, metrics: metrics)
+                    .padding(.horizontal, metrics.horizontalPadding)
+                    .padding(.vertical, 24)
+                    .frame(maxWidth: metrics.reviewMaxWidth)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: safeContentHeight, alignment: .center)
+                    .padding(.top, safeTop)
+                    .padding(.bottom, safeBottom)
+            }
+            .scrollIndicators(.hidden)
+            .highPriorityGestureIf(!isShowingContent, preAnswerSwipeUpGesture)
+            .simultaneousGesture(reviewDragGesture(containerHeight: proxy.size.height))
+        }
+    }
+
+    private func reviewActionContent(
+        for currentPoint: KnowledgePoint,
+        isExpanded: Bool,
+        buttonScale: CGFloat
+    ) -> some View {
+        ZStack {
             revealButtons(isExpanded: isExpanded, buttonScale: buttonScale)
                 .opacity(isShowingContent ? 0 : 1)
                 .allowsHitTesting(!isShowingContent)
@@ -6448,9 +6915,57 @@ struct ReviewView: View {
                 .opacity(isShowingContent ? 1 : 0)
                 .allowsHitTesting(isShowingContent)
         }
+        .animation(.easeInOut(duration: 0.18), value: isShowingContent)
+    }
+
+    private func actionRegion(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+        let isExpanded = metrics.isPadWidth
+        let buttonScale = metrics.reviewButtonScale
+
+        return reviewActionContent(for: currentPoint, isExpanded: isExpanded, buttonScale: buttonScale)
         .frame(maxWidth: .infinity)
         .frame(height: actionRegionMinimumHeight(isExpanded: isExpanded, buttonScale: buttonScale), alignment: .bottom)
-        .animation(.easeInOut(duration: 0.18), value: isShowingContent)
+    }
+
+    private func reviewLandscapeActionPanel(
+        for currentPoint: KnowledgePoint,
+        metrics: KikariaAdaptiveLayout.Metrics
+    ) -> some View {
+        let isExpanded = metrics.isPadWidth
+        let buttonScale = metrics.reviewButtonScale
+
+        return VStack(spacing: 0) {
+            Spacer(minLength: 0)
+
+            reviewActionContent(for: currentPoint, isExpanded: isExpanded, buttonScale: buttonScale)
+                .frame(maxWidth: .infinity)
+                .frame(
+                    height: actionRegionMinimumHeight(isExpanded: isExpanded, buttonScale: buttonScale),
+                    alignment: .center
+                )
+
+            Spacer(minLength: 0)
+        }
+        .frame(width: metrics.reviewLandscapeRightWidth)
+        .frame(maxHeight: .infinity)
+        .contentShape(Rectangle())
+    }
+
+    private func reviewLandscapeContent(
+        for currentPoint: KnowledgePoint,
+        metrics: KikariaAdaptiveLayout.Metrics
+    ) -> some View {
+        HStack(alignment: .center, spacing: metrics.reviewLandscapeColumnSpacing) {
+            reviewLandscapeReadingColumn(for: currentPoint, metrics: metrics)
+                .frame(width: metrics.reviewLandscapeLeftWidth)
+                .frame(maxHeight: .infinity)
+
+            reviewLandscapeActionPanel(for: currentPoint, metrics: metrics)
+        }
+        .frame(maxWidth: metrics.reviewLandscapeMaxWidth)
+        .padding(.horizontal, metrics.horizontalPadding)
+        .padding(.vertical, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     private func reviewBackButton(metrics: KikariaAdaptiveLayout.Metrics) -> some View {
@@ -6497,15 +7012,19 @@ struct ReviewView: View {
                         .frame(maxWidth: metrics.reviewMaxWidth)
                     }
                 } else if let currentPoint {
-                    VStack(spacing: 0) {
-                        contentRegion(for: currentPoint, metrics: metrics)
+                    if metrics.reviewUsesTwoColumnLayout {
+                        reviewLandscapeContent(for: currentPoint, metrics: metrics)
+                    } else {
+                        VStack(spacing: 0) {
+                            contentRegion(for: currentPoint, metrics: metrics)
 
-                        actionRegion(for: currentPoint, metrics: metrics)
-                            .padding(.horizontal, metrics.horizontalPadding)
-                            .padding(.top, 12)
-                            .padding(.bottom, metrics.reviewActionBottomPadding)
-                            .frame(maxWidth: metrics.reviewMaxWidth)
-                            .frame(maxWidth: .infinity)
+                            actionRegion(for: currentPoint, metrics: metrics)
+                                .padding(.horizontal, metrics.horizontalPadding)
+                                .padding(.top, 12)
+                                .padding(.bottom, metrics.reviewActionBottomPadding)
+                                .frame(maxWidth: metrics.reviewMaxWidth)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                 } else {
                     ProgressView()
@@ -6537,11 +7056,11 @@ struct ReviewView: View {
                         .zIndex(6)
                 }
             }
+            .simultaneousGestureIf(!metrics.reviewUsesTwoColumnLayout, reviewDragGesture(containerHeight: metrics.height))
             .navigationBarBackButtonHidden(metrics.isPadPortrait)
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .simultaneousGesture(reviewDragGesture)
         .onAppear {
             if currentPointID == nil {
                 rebuildReviewQueue(avoiding: lastQueuePointID)
@@ -6554,14 +7073,18 @@ struct ReviewView: View {
         }
     }
 
-    private var reviewDragGesture: some Gesture {
+    private func reviewDragGesture(containerHeight: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 28, coordinateSpace: .local)
             .onEnded { value in
                 guard !isReviewGlobalGestureSuppressed else {
                     return
                 }
 
-                handleDragGesture(translation: value.translation, startLocation: value.startLocation)
+                handleDragGesture(
+                    translation: value.translation,
+                    startLocation: value.startLocation,
+                    containerHeight: containerHeight
+                )
             }
     }
 
@@ -6612,7 +7135,7 @@ struct ReviewView: View {
         }
     }
 
-    private func handleDragGesture(translation: CGSize, startLocation: CGPoint) {
+    private func handleDragGesture(translation: CGSize, startLocation: CGPoint, containerHeight: CGFloat) {
         guard !isShowingScopePanel,
               !isReviewGlobalGestureSuppressed
         else {
@@ -6628,7 +7151,7 @@ struct ReviewView: View {
         let nextAfterAnswerSwipeThreshold: CGFloat = 160
         let verticalThreshold: CGFloat = isShowingContent ? nextAfterAnswerSwipeThreshold : revealAnswerSwipeThreshold
         let dominance: CGFloat = 1.4
-        let isCentralReadingArea = startLocation.y > 190 && startLocation.y < UIScreen.main.bounds.height - 190
+        let isCentralReadingArea = startLocation.y > 190 && startLocation.y < containerHeight - 190
 
         if horizontal > horizontalThreshold && horizontal > vertical * dominance {
             if dx > 0 {
@@ -7435,6 +7958,73 @@ struct ReinforcementView: View {
         reinforcedPoints.filter { $0.matchesSearchQuery(searchText) }
     }
 
+    private func landscapeContent(
+        metrics: KikariaAdaptiveLayout.Metrics,
+        titleFontSize: CGFloat
+    ) -> some View {
+        let gridSpacing = min(max(metrics.collectionLandscapeAvailableWidth * 0.026, 24), 32)
+        let gridColumns = [
+            GridItem(.flexible(), spacing: gridSpacing, alignment: .top),
+            GridItem(.flexible(), spacing: gridSpacing, alignment: .top)
+        ]
+        let startButtonWidth = min(max(metrics.collectionLandscapeAvailableWidth * 0.24, 240), 260)
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                Text("重点集锦")
+                    .font(KikariaTypography.chineseTitle(size: titleFontSize))
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                HStack(alignment: .center, spacing: 18) {
+                    KikariaSearchBar(text: $searchText)
+
+                    if !reinforcedPoints.isEmpty {
+                        Button(action: onStartReview) {
+                            ReinforcementStartButton(count: reinforcedPoints.count)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(width: startButtonWidth)
+                    }
+                }
+
+                if reinforcedPoints.isEmpty {
+                    SoftEmptyState(
+                        title: "还没有重点",
+                        subtitle: "在背诵时查看答案后，可以把知识点加入这里。",
+                        systemImage: "sparkles"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                    .padding(.top, 12)
+                } else if filteredReinforcedPoints.isEmpty {
+                    SoftEmptyState(
+                        title: "没有找到相关知识点",
+                        subtitle: "换个关键词试试看。",
+                        systemImage: "magnifyingglass"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 220)
+                    .padding(.top, 12)
+                } else {
+                    LazyVGrid(columns: gridColumns, alignment: .center, spacing: 20) {
+                        ForEach(filteredReinforcedPoints) { point in
+                            ReinforcementCard(point: point) {
+                                removeFromReinforcement(point)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            .padding(.top, metrics.pageTitleTopPadding(defaultValue: 18))
+            .padding(.horizontal, metrics.horizontalPadding)
+            .padding(.bottom, 34)
+            .frame(maxWidth: metrics.collectionLandscapeMaxWidth)
+            .frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     var body: some View {
         KikariaAdaptivePage { metrics in
             let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32)
@@ -7445,7 +8035,9 @@ struct ReinforcementView: View {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
 
-                if reinforcedPoints.isEmpty {
+                if metrics.collectionUsesTwoColumnLayout {
+                    landscapeContent(metrics: metrics, titleFontSize: titleFontSize)
+                } else if reinforcedPoints.isEmpty {
                     SoftEmptyState(
                         title: "还没有重点",
                         subtitle: "在背诵时查看答案后，可以把知识点加入这里。",
@@ -7505,7 +8097,10 @@ struct ReinforcementView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: metrics.mainMaxWidth)
+            .kikariaAdaptiveNavigationChrome(
+                metrics: metrics,
+                outerMaxWidth: metrics.collectionUsesTwoColumnLayout ? metrics.collectionLandscapeMaxWidth : metrics.mainMaxWidth
+            )
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -7560,6 +8155,78 @@ struct MasteredView: View {
         masteredPoints.filter { $0.matchesSearchQuery(searchText) }
     }
 
+    private func landscapeContent(
+        metrics: KikariaAdaptiveLayout.Metrics,
+        titleFontSize: CGFloat
+    ) -> some View {
+        let gridSpacing = min(max(metrics.collectionLandscapeAvailableWidth * 0.026, 24), 32)
+        let gridColumns = [
+            GridItem(.flexible(), spacing: gridSpacing, alignment: .top),
+            GridItem(.flexible(), spacing: gridSpacing, alignment: .top)
+        ]
+        let startButtonWidth = min(max(metrics.collectionLandscapeAvailableWidth * 0.24, 240), 260)
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                Text("已掌握")
+                    .font(KikariaTypography.chineseTitle(size: titleFontSize))
+                    .foregroundStyle(KikariaTheme.deepText)
+
+                HStack(alignment: .center, spacing: 18) {
+                    KikariaSearchBar(text: $searchText)
+
+                    if !masteredPoints.isEmpty {
+                        Button(action: onStartReview) {
+                            MasteredStartButton(count: masteredPoints.count)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(width: startButtonWidth)
+                    }
+                }
+
+                if masteredPoints.isEmpty {
+                    SoftEmptyState(
+                        title: "还没有已掌握",
+                        subtitle: "在背诵时查看答案后，可以把真正熟悉的知识点标记到这里。",
+                        systemImage: "checkmark.seal"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 260)
+                    .padding(.top, 12)
+                } else if filteredMasteredPoints.isEmpty {
+                    SoftEmptyState(
+                        title: "没有找到相关知识点",
+                        subtitle: "换个关键词试试看。",
+                        systemImage: "magnifyingglass"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 220)
+                    .padding(.top, 12)
+                } else {
+                    LazyVGrid(columns: gridColumns, alignment: .center, spacing: 20) {
+                        ForEach(filteredMasteredPoints) { point in
+                            ReinforcementCard(
+                                point: point,
+                                removeTitle: "移出已掌握",
+                                removeSystemImage: "minus.circle.fill",
+                                showsReinforcementCountBadge: false
+                            ) {
+                                removeFromMastered(point)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            .padding(.top, metrics.pageTitleTopPadding(defaultValue: 18))
+            .padding(.horizontal, metrics.horizontalPadding)
+            .padding(.bottom, 34)
+            .frame(maxWidth: metrics.collectionLandscapeMaxWidth)
+            .frame(maxWidth: .infinity)
+        }
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     var body: some View {
         KikariaAdaptivePage { metrics in
             let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32)
@@ -7570,7 +8237,9 @@ struct MasteredView: View {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
 
-                if masteredPoints.isEmpty {
+                if metrics.collectionUsesTwoColumnLayout {
+                    landscapeContent(metrics: metrics, titleFontSize: titleFontSize)
+                } else if masteredPoints.isEmpty {
                     SoftEmptyState(
                         title: "还没有已掌握",
                         subtitle: "在背诵时查看答案后，可以把真正熟悉的知识点标记到这里。",
@@ -7635,7 +8304,10 @@ struct MasteredView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-            .kikariaAdaptiveNavigationChrome(metrics: metrics, outerMaxWidth: metrics.mainMaxWidth)
+            .kikariaAdaptiveNavigationChrome(
+                metrics: metrics,
+                outerMaxWidth: metrics.collectionUsesTwoColumnLayout ? metrics.collectionLandscapeMaxWidth : metrics.mainMaxWidth
+            )
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)

@@ -16,6 +16,12 @@ enum KikariaAdaptiveLayout {
 
     struct Metrics {
         let size: CGSize
+        let horizontalSizeClass: UserInterfaceSizeClass?
+
+        init(size: CGSize, horizontalSizeClass: UserInterfaceSizeClass? = nil) {
+            self.size = size
+            self.horizontalSizeClass = horizontalSizeClass
+        }
 
         var width: CGFloat {
             max(size.width, 1)
@@ -39,6 +45,29 @@ enum KikariaAdaptiveLayout {
 
         var isPadLandscape: Bool {
             isPadWidth && width > height
+        }
+
+        var isTwoColumnCapable: Bool {
+            width >= 950 &&
+                width > height &&
+                widthCategory != .compact &&
+                hasNonCompactHorizontalSizeClass
+        }
+
+        var homeUsesTwoColumnLayout: Bool {
+            isTwoColumnCapable
+        }
+
+        var reviewUsesTwoColumnLayout: Bool {
+            isTwoColumnCapable
+        }
+
+        var collectionUsesTwoColumnLayout: Bool {
+            isTwoColumnCapable
+        }
+
+        var settingsUsesTwoColumnLayout: Bool {
+            isTwoColumnCapable
         }
 
         var horizontalPadding: CGFloat {
@@ -241,6 +270,94 @@ enum KikariaAdaptiveLayout {
             isPadPortrait ? (width >= 900 ? 380 : 340) : 260
         }
 
+        var homeLandscapeMaxWidth: CGFloat {
+            1080
+        }
+
+        var homeLandscapeAvailableWidth: CGFloat {
+            max(0, min(width - horizontalPadding * 2, homeLandscapeMaxWidth))
+        }
+
+        var homeLandscapeColumnSpacing: CGFloat {
+            min(max(homeLandscapeAvailableWidth * 0.06, 56), 68)
+        }
+
+        var homeLandscapeRightWidth: CGFloat {
+            min(max(homeLandscapeAvailableWidth * 0.39, 400), 430)
+        }
+
+        var homeLandscapeLeftWidth: CGFloat {
+            min(max(homeLandscapeAvailableWidth - homeLandscapeRightWidth - homeLandscapeColumnSpacing, 410), 560)
+        }
+
+        var homeLandscapeBubbleScale: CGFloat {
+            min(max(homeLandscapeLeftWidth / 500 * 1.04, 1.0), 1.12)
+        }
+
+        var homeLandscapeCardScale: CGFloat {
+            min(max(homeLandscapeRightWidth / 420, 1.0), 1.05)
+        }
+
+        var reviewLandscapeMaxWidth: CGFloat {
+            1160
+        }
+
+        var reviewLandscapeAvailableWidth: CGFloat {
+            max(0, min(width - horizontalPadding * 2, reviewLandscapeMaxWidth))
+        }
+
+        var reviewLandscapeColumnSpacing: CGFloat {
+            min(max(reviewLandscapeAvailableWidth * 0.055, 48), 64)
+        }
+
+        var reviewLandscapeRightWidth: CGFloat {
+            min(max(reviewLandscapeAvailableWidth * 0.32, 340), 380)
+        }
+
+        var reviewLandscapeLeftWidth: CGFloat {
+            max(0, reviewLandscapeAvailableWidth - reviewLandscapeRightWidth - reviewLandscapeColumnSpacing)
+        }
+
+        var collectionLandscapeMaxWidth: CGFloat {
+            1100
+        }
+
+        var collectionLandscapeAvailableWidth: CGFloat {
+            max(0, min(width - horizontalPadding * 2, collectionLandscapeMaxWidth))
+        }
+
+        var collectionLandscapeColumnSpacing: CGFloat {
+            min(max(collectionLandscapeAvailableWidth * 0.055, 52), 68)
+        }
+
+        var collectionLandscapeLeftWidth: CGFloat {
+            min(max(collectionLandscapeAvailableWidth * 0.31, 320), 360)
+        }
+
+        var collectionLandscapeRightWidth: CGFloat {
+            max(0, collectionLandscapeAvailableWidth - collectionLandscapeLeftWidth - collectionLandscapeColumnSpacing)
+        }
+
+        var settingsLandscapeMaxWidth: CGFloat {
+            1080
+        }
+
+        var settingsLandscapeAvailableWidth: CGFloat {
+            max(0, min(width - horizontalPadding * 2, settingsLandscapeMaxWidth))
+        }
+
+        var settingsLandscapeColumnSpacing: CGFloat {
+            min(max(settingsLandscapeAvailableWidth * 0.06, 56), 72)
+        }
+
+        var settingsLandscapeLeftWidth: CGFloat {
+            min(max(settingsLandscapeAvailableWidth * 0.34, 320), 380)
+        }
+
+        var settingsLandscapeRightWidth: CGFloat {
+            max(0, settingsLandscapeAvailableWidth - settingsLandscapeLeftWidth - settingsLandscapeColumnSpacing)
+        }
+
         var homeMaxWidth: CGFloat {
             if isPadPortrait {
                 return portraitHomeMaxWidth
@@ -330,10 +447,17 @@ enum KikariaAdaptiveLayout {
                 return height < 620 ? 32 : 52
             }
         }
+
+        private var hasNonCompactHorizontalSizeClass: Bool {
+            horizontalSizeClass.map { $0 != .compact } ?? true
+        }
     }
 
-    static func metrics(for size: CGSize) -> Metrics {
-        Metrics(size: size)
+    static func metrics(
+        for size: CGSize,
+        horizontalSizeClass: UserInterfaceSizeClass? = nil
+    ) -> Metrics {
+        Metrics(size: size, horizontalSizeClass: horizontalSizeClass)
     }
 
     static func widthCategory(for width: CGFloat) -> WidthCategory {
@@ -361,6 +485,7 @@ enum KikariaAdaptiveLayout {
 }
 
 struct KikariaAdaptivePage<Content: View>: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private let content: (KikariaAdaptiveLayout.Metrics) -> Content
 
     init(@ViewBuilder content: @escaping (KikariaAdaptiveLayout.Metrics) -> Content) {
@@ -369,7 +494,7 @@ struct KikariaAdaptivePage<Content: View>: View {
 
     var body: some View {
         GeometryReader { proxy in
-            content(KikariaAdaptiveLayout.metrics(for: proxy.size))
+            content(KikariaAdaptiveLayout.metrics(for: proxy.size, horizontalSizeClass: horizontalSizeClass))
                 .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
