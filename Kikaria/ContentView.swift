@@ -5,11 +5,163 @@
 //  Created by Vita on 2026/5/1.
 //
 
-import PhotosUI
 import SwiftUI
+#if os(iOS)
+import PhotosUI
 import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 import UserNotifications
 import UniformTypeIdentifiers
+
+#if os(macOS)
+private enum KikariaNavigationBarTitleDisplayMode {
+    case inline
+}
+
+private enum KikariaTextInputAutocapitalization {
+    case never
+}
+
+private extension View {
+    func navigationBarTitleDisplayMode(_ mode: KikariaNavigationBarTitleDisplayMode) -> some View {
+        self
+    }
+
+    func textInputAutocapitalization(_ mode: KikariaTextInputAutocapitalization) -> some View {
+        self
+    }
+}
+#endif
+
+private extension View {
+    @ViewBuilder
+    func kikariaNavigationBarHidden(_ hidden: Bool) -> some View {
+        #if os(iOS)
+        navigationBarHidden(hidden)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func kikariaHiddenNavigationChrome() -> some View {
+        #if os(iOS)
+        toolbar(.hidden, for: .navigationBar)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func kikariaHomeNavigationChrome() -> some View {
+        #if os(iOS)
+        self
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func kikariaWheelPickerStyle() -> some View {
+        #if os(iOS)
+        pickerStyle(.wheel)
+        #else
+        pickerStyle(.menu)
+        #endif
+    }
+
+    @ViewBuilder
+    func kikariaMacPlainTextFieldStyle(_ enabled: Bool) -> some View {
+        #if os(macOS)
+        if enabled {
+            textFieldStyle(.plain)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    func kikariaMacClearTextEditorBackground() -> some View {
+        #if os(macOS)
+        background(KikariaMacTextEditorBackgroundClearer())
+        #else
+        self
+        #endif
+    }
+}
+
+#if os(macOS)
+private struct KikariaMacTextEditorBackgroundClearer: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            clearTextEditorBackground(around: view)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            clearTextEditorBackground(around: nsView)
+        }
+    }
+
+    private func clearTextEditorBackground(around view: NSView) {
+        var current: NSView? = view
+        while let node = current {
+            clearTextEditorBackground(in: node)
+            current = node.superview
+        }
+    }
+
+    private func clearTextEditorBackground(in view: NSView) {
+        if let scrollView = view as? NSScrollView {
+            scrollView.drawsBackground = false
+            scrollView.backgroundColor = .clear
+        }
+
+        if let textView = view as? NSTextView {
+            textView.drawsBackground = false
+            textView.backgroundColor = .clear
+            textView.insertionPointColor = NSColor(KikariaTheme.deepText)
+        }
+
+        for subview in view.subviews {
+            clearTextEditorBackground(in: subview)
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func kikariaMacFirstLaunchOverlay<OverlayContent: View>(
+        isPresented: Bool,
+        @ViewBuilder content: @escaping () -> OverlayContent
+    ) -> some View {
+        GeometryReader { proxy in
+            ZStack {
+                self
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+
+                if isPresented {
+                    content()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .zIndex(901)
+                }
+            }
+        }
+    }
+}
+#endif
 
 private enum KikariaTheme {
     private struct RGBA {
@@ -29,6 +181,7 @@ private enum KikariaTheme {
     }
 
     private static func adaptive(light: RGBA, dark: RGBA) -> Color {
+        #if os(iOS)
         Color(
             UIColor { traits in
                 let color = traits.userInterfaceStyle == .dark ? dark : light
@@ -40,6 +193,19 @@ private enum KikariaTheme {
                 )
             }
         )
+        #elseif os(macOS)
+        Color(
+            NSColor(name: nil) { appearance in
+                let color = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+                return NSColor(
+                    calibratedRed: color.red,
+                    green: color.green,
+                    blue: color.blue,
+                    alpha: color.alpha
+                )
+            }
+        )
+        #endif
     }
 
     static let sky = adaptive(light: rgb(0.39, 0.73, 0.96), dark: rgb(0.30, 0.72, 0.96))
@@ -384,6 +550,217 @@ private struct UserProfile: Codable, Equatable {
     var avatarImageData: Data?
 }
 
+#if os(macOS)
+private enum MacSidebarDestination: CaseIterable, Identifiable {
+    case dashboard
+    case todayOverview
+    case reinforcement
+    case mastered
+    case presetSelection
+
+    var id: Self {
+        self
+    }
+
+    static var allCases: [MacSidebarDestination] {
+        [.dashboard, .todayOverview, .reinforcement, .mastered, .presetSelection]
+    }
+
+    var title: String {
+        switch self {
+        case .dashboard:
+            "仪表盘"
+        case .todayOverview:
+            "今日概览"
+        case .reinforcement:
+            "重点集锦"
+        case .mastered:
+            "已掌握"
+        case .presetSelection:
+            "预设管理"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .dashboard:
+            "rectangle.3.group"
+        case .todayOverview:
+            "calendar"
+        case .reinforcement:
+            "sparkles"
+        case .mastered:
+            "checkmark.seal"
+        case .presetSelection:
+            "slider.horizontal.3"
+        }
+    }
+
+    init?(route: AppRoute) {
+        switch route {
+        case .scope, .review:
+            self = .dashboard
+        case .todayOverview, .reviewHistory:
+            self = .todayOverview
+        case .reinforcement, .reinforcementReview:
+            self = .reinforcement
+        case .mastered, .masteredReview:
+            self = .mastered
+        case .presetSelection, .newPreset, .editPreset, .editKnowledgePoint, .markdownEditor:
+            self = .presetSelection
+        default:
+            return nil
+        }
+    }
+}
+
+private struct MacSidebarView: View {
+    @Binding var selection: MacSidebarDestination?
+    @Binding var isSettingsSelected: Bool
+    let profile: UserProfile
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Kikaria")
+                    .font(KikariaTypography.appTitle(size: 30))
+                    .foregroundStyle(KikariaTheme.deepText)
+                    .lineLimit(1)
+
+                Text("Mac")
+                    .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                    .foregroundStyle(KikariaTheme.softText)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+            .padding(.bottom, 18)
+
+            VStack(spacing: 6) {
+                ForEach(MacSidebarDestination.allCases) { destination in
+                    Button {
+                        selection = destination
+                        isSettingsSelected = false
+                    } label: {
+                        MacSidebarItemButton(
+                            destination: destination,
+                            isSelected: !isSettingsSelected && selection == destination
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+
+            Spacer(minLength: 12)
+
+            Button {
+                selection = nil
+                isSettingsSelected = true
+            } label: {
+                HStack(spacing: 10) {
+                    ProfileAvatarView(
+                        systemName: profile.avatarSystemName,
+                        imageData: profile.avatarImageData,
+                        size: 30
+                    )
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        KikariaTypography.mixedText(profile.displayName, size: 13, weight: .semibold)
+                            .foregroundStyle(KikariaTheme.deepText)
+                            .lineLimit(1)
+
+                        Text("@\(profile.userHandle)")
+                            .font(KikariaTypography.chineseCaption(size: 10, weight: .medium))
+                            .foregroundStyle(KikariaTheme.softText)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 8)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("打开设置")
+            .padding(.horizontal, 14)
+            .padding(.bottom, 14)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background {
+            Rectangle()
+                .fill(KikariaTheme.glassSurface.opacity(colorScheme == .dark ? 0.22 : 0.30))
+                .background(.thinMaterial)
+        }
+    }
+}
+
+private struct MacSidebarItemButton: View {
+    let destination: MacSidebarDestination
+    let isSelected: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: destination.systemImage)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(isSelected ? KikariaTheme.sky : KikariaTheme.softText)
+                .frame(width: 20, alignment: .center)
+
+            Text(destination.title)
+                .font(KikariaTypography.chineseBody(size: 13, weight: isSelected ? .semibold : .medium))
+                .foregroundStyle(isSelected ? KikariaTheme.deepText : KikariaTheme.softText)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .fill(backgroundFill)
+                .background(isSelected ? .ultraThinMaterial : .regularMaterial, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .opacity(isSelected || isHovering ? 1 : 0)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(borderColor, lineWidth: 1)
+                .opacity(isSelected ? 1 : (isHovering ? 0.45 : 0))
+        }
+        .shadow(color: KikariaTheme.sky.opacity(isSelected && colorScheme == .light ? 0.12 : 0), radius: 10, x: 0, y: 5)
+        .onHover { isHovering = $0 }
+        .accessibilityLabel(destination.title)
+    }
+
+    private var backgroundFill: AnyShapeStyle {
+        if isSelected {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        KikariaTheme.sky.opacity(colorScheme == .dark ? 0.30 : 0.42),
+                        KikariaTheme.cyan.opacity(colorScheme == .dark ? 0.20 : 0.26)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+
+        return AnyShapeStyle(KikariaTheme.glassSurface.opacity(colorScheme == .dark ? 0.18 : 0.32))
+    }
+
+    private var borderColor: Color {
+        isSelected
+            ? KikariaTheme.glassStrokeAccent.opacity(colorScheme == .dark ? 0.38 : 0.52)
+            : KikariaTheme.glassStrokeAccent.opacity(0.35)
+    }
+}
+#endif
+
 struct DailyReviewRecord: Codable, Equatable {
     var date: Date
     var count: Int
@@ -669,10 +1046,15 @@ private enum KikariaNotificationManager {
         }
 
         center.getNotificationSettings { settings in
-            guard settings.authorizationStatus == .authorized ||
-                    settings.authorizationStatus == .provisional ||
-                    settings.authorizationStatus == .ephemeral
-            else {
+            let isAuthorized = settings.authorizationStatus == .authorized ||
+                settings.authorizationStatus == .provisional
+            #if os(iOS)
+            let canSchedule = isAuthorized || settings.authorizationStatus == .ephemeral
+            #else
+            let canSchedule = isAuthorized
+            #endif
+
+            guard canSchedule else {
                 return
             }
 
@@ -697,10 +1079,17 @@ private enum KikariaNotificationManager {
         #if DEBUG
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
-            switch settings.authorizationStatus {
-            case .authorized, .provisional, .ephemeral:
+            let isAuthorized = settings.authorizationStatus == .authorized ||
+                settings.authorizationStatus == .provisional
+            #if os(iOS)
+            let canSchedule = isAuthorized || settings.authorizationStatus == .ephemeral
+            #else
+            let canSchedule = isAuthorized
+            #endif
+
+            if canSchedule {
                 scheduleAuthorizedDebugTestNotification(presetName: presetName, completion: completion)
-            case .notDetermined:
+            } else if settings.authorizationStatus == .notDetermined {
                 requestAuthorization { granted in
                     if granted {
                         scheduleAuthorizedDebugTestNotification(presetName: presetName, completion: completion)
@@ -708,11 +1097,11 @@ private enum KikariaNotificationManager {
                         completion("请在系统设置中允许通知")
                     }
                 }
-            case .denied:
+            } else if settings.authorizationStatus == .denied {
                 DispatchQueue.main.async {
                     completion("请在系统设置中允许通知")
                 }
-            @unknown default:
+            } else {
                 DispatchQueue.main.async {
                     completion("通知权限不可用")
                 }
@@ -920,6 +1309,7 @@ struct ContentView: View {
 
                 Spacer(minLength: 24)
 
+                #if os(iOS)
                 NavigationLink(value: AppRoute.settings) {
                     ProfileAvatarView(
                         systemName: userProfile.avatarSystemName,
@@ -929,6 +1319,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("打开设置")
+                #endif
             }
 
             VStack(spacing: 0) {
@@ -1031,6 +1422,7 @@ struct ContentView: View {
             }
             .frame(maxWidth: metrics.homeLandscapeMaxWidth)
 
+            #if os(iOS)
             NavigationLink(value: AppRoute.settings) {
                 ProfileAvatarView(
                     systemName: userProfile.avatarSystemName,
@@ -1041,6 +1433,7 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("打开设置")
             .padding(.top, 26)
+            #endif
         }
         .padding(.horizontal, metrics.horizontalPadding)
         .padding(.vertical, 36)
@@ -1048,6 +1441,121 @@ struct ContentView: View {
     }
 
     var body: some View {
+        platformNavigationRoot
+            .onAppear {
+                loadInitialPresetStateIfNeeded()
+                if !hasCompletedProfileSetup {
+                    isShowingProfileSetup = true
+                } else if !hasCompletedOnboarding {
+                    isShowingOnboarding = true
+                }
+            }
+            .onChange(of: knowledgePoints) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: selectedTags) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: dailyReviewRecords) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: activityRecords) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: userProfile) { _ in
+                saveAppStateIfReady()
+            }
+            .onChange(of: hasCompletedProfileSetup) { _ in
+                saveAppStateIfReady()
+            }
+            .onChange(of: hasCompletedOnboarding) { _ in
+                saveAppStateIfReady()
+            }
+            .onChange(of: markdownText) { _ in
+                persistCurrentStudyStateIfReady()
+            }
+            .onChange(of: scenePhase) { phase in
+                if phase == .active {
+                    rescheduleAllPresetNotifications()
+                } else if phase == .inactive || phase == .background {
+                    saveAppStateIfReady()
+                }
+            }
+            #if os(iOS)
+            .fullScreenCover(isPresented: $isShowingOnboarding) {
+                OnboardingView {
+                    hasCompletedOnboarding = true
+                    isShowingOnboarding = false
+                    saveAppStateIfReady()
+                }
+                .interactiveDismissDisabled(!hasCompletedOnboarding)
+            }
+            .fullScreenCover(isPresented: $isShowingProfileSetup) {
+                InitialProfileSetupView(profile: $userProfile) {
+                    hasCompletedProfileSetup = true
+                    isShowingProfileSetup = false
+                    saveAppStateIfReady()
+
+                    if !hasCompletedOnboarding {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            isShowingOnboarding = true
+                        }
+                    }
+                }
+                .interactiveDismissDisabled(true)
+            }
+            #elseif os(macOS)
+            .kikariaMacFirstLaunchOverlay(isPresented: isShowingOnboarding) {
+                OnboardingView {
+                    hasCompletedOnboarding = true
+                    isShowingOnboarding = false
+                    saveAppStateIfReady()
+                }
+            }
+            .kikariaMacFirstLaunchOverlay(isPresented: isShowingProfileSetup) {
+                InitialProfileSetupView(profile: $userProfile) {
+                    hasCompletedProfileSetup = true
+                    isShowingProfileSetup = false
+                    saveAppStateIfReady()
+
+                    if !hasCompletedOnboarding {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                            isShowingOnboarding = true
+                        }
+                    }
+                }
+            }
+            #endif
+    }
+
+    @ViewBuilder
+    private var platformNavigationRoot: some View {
+        #if os(macOS)
+        NavigationSplitView {
+            MacSidebarView(
+                selection: macSidebarSelectionBinding,
+                isSettingsSelected: macSettingsSelectionBinding,
+                profile: userProfile
+            )
+            .navigationSplitViewColumnWidth(min: 210, ideal: 236, max: 280)
+        } detail: {
+            contentNavigationStack
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .navigationTitle("")
+        .toolbar(removing: .title)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            KikariaTheme.pageGradient
+                .ignoresSafeArea()
+        }
+        .frame(minWidth: 1240, minHeight: 690)
+        #else
+        contentNavigationStack
+        #endif
+    }
+
+    private var contentNavigationStack: some View {
         NavigationStack(path: $navigationPath) {
             KikariaAdaptivePage { metrics in
                 let isExpanded = metrics.isPadWidth
@@ -1073,6 +1581,7 @@ struct ContentView: View {
 
                                     Spacer(minLength: 16)
 
+                                    #if os(iOS)
                                     NavigationLink(value: AppRoute.settings) {
                                         ProfileAvatarView(
                                             systemName: userProfile.avatarSystemName,
@@ -1082,6 +1591,7 @@ struct ContentView: View {
                                     }
                                     .buttonStyle(.plain)
                                     .accessibilityLabel("打开设置")
+                                    #endif
                                 }
                                 .padding(.top, 14)
 
@@ -1130,7 +1640,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .navigationBarHidden(true)
+            .kikariaHomeNavigationChrome()
             .navigationDestination(for: AppRoute.self) { route in
                 switch route {
                 case .scope:
@@ -1294,67 +1804,76 @@ struct ContentView: View {
                     }
                 }
             }
-            .onAppear {
-                loadInitialPresetStateIfNeeded()
-                if !hasCompletedProfileSetup {
-                    isShowingProfileSetup = true
-                } else if !hasCompletedOnboarding {
-                    isShowingOnboarding = true
-                }
-            }
-            .onChange(of: knowledgePoints) { _ in
-                persistCurrentStudyStateIfReady()
-            }
-            .onChange(of: selectedTags) { _ in
-                persistCurrentStudyStateIfReady()
-            }
-            .onChange(of: dailyReviewRecords) { _ in
-                persistCurrentStudyStateIfReady()
-            }
-            .onChange(of: activityRecords) { _ in
-                persistCurrentStudyStateIfReady()
-            }
-            .onChange(of: userProfile) { _ in
-                saveAppStateIfReady()
-            }
-            .onChange(of: hasCompletedProfileSetup) { _ in
-                saveAppStateIfReady()
-            }
-            .onChange(of: hasCompletedOnboarding) { _ in
-                saveAppStateIfReady()
-            }
-            .onChange(of: markdownText) { _ in
-                persistCurrentStudyStateIfReady()
-            }
-            .onChange(of: scenePhase) { phase in
-                if phase == .active {
-                    rescheduleAllPresetNotifications()
-                } else if phase == .inactive || phase == .background {
-                    saveAppStateIfReady()
-                }
-            }
-            .fullScreenCover(isPresented: $isShowingOnboarding) {
-                OnboardingView {
-                    hasCompletedOnboarding = true
-                    isShowingOnboarding = false
-                }
-                .interactiveDismissDisabled(!hasCompletedOnboarding)
-            }
-            .fullScreenCover(isPresented: $isShowingProfileSetup) {
-                InitialProfileSetupView(profile: $userProfile) {
-                    hasCompletedProfileSetup = true
-                    isShowingProfileSetup = false
+        }
+    }
 
-                    if !hasCompletedOnboarding {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                            isShowingOnboarding = true
-                        }
-                    }
+    #if os(macOS)
+    private var macSidebarSelectionBinding: Binding<MacSidebarDestination?> {
+        Binding(
+            get: { macSidebarSelection },
+            set: { destination in
+                if let destination {
+                    openMacSidebarDestination(destination)
                 }
-                .interactiveDismissDisabled(true)
+            }
+        )
+    }
+
+    private var macSettingsSelectionBinding: Binding<Bool> {
+        Binding(
+            get: { macSettingsIsSelected },
+            set: { isSelected in
+                if isSelected {
+                    openMacSettings()
+                }
+            }
+        )
+    }
+
+    private var macSidebarSelection: MacSidebarDestination? {
+        guard let route = navigationPath.last else {
+            return .dashboard
+        }
+
+        return MacSidebarDestination(route: route)
+    }
+
+    private var macSettingsIsSelected: Bool {
+        guard let route = navigationPath.last else {
+            return false
+        }
+
+        switch route {
+        case .settings, .editProfile, .markdownFormatGuide:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func openMacSidebarDestination(_ destination: MacSidebarDestination) {
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
+            switch destination {
+            case .dashboard:
+                navigationPath.removeAll()
+            case .todayOverview:
+                navigationPath = [.todayOverview]
+            case .reinforcement:
+                navigationPath = [.reinforcement]
+            case .mastered:
+                navigationPath = [.mastered]
+            case .presetSelection:
+                navigationPath = [.presetSelection]
             }
         }
     }
+
+    private func openMacSettings() {
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.88)) {
+            navigationPath = [.settings]
+        }
+    }
+    #endif
 
     private var dailyGoalBinding: Binding<Int> {
         Binding(
@@ -1654,11 +2173,7 @@ struct ContentView: View {
     }
 
     private func applyLoadedAppState(_ appState: KikariaAppState) {
-        if appState.schemaVersion >= 2 {
-            presets = appState.presets.isEmpty ? KnowledgePreset.all : appState.presets
-        } else {
-            presets = mergedPresets(with: appState.presets)
-        }
+        presets = appState.presets.isEmpty ? KnowledgePreset.all : mergedPresets(with: appState.presets)
 
         presetStates = appState.presetStates
         userProfile = appState.userProfile
@@ -1687,9 +2202,21 @@ struct ContentView: View {
     }
 
     private func mergedPresets(with storedPresets: [KnowledgePreset]) -> [KnowledgePreset] {
-        var merged = storedPresets
+        let builtInsByID = Dictionary(uniqueKeysWithValues: KnowledgePreset.all.map { ($0.id, $0) })
+        var merged: [KnowledgePreset] = []
+        var existingIDs = Set<String>()
 
-        for builtInPreset in KnowledgePreset.all where !merged.contains(where: { $0.id == builtInPreset.id }) {
+        for storedPreset in storedPresets {
+            existingIDs.insert(storedPreset.id)
+
+            if storedPreset.isBuiltIn, let updatedBuiltInPreset = builtInsByID[storedPreset.id] {
+                merged.append(updatedBuiltInPreset)
+            } else {
+                merged.append(storedPreset)
+            }
+        }
+
+        for builtInPreset in KnowledgePreset.all where !existingIDs.contains(builtInPreset.id) {
             merged.append(builtInPreset)
         }
 
@@ -2104,8 +2631,10 @@ private struct OnboardingView: View {
                                 .padding(.horizontal, metrics.horizontalPadding)
                         }
                     }
+                    #if os(iOS)
                     .tabViewStyle(.page(indexDisplayMode: .always))
                     .indexViewStyle(.page(backgroundDisplayMode: .interactive))
+                    #endif
 
                     Button {
                         if selectedPage < pages.count - 1 {
@@ -2219,6 +2748,7 @@ private struct KikariaSearchBar: View {
                 .foregroundStyle(KikariaTheme.deepText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .kikariaMacPlainTextFieldStyle(true)
 
             if !text.isEmpty {
                 Button {
@@ -2294,6 +2824,7 @@ private struct ShareFile: Identifiable {
     let url: URL
 }
 
+#if os(iOS)
 private struct ActivityView: UIViewControllerRepresentable {
     let activityItems: [Any]
 
@@ -2303,6 +2834,34 @@ private struct ActivityView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
+#elseif os(macOS)
+private struct ActivityView: View {
+    @Environment(\.dismiss) private var dismiss
+    let activityItems: [Any]
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("导出文件已准备好")
+                .font(KikariaTypography.chineseHeadline(size: 18))
+                .foregroundStyle(KikariaTheme.deepText)
+
+            if let url = activityItems.compactMap({ $0 as? URL }).first {
+                KikariaTypography.mixedText(url.lastPathComponent, size: 14)
+                    .foregroundStyle(KikariaTheme.softText)
+                    .lineLimit(2)
+            }
+
+            Button("完成") {
+                dismiss()
+            }
+            .font(KikariaTypography.chineseButton(size: 14))
+            .buttonStyle(.borderedProminent)
+        }
+        .padding(28)
+        .frame(minWidth: 320)
+    }
+}
+#endif
 
 private func sanitizedFilename(_ name: String) -> String {
     let invalidCharacters = CharacterSet(charactersIn: "/\\?%*|\"<>:")
@@ -2392,8 +2951,7 @@ private struct TodayOverviewView: View {
                                 .font(KikariaTypography.chineseTitle(size: 32 * scale))
                                 .foregroundStyle(KikariaTheme.deepText)
 
-                            Text(presetName)
-                                .font(KikariaTypography.chineseBody(size: 15 * scale, weight: .medium))
+                            KikariaTypography.mixedText(presetName, size: 15 * scale, weight: .medium)
                                 .foregroundStyle(KikariaTheme.softText)
                         }
                         .padding(.top, 18 * scale + metrics.ipadPortraitOverviewTopInset)
@@ -2404,18 +2962,15 @@ private struct TodayOverviewView: View {
                                 .foregroundStyle(KikariaTheme.softText)
 
                             HStack(alignment: .firstTextBaseline, spacing: 8 * scale) {
-                                Text("\(todaySummary.markedMasteredCount)")
-                                    .font(KikariaTypography.number(size: 58 * scale, weight: .bold))
+                                KikariaTypography.numericText("\(todaySummary.markedMasteredCount)", size: 58 * scale, weight: .bold)
                                     .monospacedDigit()
                                     .foregroundStyle(KikariaTheme.masteredDeepGreen)
 
-                                Text("/ \(dailyGoal)")
-                                    .font(KikariaTypography.number(size: 24 * scale, weight: .semibold))
+                                KikariaTypography.numericText("/ \(dailyGoal)", size: 24 * scale, weight: .semibold)
                                     .foregroundStyle(KikariaTheme.softText)
                             }
 
-                            Text(progressMessage)
-                                .font(KikariaTypography.chineseBody(size: 15 * scale, weight: .medium))
+                            KikariaTypography.mixedText(progressMessage, size: 15 * scale, weight: .medium)
                                 .foregroundStyle(KikariaTheme.deepText.opacity(0.82))
                         }
                         .padding(22 * scale)
@@ -2423,10 +2978,10 @@ private struct TodayOverviewView: View {
                         .liquidGlassCard(cornerRadius: 30 * scale, material: .thinMaterial, fillOpacity: 0.40, strokeOpacity: 0.42, shadowOpacity: 0.11, shadowRadius: 20 * scale, shadowY: 11 * scale)
 
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12 * scale) {
-                            OverviewMetricCard(title: "查看答案", value: "\(todaySummary.reviewedAnswerCount)", detail: "今日次数", scale: scale, minHeight: metricMinHeight)
-                            OverviewMetricCard(title: "总已掌握", value: "\(masteredTotal)", detail: "当前清单", scale: scale, minHeight: metricMinHeight)
-                            OverviewMetricCard(title: "查看提示", value: "\(todaySummary.viewedHintCount)", detail: "今日次数", scale: scale, minHeight: metricMinHeight)
-                            OverviewMetricCard(title: "倒数", value: countdownText(for: countdownEndDate), detail: "距结束日", scale: scale, minHeight: metricMinHeight)
+                            OverviewMetricCard(title: "查看答案", value: "\(todaySummary.reviewedAnswerCount)", scale: scale, minHeight: metricMinHeight)
+                            OverviewMetricCard(title: "总已掌握", value: "\(masteredTotal)", scale: scale, minHeight: metricMinHeight)
+                            OverviewMetricCard(title: "查看提示", value: "\(todaySummary.viewedHintCount)", scale: scale, minHeight: metricMinHeight)
+                            OverviewMetricCard(title: "倒数", value: countdownText(for: countdownEndDate), scale: scale, minHeight: metricMinHeight)
                         }
 
                         Button(action: onOpenHistory) {
@@ -2467,28 +3022,22 @@ private struct TodayOverviewView: View {
 private struct OverviewMetricCard: View {
     let title: String
     let value: String
-    let detail: String
     var scale: CGFloat = 1
     var minHeight: CGFloat? = nil
 
     var body: some View {
         let resolvedScale = max(scale, 1)
 
-        VStack(alignment: .leading, spacing: 8 * resolvedScale) {
+        VStack(alignment: .leading, spacing: 10 * resolvedScale) {
             Text(title)
                 .font(KikariaTypography.chineseCaption(size: 13 * resolvedScale, weight: .semibold))
                 .foregroundStyle(KikariaTheme.softText)
 
-            Text(value)
-                .font(KikariaTypography.number(size: 25 * resolvedScale, weight: .bold))
+            KikariaTypography.mixedText(value, size: 46 * resolvedScale, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineLimit(1)
-                .minimumScaleFactor(0.72)
-
-            Text(detail)
-                .font(KikariaTypography.chineseCaption(size: 12 * resolvedScale, weight: .medium))
-                .foregroundStyle(KikariaTheme.blueGray)
+                .minimumScaleFactor(0.58)
         }
         .padding(18 * resolvedScale)
         .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .leading)
@@ -2532,8 +3081,7 @@ private struct ReviewHistoryView: View {
 
                                 Spacer()
 
-                                Text(monthTitle)
-                                    .font(KikariaTypography.chineseHeadline(size: 20))
+                                KikariaTypography.mixedText(monthTitle, size: 20, weight: .semibold)
                                     .foregroundStyle(KikariaTheme.deepText)
 
                                 Spacer()
@@ -2665,8 +3213,7 @@ private struct HistoryCalendarDayCell: View {
                     }
 
                 if let date {
-                    Text("\(Calendar.current.component(.day, from: date))")
-                        .font(KikariaTypography.number(size: 12, weight: .semibold))
+                    KikariaTypography.numericText("\(Calendar.current.component(.day, from: date))", size: 12, weight: .semibold)
                         .foregroundStyle(KikariaTheme.deepText.opacity(count == 0 ? 0.58 : 0.86))
                 }
             }
@@ -2689,14 +3236,12 @@ private struct HistoryDaySummaryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(title)
-                    .font(KikariaTypography.chineseHeadline(size: 19))
+                KikariaTypography.mixedText(title, size: 19, weight: .semibold)
                     .foregroundStyle(KikariaTheme.deepText)
 
                 Spacer()
 
-                Text("\(summary.totalCount) 条记录")
-                    .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                KikariaTypography.mixedText("\(summary.totalCount) 条记录", size: 12, weight: .semibold)
                     .foregroundStyle(KikariaTheme.softText)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
@@ -2734,8 +3279,7 @@ private struct HistorySummaryRow: View {
 
             Spacer()
 
-            Text("\(count)")
-                .font(KikariaTypography.number(size: 17, weight: .bold))
+            KikariaTypography.numericText("\(count)", size: 17, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.sky)
         }
@@ -2749,9 +3293,9 @@ private struct ProfileAvatarView: View {
 
     var body: some View {
         Group {
-            if let imageData,
-               let uiImage = UIImage(data: imageData) {
-                Image(uiImage: uiImage)
+            #if os(iOS)
+            if let imageData, let platformImage = UIImage(data: imageData) {
+                Image(uiImage: platformImage)
                     .resizable()
                     .scaledToFill()
                     .frame(width: size, height: size)
@@ -2766,12 +3310,31 @@ private struct ProfileAvatarView: View {
                     .foregroundStyle(KikariaTheme.sky, .white.opacity(0.85))
                     .frame(width: size, height: size)
             }
+            #elseif os(macOS)
+            if let imageData, let platformImage = NSImage(data: imageData) {
+                Image(nsImage: platformImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(.white.opacity(0.42), lineWidth: 1)
+                    }
+            } else {
+                Image(systemName: systemName)
+                    .font(.system(size: size))
+                    .foregroundStyle(KikariaTheme.sky, .white.opacity(0.85))
+                    .frame(width: size, height: size)
+            }
+            #endif
         }
         .padding(size <= 48 ? 3 : 5)
         .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.50, shadowOpacity: 0.16, shadowRadius: 12, shadowY: 6)
     }
 }
 
+#if os(iOS)
 private func loadCompressedAvatarData(from selectedPhotoItem: PhotosPickerItem) async -> Data? {
     guard let data = try? await selectedPhotoItem.loadTransferable(type: Data.self) else {
         return nil
@@ -2804,6 +3367,11 @@ private func compressedAvatarData(from data: Data) -> Data? {
 
     return outputImage.jpegData(compressionQuality: 0.82) ?? outputImage.pngData()
 }
+#elseif os(macOS)
+private func compressedAvatarData(from data: Data) -> Data? {
+    data
+}
+#endif
 
 private struct SettingsView: View {
     let profile: UserProfile
@@ -2867,12 +3435,10 @@ private struct SettingsView: View {
             )
 
             VStack(spacing: 4 * scale) {
-                Text(profile.displayName)
-                    .font(KikariaTypography.chineseTitle(size: metrics.isPadPortrait ? 31 * scale : (metrics.isPadWidth ? 30 : 28), weight: .semibold))
+                KikariaTypography.mixedText(profile.displayName, size: metrics.isPadPortrait ? 31 * scale : (metrics.isPadWidth ? 30 : 28), weight: .semibold)
                     .foregroundStyle(KikariaTheme.deepText)
 
-                Text("@\(profile.userHandle)")
-                    .font(KikariaTypography.chineseBody(size: metrics.isPadPortrait ? 16 * scale : (metrics.isPadWidth ? 16 : 15), weight: .medium))
+                KikariaTypography.mixedText("@\(profile.userHandle)", size: metrics.isPadPortrait ? 16 * scale : (metrics.isPadWidth ? 16 : 15), weight: .medium)
                     .foregroundStyle(KikariaTheme.softText)
             }
 
@@ -3152,12 +3718,10 @@ private struct SettingsView: View {
                             )
 
                             VStack(spacing: 4 * scale) {
-                                Text(profile.displayName)
-                                    .font(KikariaTypography.chineseTitle(size: metrics.isPadPortrait ? 31 * scale : (metrics.isPadWidth ? 30 : 28), weight: .semibold))
+                                KikariaTypography.mixedText(profile.displayName, size: metrics.isPadPortrait ? 31 * scale : (metrics.isPadWidth ? 30 : 28), weight: .semibold)
                                     .foregroundStyle(KikariaTheme.deepText)
 
-                                Text("@\(profile.userHandle)")
-                                    .font(KikariaTypography.chineseBody(size: metrics.isPadPortrait ? 16 * scale : (metrics.isPadWidth ? 16 : 15), weight: .medium))
+                                KikariaTypography.mixedText("@\(profile.userHandle)", size: metrics.isPadPortrait ? 16 * scale : (metrics.isPadWidth ? 16 : 15), weight: .medium)
                                     .foregroundStyle(KikariaTheme.softText)
                             }
 
@@ -3497,7 +4061,7 @@ private struct SettingsView: View {
         }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .kikariaHiddenNavigationChrome()
         .alert("隐私政策", isPresented: $isShowingPrivacyPolicy) {
             Button("知道了", role: .cancel) {}
         } message: {
@@ -3547,8 +4111,7 @@ private struct SettingsSectionCard<Content: View>: View {
         let resolvedScale = max(scale, 1)
 
         VStack(alignment: .leading, spacing: 8 * resolvedScale) {
-            Text(title)
-                .font(KikariaTypography.chineseCaption(size: 13 * resolvedScale, weight: .semibold))
+            KikariaTypography.mixedText(title, size: 13 * resolvedScale, weight: .semibold)
                 .foregroundStyle(KikariaTheme.softText)
                 .padding(.horizontal, 4 * resolvedScale)
 
@@ -3584,8 +4147,7 @@ private struct SettingsRowContent: View {
         let resolvedScale = max(scale, 1)
 
         HStack(spacing: 14 * resolvedScale) {
-            Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 16 * resolvedScale))
+            KikariaTypography.mixedText(title, size: 16 * resolvedScale, weight: .semibold)
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.84)
@@ -3593,8 +4155,7 @@ private struct SettingsRowContent: View {
             Spacer(minLength: 12 * resolvedScale)
 
             if !valueText.isEmpty {
-                Text(valueText)
-                    .font(KikariaTypography.chineseHeadline(size: 16 * resolvedScale))
+                KikariaTypography.mixedText(valueText, size: 16 * resolvedScale, weight: .semibold)
                     .foregroundStyle(showsChevron ? KikariaTheme.sky : KikariaTheme.softText)
                     .monospacedDigit()
                     .lineLimit(1)
@@ -3644,8 +4205,7 @@ private struct SettingsToggleRow: View {
         let resolvedScale = max(scale, 1)
 
         HStack(spacing: 14 * resolvedScale) {
-            Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 17 * resolvedScale))
+            KikariaTypography.mixedText(title, size: 17 * resolvedScale, weight: .semibold)
                 .foregroundStyle(KikariaTheme.deepText)
 
             Spacer()
@@ -3683,20 +4243,17 @@ private struct SettingsOptionRow: View {
                     .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.34, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(KikariaTypography.chineseHeadline())
+                    KikariaTypography.mixedText(title, size: 17, weight: .semibold)
                         .foregroundStyle(KikariaTheme.deepText)
 
-                    Text(subtitle)
-                        .font(KikariaTypography.chineseCaption(size: 13))
+                    KikariaTypography.mixedText(subtitle, size: 13, weight: .medium)
                         .foregroundStyle(KikariaTheme.softText)
                 }
 
                 Spacer()
 
                 if let valueText {
-                    Text(valueText)
-                        .font(KikariaTypography.chineseHeadline())
+                    KikariaTypography.mixedText(valueText, size: 17, weight: .semibold)
                         .monospacedDigit()
                         .foregroundStyle(KikariaTheme.sky)
                         .lineLimit(1)
@@ -3735,15 +4292,20 @@ private struct KikariaWheelValueText: View {
     var usesMonospacedDigits = true
 
     var body: some View {
+        let valueText = KikariaTypography.mixedText(
+            text,
+            chineseFont: .system(size: KikariaWheelStyle.fontSize, weight: KikariaWheelStyle.fontWeight),
+            serifFont: KikariaWheelStyle.valueFont
+        )
+
         Group {
             if usesMonospacedDigits {
-                Text(text)
+                valueText
                     .monospacedDigit()
             } else {
-                Text(text)
+                valueText
             }
         }
-        .font(KikariaWheelStyle.valueFont)
         .lineLimit(1)
         .minimumScaleFactor(KikariaWheelStyle.minimumScaleFactor)
         .frame(width: width, alignment: .center)
@@ -3763,8 +4325,7 @@ private struct DailyGoalPickerBubble: View {
 
                 Spacer()
 
-                Text("\(dailyGoal)")
-                    .font(KikariaTypography.number(size: 17))
+                KikariaTypography.numericText("\(dailyGoal)", size: 17)
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
             }
@@ -3775,7 +4336,7 @@ private struct DailyGoalPickerBubble: View {
                         .tag(goal)
                 }
             }
-            .pickerStyle(.wheel)
+            .kikariaWheelPickerStyle()
             .frame(maxWidth: .infinity)
             .frame(height: KikariaWheelStyle.pickerHeight)
             .clipped()
@@ -3816,8 +4377,7 @@ private struct NotificationTimePickerBubble: View {
 
                 Spacer()
 
-                Text(timeText)
-                    .font(KikariaTypography.number(size: 17))
+                KikariaTypography.numericText(timeText, size: 17)
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
             }
@@ -3878,7 +4438,7 @@ private struct NotificationTimeWheelPicker: View {
                         .tag(hour)
                 }
             }
-            .pickerStyle(.wheel)
+            .kikariaWheelPickerStyle()
             .labelsHidden()
             .frame(width: 68)
             .clipped()
@@ -3894,7 +4454,7 @@ private struct NotificationTimeWheelPicker: View {
                         .tag(minute)
                 }
             }
-            .pickerStyle(.wheel)
+            .kikariaWheelPickerStyle()
             .labelsHidden()
             .frame(width: 68)
             .clipped()
@@ -3928,8 +4488,7 @@ private struct CountdownDateRangePickerBubble: View {
 
                 Spacer()
 
-                Text(isConfigured ? countdownText(for: endDate) : "未设置")
-                    .font(KikariaTypography.chineseHeadline())
+                KikariaTypography.mixedText(isConfigured ? countdownText(for: endDate) : "未设置", size: 17, weight: .semibold)
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
             }
@@ -3940,8 +4499,7 @@ private struct CountdownDateRangePickerBubble: View {
             }
 
             if let errorMessage {
-                Text(errorMessage)
-                    .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
+                KikariaTypography.mixedText(errorMessage, size: 12, weight: .semibold)
                     .foregroundStyle(KikariaTheme.removeCoral)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -3975,8 +4533,7 @@ private struct CountdownDateRangePickerBubble: View {
 
     private func datePickerSection(title: String, selection: Binding<Date>) -> some View {
         VStack(spacing: 14) {
-            Text(title)
-                .font(KikariaTypography.chineseCaption(size: 13, weight: .semibold))
+            KikariaTypography.mixedText(title, size: 13, weight: .semibold)
                 .foregroundStyle(KikariaTheme.softText)
                 .frame(maxWidth: .infinity, alignment: .center)
 
@@ -4054,7 +4611,7 @@ private struct CountdownDateWheelPicker: View {
                         .tag(month)
                 }
             }
-            .pickerStyle(.wheel)
+            .kikariaWheelPickerStyle()
             .labelsHidden()
             .frame(width: 114)
             .clipped()
@@ -4065,7 +4622,7 @@ private struct CountdownDateWheelPicker: View {
                         .tag(day)
                 }
             }
-            .pickerStyle(.wheel)
+            .kikariaWheelPickerStyle()
             .labelsHidden()
             .frame(width: 54)
             .clipped()
@@ -4076,7 +4633,7 @@ private struct CountdownDateWheelPicker: View {
                         .tag(year)
                 }
             }
-            .pickerStyle(.wheel)
+            .kikariaWheelPickerStyle()
             .labelsHidden()
             .frame(width: 80)
             .clipped()
@@ -4131,8 +4688,7 @@ private struct DangerPercentPickerBubble: View {
 
                 Spacer()
 
-                Text("\(dangerPercent)%")
-                    .font(KikariaTypography.number(size: 17))
+                KikariaTypography.numericText("\(dangerPercent)%", size: 17)
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
             }
@@ -4143,7 +4699,7 @@ private struct DangerPercentPickerBubble: View {
                         .tag(percent)
                 }
             }
-            .pickerStyle(.wheel)
+            .kikariaWheelPickerStyle()
             .frame(maxWidth: .infinity)
             .frame(height: KikariaWheelStyle.pickerHeight)
             .clipped()
@@ -4467,8 +5023,7 @@ private struct PresetCard: View {
             HStack(alignment: .top, spacing: 12 * scale) {
                 VStack(alignment: .leading, spacing: 8 * scale) {
                     HStack(spacing: 8 * scale) {
-                        Text(preset.name)
-                            .font(KikariaTypography.chineseHeadline(size: 20 * scale))
+                        KikariaTypography.mixedText(preset.name, size: 20 * scale, weight: .semibold)
                             .foregroundStyle(KikariaTheme.deepText)
                             .lineLimit(1)
                             .minimumScaleFactor(0.82)
@@ -4484,8 +5039,7 @@ private struct PresetCard: View {
                     }
 
                     HStack(spacing: 9 * scale) {
-                        Text("\(preset.knowledgePointCount) 个知识点")
-                            .font(KikariaTypography.tag(size: 12 * scale, weight: .semibold))
+                        KikariaTypography.mixedText("\(preset.knowledgePointCount) 个知识点", size: 12 * scale, weight: .semibold)
                             .foregroundStyle(KikariaTheme.softText)
                     }
                 }
@@ -4513,8 +5067,7 @@ private struct PresetCard: View {
                 }
             }
 
-            Text(preset.description)
-                .font(KikariaTypography.chineseBody(size: 14 * scale))
+            KikariaTypography.mixedText(preset.description, size: 14 * scale)
                 .foregroundStyle(KikariaTheme.softText)
                 .lineLimit(2)
                 .lineSpacing(3 * scale)
@@ -4598,8 +5151,11 @@ private struct NewPresetView: View {
                             Button {
                                 isImportingFile = true
                             } label: {
-                                Label("选择 .md / .txt 文件", systemImage: "doc.badge.plus")
-                                    .font(KikariaTypography.chineseButton(size: 17 * scale))
+                                Label {
+                                    KikariaTypography.mixedText("选择 .md / .txt 文件", size: 17 * scale, weight: .semibold)
+                                } icon: {
+                                    Image(systemName: "doc.badge.plus")
+                                }
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 15 * scale)
@@ -4609,15 +5165,13 @@ private struct NewPresetView: View {
 
                             VStack(alignment: .leading, spacing: 8 * scale) {
                                 HStack(alignment: .center) {
-                                    Text("Markdown 文本")
-                                        .font(KikariaTypography.chineseHeadline(size: 14 * scale))
+                                    KikariaTypography.mixedText("Markdown 文本", size: 14 * scale, weight: .semibold)
                                         .foregroundStyle(KikariaTheme.softText)
 
                                     Spacer()
 
                                     NavigationLink(value: AppRoute.markdownFormatGuide) {
-                                        Text("如何编写 Markdown 预设？")
-                                            .font(KikariaTypography.chineseCaption(size: 12 * scale, weight: .semibold))
+                                        KikariaTypography.mixedText("如何编写 Markdown 预设？", size: 12 * scale, weight: .semibold)
                                             .foregroundStyle(KikariaTheme.sky)
                                             .padding(.horizontal, 12 * scale)
                                             .padding(.vertical, 7 * scale)
@@ -4630,14 +5184,14 @@ private struct NewPresetView: View {
                                     .font(.system(size: 17 * scale, weight: .regular, design: .serif))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .scrollContentBackground(.hidden)
+                                    .kikariaMacClearTextEditorBackground()
                                     .padding(14 * scale)
                                     .frame(minHeight: textEditorHeight)
                                     .liquidGlassCard(cornerRadius: 24 * scale, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.34, shadowOpacity: 0.10, shadowRadius: 14 * scale, shadowY: 8 * scale)
                             }
 
                             if let errorMessage {
-                                Text(errorMessage)
-                                    .font(KikariaTypography.chineseBody(size: 14 * scale, weight: .semibold))
+                                KikariaTypography.mixedText(errorMessage, size: 14 * scale, weight: .semibold)
                                     .foregroundStyle(KikariaTheme.removeCoral)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(14 * scale)
@@ -4659,7 +5213,7 @@ private struct NewPresetView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .kikariaHiddenNavigationChrome()
         .fileImporter(isPresented: $isImportingFile, allowedContentTypes: allowedContentTypes, allowsMultipleSelection: false) { result in
             importMarkdownFile(result)
         }
@@ -4681,6 +5235,11 @@ private struct NewPresetView: View {
 
             do {
                 markdownText = try String(contentsOf: url, encoding: .utf8)
+                let importedName = url.deletingPathExtension().lastPathComponent
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !importedName.isEmpty {
+                    name = importedName
+                }
                 errorMessage = nil
             } catch {
                 errorMessage = "文件读取失败，请确认它是 UTF-8 文本。"
@@ -4950,11 +5509,16 @@ private struct MarkdownFormatGuideView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .kikariaHiddenNavigationChrome()
     }
 
     private func copyPrompt() {
+        #if os(iOS)
         UIPasteboard.general.string = Self.aiPrompt
+        #elseif os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(Self.aiPrompt, forType: .string)
+        #endif
         showToast("Prompt 已复制")
     }
 
@@ -5164,12 +5728,10 @@ private struct EditPresetView: View {
                                 ForEach(filteredKnowledgePoints) { point in
                                     HStack(spacing: 12) {
                                         VStack(alignment: .leading, spacing: 6) {
-                                            Text(point.title)
-                                                .font(KikariaTypography.chineseHeadline(size: 16))
+                                            KikariaTypography.mixedText(point.title, size: 16, weight: .semibold)
                                                 .foregroundStyle(KikariaTheme.deepText)
 
-                                            Text(point.tags.joined(separator: ", "))
-                                                .font(KikariaTypography.tag(size: 12))
+                                            KikariaTypography.mixedText(point.tags.joined(separator: ", "), size: 12, weight: .semibold)
                                                 .foregroundStyle(KikariaTheme.softText)
                                                 .lineLimit(2)
                                         }
@@ -5233,7 +5795,7 @@ private struct EditPresetView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .kikariaHiddenNavigationChrome()
         .sheet(item: $shareFile) { file in
             ActivityView(activityItems: [file.url])
         }
@@ -5367,8 +5929,7 @@ private struct EditKnowledgePointView: View {
 
                     ScrollView {
                         VStack(spacing: 16) {
-                            Text(presetName)
-                                .font(KikariaTypography.chineseTitle(size: 26, weight: .semibold))
+                            KikariaTypography.mixedText(presetName, size: 26, weight: .semibold)
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -5379,8 +5940,7 @@ private struct EditKnowledgePointView: View {
                             EditableLongTextField(title: "答案", text: $content, minHeight: 220)
 
                             if let errorMessage {
-                                Text(errorMessage)
-                                    .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
+                                KikariaTypography.mixedText(errorMessage, size: 14, weight: .semibold)
                                     .foregroundStyle(KikariaTheme.removeCoral)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(14)
@@ -5396,7 +5956,7 @@ private struct EditKnowledgePointView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .kikariaHiddenNavigationChrome()
     }
 
     private func savePoint() {
@@ -5448,6 +6008,7 @@ private struct EditableLongTextField: View {
                 .font(.system(.body, design: .serif))
                 .foregroundStyle(KikariaTheme.deepText)
                 .scrollContentBackground(.hidden)
+                .kikariaMacClearTextEditorBackground()
                 .padding(14)
                 .frame(minHeight: minHeight)
                 .liquidGlassCard(cornerRadius: 22, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.32, shadowOpacity: 0.08, shadowRadius: 12, shadowY: 7)
@@ -5461,7 +6022,11 @@ private struct InitialProfileSetupView: View {
     @State private var displayName = ""
     @State private var userHandle = ""
     @State private var avatarImageData: Data?
+    #if os(iOS)
     @State private var selectedPhotoItem: PhotosPickerItem?
+    #elseif os(macOS)
+    @State private var isImportingAvatar = false
+    #endif
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
 
@@ -5502,6 +6067,7 @@ private struct InitialProfileSetupView: View {
                                 size: avatarSize
                             )
 
+                            #if os(iOS)
                             PhotosPicker(
                                 selection: $selectedPhotoItem,
                                 matching: .images
@@ -5520,12 +6086,32 @@ private struct InitialProfileSetupView: View {
                             .buttonStyle(.plain)
                             .offset(x: 3, y: 3)
                             .accessibilityLabel("选择头像")
+                            #elseif os(macOS)
+                            Button {
+                                isImportingAvatar = true
+                            } label: {
+                                Image(systemName: "plus")
+                                    .font(.system(size: isExpanded ? 17 : 15, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: isExpanded ? 34 : 30, height: isExpanded ? 34 : 30)
+                                    .background(KikariaTheme.actionGradient, in: Circle())
+                                    .overlay {
+                                        Circle()
+                                            .stroke(.white.opacity(0.72), lineWidth: 1)
+                                    }
+                                    .shadow(color: KikariaTheme.sky.opacity(0.26), radius: 10, y: 5)
+                            }
+                            .buttonStyle(.plain)
+                            .contentShape(Circle())
+                            .offset(x: 3, y: 3)
+                            .accessibilityLabel("选择头像")
+                            #endif
                         }
                         .padding(.top, 4)
 
                         VStack(spacing: isExpanded ? 16 : 14) {
-                            ProfileTextField(title: "昵称", text: $displayName)
-                            ProfileTextField(title: "用户名", text: $userHandle)
+                            ProfileTextField(title: "昵称", text: $displayName, usesMacPlainFieldStyle: true)
+                            ProfileTextField(title: "用户名", text: $userHandle, usesMacPlainFieldStyle: true)
                         }
 
                         Button(action: saveProfile) {
@@ -5569,9 +6155,15 @@ private struct InitialProfileSetupView: View {
                 avatarImageData = profile.avatarImageData
             }
         }
+        #if os(iOS)
         .onChange(of: selectedPhotoItem) { _ in
             loadSelectedAvatar()
         }
+        #elseif os(macOS)
+        .fileImporter(isPresented: $isImportingAvatar, allowedContentTypes: [.image], allowsMultipleSelection: false) { result in
+            importAvatarFile(result)
+        }
+        #endif
     }
 
     private func saveProfile() {
@@ -5588,6 +6180,7 @@ private struct InitialProfileSetupView: View {
         onComplete()
     }
 
+    #if os(iOS)
     private func loadSelectedAvatar() {
         guard let selectedPhotoItem else {
             return
@@ -5606,6 +6199,31 @@ private struct InitialProfileSetupView: View {
             }
         }
     }
+    #endif
+
+    #if os(macOS)
+    private func importAvatarFile(_ result: Result<[URL], Error>) {
+        guard case .success(let urls) = result,
+              let url = urls.first else {
+            return
+        }
+
+        let didStartAccessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartAccessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let data = try? Data(contentsOf: url),
+              let compressedData = compressedAvatarData(from: data) else {
+            showToast("头像加载失败")
+            return
+        }
+
+        avatarImageData = compressedData
+    }
+    #endif
 
     private func showToast(_ message: String) {
         let token = UUID()
@@ -5645,7 +6263,9 @@ private struct EditProfileView: View {
     @Binding var profile: UserProfile
     @State private var displayName: String
     @State private var userHandle: String
+    #if os(iOS)
     @State private var selectedPhotoItem: PhotosPickerItem?
+    #endif
 
     init(profile: Binding<UserProfile>) {
         _profile = profile
@@ -5699,6 +6319,7 @@ private struct EditProfileView: View {
                                 size: 92
                             )
 
+                            #if os(iOS)
                             PhotosPicker(
                                 selection: $selectedPhotoItem,
                                 matching: .images
@@ -5711,6 +6332,19 @@ private struct EditProfileView: View {
                                     .liquidGlassCapsule(fillOpacity: 0.38, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
                             }
                             .buttonStyle(.plain)
+                            #elseif os(macOS)
+                            Button {
+                                // TODO: macOS 头像导入后续接入 NSOpenPanel；这里保留 iPad 版入口与布局。
+                            } label: {
+                                Label("更换头像", systemImage: "photo")
+                                    .font(KikariaTypography.chineseButton(size: 14))
+                                    .foregroundStyle(KikariaTheme.deepText)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 11)
+                                    .liquidGlassCapsule(fillOpacity: 0.38, strokeOpacity: 0.36, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
+                            }
+                            .buttonStyle(.plain)
+                            #endif
                         }
                         .padding(.top, 12)
 
@@ -5732,10 +6366,12 @@ private struct EditProfileView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .kikariaHiddenNavigationChrome()
+        #if os(iOS)
         .onChange(of: selectedPhotoItem) { _ in
             loadSelectedAvatar()
         }
+        #endif
     }
 
     private func saveProfile() {
@@ -5749,6 +6385,7 @@ private struct EditProfileView: View {
         dismiss()
     }
 
+    #if os(iOS)
     private func loadSelectedAvatar() {
         guard let selectedPhotoItem else {
             return
@@ -5762,6 +6399,7 @@ private struct EditProfileView: View {
             }
         }
     }
+    #endif
 }
 
 private struct ProfileTextField: View {
@@ -5769,13 +6407,13 @@ private struct ProfileTextField: View {
     @Binding var text: String
     var scale: CGFloat = 1
     var minHeight: CGFloat? = nil
+    var usesMacPlainFieldStyle = false
 
     var body: some View {
         let resolvedScale = max(scale, 1)
 
         VStack(alignment: .leading, spacing: 8 * resolvedScale) {
-            Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 14 * resolvedScale))
+            KikariaTypography.mixedText(title, size: 14 * resolvedScale, weight: .semibold)
                 .foregroundStyle(KikariaTheme.softText)
 
             TextField(title, text: $text)
@@ -5783,6 +6421,7 @@ private struct ProfileTextField: View {
                 .foregroundStyle(KikariaTheme.deepText)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .kikariaMacPlainTextFieldStyle(true)
                 .padding(.horizontal, 16 * resolvedScale)
                 .padding(.vertical, 15 * resolvedScale)
                 .frame(minHeight: minHeight)
@@ -5857,6 +6496,7 @@ private struct MarkdownEditorView: View {
                         .font(.system(.body, design: .serif))
                         .foregroundStyle(KikariaTheme.deepText)
                         .scrollContentBackground(.hidden)
+                        .kikariaMacClearTextEditorBackground()
                         .padding(16)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .liquidGlassCard(cornerRadius: 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.34, shadowOpacity: 0.12, shadowRadius: 18, shadowY: 10)
@@ -5881,7 +6521,7 @@ private struct MarkdownEditorView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
+        .kikariaHiddenNavigationChrome()
     }
 
     private func applyMarkdown() {
@@ -6118,8 +6758,7 @@ private struct HomeEntryCard: View {
 
             Spacer()
 
-            Text(countText)
-                .font(KikariaTypography.number(size: 20, weight: .bold))
+            KikariaTypography.mixedText(countText, size: 20, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.sky)
 
@@ -6151,22 +6790,19 @@ private struct TodayOverviewHomeProgressButton: View {
 
         HStack(alignment: .center, spacing: (isExpanded ? 18 : 14) * scale) {
             VStack(alignment: .leading, spacing: (isExpanded ? 6 : 5) * scale) {
-                Text(dateText)
-                    .font(.system(size: (isExpanded ? 27 : 23) * scale, weight: .semibold, design: .serif))
+                KikariaTypography.mixedText(dateText, size: (isExpanded ? 27 : 23) * scale, weight: .semibold)
                     .foregroundStyle(KikariaTheme.deepText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
 
-                Text(daysLeftText)
-                    .font(.system(size: (isExpanded ? 14 : 13) * scale, weight: .semibold, design: .rounded))
+                KikariaTypography.mixedText(daysLeftText, size: (isExpanded ? 14 : 13) * scale, weight: .semibold)
                     .foregroundStyle(KikariaTheme.softText)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 12 * scale)
 
-            Text(progressText)
-                .font(KikariaTypography.number(size: (isExpanded ? 30 : 25) * scale, weight: .bold))
+            KikariaTypography.mixedText(progressText, size: (isExpanded ? 30 : 25) * scale, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.masteredDeepGreen)
                 .lineLimit(1)
@@ -6222,8 +6858,7 @@ private struct HomeDashboardGridCard: View {
 
             NavigationLink(value: AppRoute.presetSelection) {
                 HStack(spacing: 8 * scale) {
-                    Text(presetName)
-                        .font(KikariaTypography.chineseHeadline(size: (isExpanded ? 18 : 16) * scale))
+                    KikariaTypography.mixedText(presetName, size: (isExpanded ? 18 : 16) * scale, weight: .semibold)
                         .foregroundStyle(KikariaTheme.deepText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.74)
@@ -6266,8 +6901,7 @@ private struct HomeDashboardMetricColumn: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
 
-            Text(valueText)
-                .font(KikariaTypography.number(size: (isExpanded ? 29 : 24) * scale, weight: .bold))
+            KikariaTypography.mixedText(valueText, size: (isExpanded ? 29 : 24) * scale, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(tint)
                 .lineLimit(1)
@@ -6299,22 +6933,19 @@ private struct PadPortraitHomeProgressCard: View {
     var body: some View {
         HStack(alignment: .center, spacing: 28) {
             VStack(alignment: .leading, spacing: 9) {
-                Text(dateText)
-                    .font(.system(size: 42, weight: .semibold, design: .serif))
+                KikariaTypography.mixedText(dateText, size: 42, weight: .semibold)
                     .foregroundStyle(KikariaTheme.deepText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.82)
 
-                Text(daysLeftText)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                KikariaTypography.mixedText(daysLeftText, size: 17, weight: .semibold)
                     .foregroundStyle(KikariaTheme.softText)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 24)
 
-            Text(progressText)
-                .font(.system(size: 54, weight: .bold, design: .serif))
+            KikariaTypography.mixedText(progressText, size: 54, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.masteredDeepGreen)
                 .lineLimit(1)
@@ -6381,8 +7012,7 @@ private struct PadPortraitHomeDashboardCard: View {
 
             NavigationLink(value: AppRoute.presetSelection) {
                 HStack(spacing: 11) {
-                    Text(presetName)
-                        .font(KikariaTypography.chineseHeadline(size: 22))
+                    KikariaTypography.mixedText(presetName, size: 22, weight: .semibold)
                         .foregroundStyle(KikariaTheme.deepText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
@@ -6422,8 +7052,7 @@ private struct PadPortraitHomeMetricColumn: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.74)
 
-            Text(valueText)
-                .font(KikariaTypography.number(size: 46, weight: .bold))
+            KikariaTypography.mixedText(valueText, size: 46, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(tint)
                 .lineLimit(1)
@@ -6499,8 +7128,7 @@ struct ScopeSelectionView: View {
                                     .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
 
-                                Text(selectedTags.isEmpty ? "未选择标签时，会默认使用全部知识点。" : "已选择 \(selectedTags.count) 个标签。")
-                                    .font(KikariaTypography.chineseBody(size: 15 * scale))
+                                KikariaTypography.mixedText(selectedTags.isEmpty ? "未选择标签时，会默认使用全部知识点。" : "已选择 \(selectedTags.count) 个标签。", size: 15 * scale)
                                     .foregroundStyle(KikariaTheme.softText)
                             }
                             .padding(.top, metrics.isPadPortrait ? 0 : 16 * scale)
@@ -6583,8 +7211,7 @@ private struct ScopeTagChip: View {
         let resolvedScale = max(scale, 1)
         let shape = RoundedRectangle(cornerRadius: 20 * resolvedScale, style: .continuous)
 
-        Text(title)
-            .font(KikariaTypography.tag(size: 13 * resolvedScale))
+        KikariaTypography.mixedText(title, size: 13 * resolvedScale, weight: .semibold)
             .foregroundStyle(isSelected ? .white : KikariaTheme.deepText)
             .lineLimit(2)
             .minimumScaleFactor(0.82)
@@ -6622,6 +7249,139 @@ private enum ReviewGestureSuppressionReason {
     case mathHorizontalScroll
     case contentVerticalScroll
 }
+
+#if os(macOS)
+private struct KikariaMacReviewKeyboardHandler: NSViewRepresentable {
+    var isEnabled: Bool
+    let onSpace: () -> Void
+    let onReturn: () -> Void
+    let onMastered: () -> Void
+    let onReinforcement: () -> Void
+
+    func makeNSView(context: Context) -> KeyCatcherView {
+        let view = KeyCatcherView()
+        view.configure(
+            isEnabled: isEnabled,
+            onSpace: onSpace,
+            onReturn: onReturn,
+            onMastered: onMastered,
+            onReinforcement: onReinforcement
+        )
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyCatcherView, context: Context) {
+        nsView.configure(
+            isEnabled: isEnabled,
+            onSpace: onSpace,
+            onReturn: onReturn,
+            onMastered: onMastered,
+            onReinforcement: onReinforcement
+        )
+    }
+
+    final class KeyCatcherView: NSView {
+        private var localMonitor: Any?
+        private var isEnabled = false
+        private var onSpace: () -> Void = {}
+        private var onReturn: () -> Void = {}
+        private var onMastered: () -> Void = {}
+        private var onReinforcement: () -> Void = {}
+
+        deinit {
+            removeLocalMonitor()
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            updateLocalMonitor()
+        }
+
+        func configure(
+            isEnabled: Bool,
+            onSpace: @escaping () -> Void,
+            onReturn: @escaping () -> Void,
+            onMastered: @escaping () -> Void,
+            onReinforcement: @escaping () -> Void
+        ) {
+            self.isEnabled = isEnabled
+            self.onSpace = onSpace
+            self.onReturn = onReturn
+            self.onMastered = onMastered
+            self.onReinforcement = onReinforcement
+            updateLocalMonitor()
+        }
+
+        private func updateLocalMonitor() {
+            guard window != nil else {
+                removeLocalMonitor()
+                return
+            }
+
+            guard localMonitor == nil else {
+                return
+            }
+
+            localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                self?.handle(event) ?? event
+            }
+        }
+
+        private func removeLocalMonitor() {
+            if let localMonitor {
+                NSEvent.removeMonitor(localMonitor)
+                self.localMonitor = nil
+            }
+        }
+
+        private func handle(_ event: NSEvent) -> NSEvent? {
+            guard isEnabled,
+                  let window,
+                  event.window === window,
+                  !Self.isTextInputFocused
+            else {
+                return event
+            }
+
+            let ignoredModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+            guard event.modifierFlags.intersection(ignoredModifiers).isEmpty else {
+                return event
+            }
+
+            guard let characters = event.charactersIgnoringModifiers?.lowercased(),
+                  !characters.isEmpty
+            else {
+                return event
+            }
+
+            switch characters {
+            case " ":
+                onSpace()
+                return nil
+            case "\r", "\n":
+                onReturn()
+                return nil
+            case "k", "m":
+                onMastered()
+                return nil
+            case "l", ";", "'":
+                onReinforcement()
+                return nil
+            default:
+                return event
+            }
+        }
+
+        private static var isTextInputFocused: Bool {
+            guard let firstResponder = NSApp.keyWindow?.firstResponder else {
+                return false
+            }
+
+            return firstResponder is NSTextView || firstResponder is NSTextField
+        }
+    }
+}
+#endif
 
 struct ReviewView: View {
     @Environment(\.dismiss) private var dismiss
@@ -6700,7 +7460,8 @@ struct ReviewView: View {
                 isPrimary: false,
                 isExpanded: isExpanded,
                 buttonScale: buttonScale,
-                minHeight: minButtonHeight
+                minHeight: minButtonHeight,
+                shortcutHints: [.space]
             ) {
                 withAnimation(revealAnimation) {
                     revealHint()
@@ -6715,7 +7476,8 @@ struct ReviewView: View {
                 isPrimary: true,
                 isExpanded: isExpanded,
                 buttonScale: buttonScale,
-                minHeight: minButtonHeight
+                minHeight: minButtonHeight,
+                shortcutHints: [.space, .returnKey]
             ) {
                 withAnimation(revealAnimation) {
                     revealContent()
@@ -6726,28 +7488,26 @@ struct ReviewView: View {
     }
 
     @ViewBuilder
-    private func answeredActionGrid(for currentPoint: KnowledgePoint, isExpanded: Bool, buttonScale: CGFloat) -> some View {
+    private func answeredActionGrid(
+        for currentPoint: KnowledgePoint,
+        isExpanded: Bool,
+        buttonScale: CGFloat,
+        usesWideAnswerStack: Bool
+    ) -> some View {
         if mode.isReinforcement {
             ReinforcementReviewAnsweredActionGrid(
                 point: currentPoint,
                 isExpanded: isExpanded,
                 buttonScale: buttonScale,
+                usesWideAnswerStack: usesWideAnswerStack,
                 removeFromReinforcement: {
-                    removeCurrentPointFromReinforcement(shouldShowToast: true)
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
+                    removeCurrentPointFromReinforcementAndAdvance()
                 },
                 markAsMastered: {
-                    markCurrentPointAsMastered()
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
+                    markCurrentPointAsMasteredAndAdvance()
                 },
                 next: {
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
+                    advanceToNextPoint()
                 }
             )
         } else if mode.isMastered {
@@ -6755,19 +7515,15 @@ struct ReviewView: View {
                 point: currentPoint,
                 isExpanded: isExpanded,
                 buttonScale: buttonScale,
+                usesWideAnswerStack: usesWideAnswerStack,
                 addToReinforcement: {
                     addCurrentPointToReinforcementAndAdvance()
                 },
                 removeFromMastered: {
-                    removeCurrentPointFromMastered(shouldShowToast: true)
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
+                    removeCurrentPointFromMasteredAndAdvance()
                 },
                 next: {
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
+                    advanceToNextPoint()
                 }
             )
         } else {
@@ -6775,26 +7531,42 @@ struct ReviewView: View {
                 point: currentPoint,
                 isExpanded: isExpanded,
                 buttonScale: buttonScale,
+                usesWideAnswerStack: usesWideAnswerStack,
                 addToReinforcement: {
                     addCurrentPointToReinforcementAndAdvance()
                 },
                 markAsMastered: {
-                    markCurrentPointAsMastered()
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
+                    markCurrentPointAsMasteredAndAdvance()
                 },
                 next: {
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
+                    advanceToNextPoint()
                 }
             )
         }
     }
 
-    private func actionRegionMinimumHeight(isExpanded: Bool, buttonScale: CGFloat) -> CGFloat {
-        (isExpanded ? 178 : 156) * buttonScale
+    private func actionRegionMinimumHeight(
+        isExpanded: Bool,
+        buttonScale: CGFloat,
+        isShowingContent: Bool,
+        usesWideAnswerStack: Bool
+    ) -> CGFloat {
+        if isShowingContent && usesWideAnswerStack {
+            let scale = max(buttonScale, 1)
+            let buttonHeight = (isExpanded ? 76 : 66) * scale
+            let spacing = (isExpanded ? 14 : 12) * scale
+            return buttonHeight * 3 + spacing * 2
+        }
+
+        return (isExpanded ? 178 : 156) * buttonScale
+    }
+
+    private func usesWideAnswerActionStack(metrics: KikariaAdaptiveLayout.Metrics) -> Bool {
+        #if os(macOS)
+        true
+        #else
+        metrics.reviewUsesTwoColumnLayout
+        #endif
     }
 
     private func titleGroup(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
@@ -6904,14 +7676,20 @@ struct ReviewView: View {
     private func reviewActionContent(
         for currentPoint: KnowledgePoint,
         isExpanded: Bool,
-        buttonScale: CGFloat
+        buttonScale: CGFloat,
+        usesWideAnswerStack: Bool
     ) -> some View {
         ZStack {
             revealButtons(isExpanded: isExpanded, buttonScale: buttonScale)
                 .opacity(isShowingContent ? 0 : 1)
                 .allowsHitTesting(!isShowingContent)
 
-            answeredActionGrid(for: currentPoint, isExpanded: isExpanded, buttonScale: buttonScale)
+            answeredActionGrid(
+                for: currentPoint,
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
+                usesWideAnswerStack: usesWideAnswerStack
+            )
                 .opacity(isShowingContent ? 1 : 0)
                 .allowsHitTesting(isShowingContent)
         }
@@ -6921,10 +7699,24 @@ struct ReviewView: View {
     private func actionRegion(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
         let isExpanded = metrics.isPadWidth
         let buttonScale = metrics.reviewButtonScale
+        let usesWideAnswerStack = usesWideAnswerActionStack(metrics: metrics)
 
-        return reviewActionContent(for: currentPoint, isExpanded: isExpanded, buttonScale: buttonScale)
+        return reviewActionContent(
+            for: currentPoint,
+            isExpanded: isExpanded,
+            buttonScale: buttonScale,
+            usesWideAnswerStack: usesWideAnswerStack
+        )
         .frame(maxWidth: .infinity)
-        .frame(height: actionRegionMinimumHeight(isExpanded: isExpanded, buttonScale: buttonScale), alignment: .bottom)
+        .frame(
+            height: actionRegionMinimumHeight(
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
+                isShowingContent: isShowingContent,
+                usesWideAnswerStack: usesWideAnswerStack
+            ),
+            alignment: .bottom
+        )
     }
 
     private func reviewLandscapeActionPanel(
@@ -6933,14 +7725,25 @@ struct ReviewView: View {
     ) -> some View {
         let isExpanded = metrics.isPadWidth
         let buttonScale = metrics.reviewButtonScale
+        let usesWideAnswerStack = usesWideAnswerActionStack(metrics: metrics)
 
         return VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            reviewActionContent(for: currentPoint, isExpanded: isExpanded, buttonScale: buttonScale)
+            reviewActionContent(
+                for: currentPoint,
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
+                usesWideAnswerStack: usesWideAnswerStack
+            )
                 .frame(maxWidth: .infinity)
                 .frame(
-                    height: actionRegionMinimumHeight(isExpanded: isExpanded, buttonScale: buttonScale),
+                    height: actionRegionMinimumHeight(
+                        isExpanded: isExpanded,
+                        buttonScale: buttonScale,
+                        isShowingContent: isShowingContent,
+                        usesWideAnswerStack: usesWideAnswerStack
+                    ),
                     alignment: .center
                 )
 
@@ -7071,6 +7874,18 @@ struct ReviewView: View {
                 rebuildReviewQueue(avoiding: currentPointID)
             }
         }
+        #if os(macOS)
+        .background {
+            KikariaMacReviewKeyboardHandler(
+                isEnabled: currentPoint != nil && !isShowingScopePanel,
+                onSpace: handleMacSpaceShortcut,
+                onReturn: handleMacReturnShortcut,
+                onMastered: handleMacMasteredShortcut,
+                onReinforcement: handleMacReinforcementShortcut
+            )
+            .frame(width: 0, height: 0)
+        }
+        #endif
     }
 
     private func reviewDragGesture(containerHeight: CGFloat) -> some Gesture {
@@ -7245,6 +8060,12 @@ struct ReviewView: View {
         moveToNextInQueue()
     }
 
+    private func advanceToNextPoint() {
+        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+            chooseRandomPoint()
+        }
+    }
+
     private func rebuildReviewQueue(avoiding avoidedFirstID: KnowledgePoint.ID? = nil) {
         var shuffledIDs = matchingPointIDs.shuffled()
 
@@ -7410,9 +8231,22 @@ struct ReviewView: View {
 
     private func addCurrentPointToReinforcementAndAdvance() {
         addCurrentPointToReinforcement(shouldShowToast: true)
-        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-            chooseRandomPoint()
-        }
+        advanceToNextPoint()
+    }
+
+    private func markCurrentPointAsMasteredAndAdvance() {
+        markCurrentPointAsMastered()
+        advanceToNextPoint()
+    }
+
+    private func removeCurrentPointFromReinforcementAndAdvance() {
+        removeCurrentPointFromReinforcement(shouldShowToast: true)
+        advanceToNextPoint()
+    }
+
+    private func removeCurrentPointFromMasteredAndAdvance() {
+        removeCurrentPointFromMastered(shouldShowToast: true)
+        advanceToNextPoint()
     }
 
     private func markCurrentPointAsMastered() {
@@ -7504,6 +8338,72 @@ struct ReviewView: View {
     private func reinforcementAddedToastTitle(for title: String, count: Int) -> String {
         count <= 1 ? "\(title) 已加入重点集锦" : "\(title) 已加入重点集锦 ×\(count)"
     }
+
+    #if os(macOS)
+    private func handleMacSpaceShortcut() {
+        guard currentPoint != nil,
+              !isShowingScopePanel
+        else {
+            return
+        }
+
+        if isShowingContent {
+            advanceToNextPoint()
+        } else if isShowingHint {
+            withAnimation(revealAnimation) {
+                revealContent()
+            }
+        } else {
+            withAnimation(revealAnimation) {
+                revealHint()
+            }
+        }
+    }
+
+    private func handleMacReturnShortcut() {
+        guard currentPoint != nil,
+              !isShowingScopePanel
+        else {
+            return
+        }
+
+        if isShowingContent {
+            advanceToNextPoint()
+        } else {
+            withAnimation(revealAnimation) {
+                revealContent()
+            }
+        }
+    }
+
+    private func handleMacMasteredShortcut() {
+        guard isShowingContent,
+              !isShowingScopePanel
+        else {
+            return
+        }
+
+        if mode.isMastered {
+            removeCurrentPointFromMasteredAndAdvance()
+        } else if currentPoint?.isMastered == false {
+            markCurrentPointAsMasteredAndAdvance()
+        }
+    }
+
+    private func handleMacReinforcementShortcut() {
+        guard isShowingContent,
+              !isShowingScopePanel
+        else {
+            return
+        }
+
+        if mode.isReinforcement {
+            removeCurrentPointFromReinforcementAndAdvance()
+        } else {
+            addCurrentPointToReinforcementAndAdvance()
+        }
+    }
+    #endif
 }
 
 private enum ReviewActionTone {
@@ -7513,10 +8413,127 @@ private enum ReviewActionTone {
     case red
 }
 
+private enum KikariaMacShortcutKey: String, Identifiable {
+    case space
+    case returnKey
+    case k
+    case m
+    case l
+    case semicolon
+    case quote
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .space:
+            return ""
+        case .returnKey:
+            return "↩"
+        case .k:
+            return "K"
+        case .m:
+            return "M"
+        case .l:
+            return "L"
+        case .semicolon:
+            return ";"
+        case .quote:
+            return "'"
+        }
+    }
+}
+
+#if os(macOS)
+private struct KikariaMacShortcutHintGroup: View {
+    let keys: [KikariaMacShortcutKey]
+    var scale: CGFloat = 1
+    var usesLightForeground = false
+
+    var body: some View {
+        if !keys.isEmpty {
+            HStack(spacing: 4 * max(scale, 1)) {
+                ForEach(keys) { key in
+                    KikariaMacShortcutBadge(
+                        key: key,
+                        scale: scale,
+                        usesLightForeground: usesLightForeground
+                    )
+                }
+            }
+            .fixedSize()
+        }
+    }
+}
+
+private struct KikariaMacShortcutBadge: View {
+    let key: KikariaMacShortcutKey
+    var scale: CGFloat = 1
+    var usesLightForeground = false
+
+    private var resolvedScale: CGFloat {
+        max(scale, 1)
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6 * resolvedScale, style: .continuous)
+                .fill(Color.white.opacity(usesLightForeground ? 0.16 : 0.30))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6 * resolvedScale, style: .continuous)
+                        .stroke(Color.white.opacity(usesLightForeground ? 0.30 : 0.46), lineWidth: 0.8 * resolvedScale)
+                }
+
+            if key == .space {
+                KikariaMacSpacebarSymbol(usesLightForeground: usesLightForeground)
+                    .frame(width: 13 * resolvedScale, height: 9 * resolvedScale)
+            } else {
+                KikariaTypography.serifText(key.title, size: 10 * resolvedScale, weight: .semibold)
+                    .foregroundStyle(
+                        usesLightForeground
+                            ? Color.white.opacity(0.86)
+                            : KikariaTheme.deepText.opacity(0.68)
+                    )
+            }
+        }
+        .frame(width: 23 * resolvedScale, height: 21 * resolvedScale)
+    }
+}
+
+private struct KikariaMacSpacebarSymbol: View {
+    var usesLightForeground = false
+
+    var body: some View {
+        GeometryReader { proxy in
+            Path { path in
+                let width = proxy.size.width
+                let height = proxy.size.height
+                let leftX = width * 0.14
+                let rightX = width * 0.86
+                let bottomY = height * 0.76
+                let topY = height * 0.34
+
+                path.move(to: CGPoint(x: leftX, y: topY))
+                path.addLine(to: CGPoint(x: leftX, y: bottomY))
+                path.addLine(to: CGPoint(x: rightX, y: bottomY))
+                path.addLine(to: CGPoint(x: rightX, y: topY))
+            }
+            .stroke(
+                usesLightForeground ? Color.white.opacity(0.86) : KikariaTheme.deepText.opacity(0.68),
+                style: StrokeStyle(lineWidth: 1.35, lineCap: .round, lineJoin: .round)
+            )
+        }
+    }
+}
+#endif
+
 private struct ReviewAnsweredActionGrid<TopButton: View, BottomButton: View>: View {
     let next: () -> Void
     var isExpanded = false
     var buttonScale: CGFloat = 1
+    var usesWideAnswerStack = false
     private let topButton: () -> TopButton
     private let bottomButton: () -> BottomButton
 
@@ -7524,18 +8541,55 @@ private struct ReviewAnsweredActionGrid<TopButton: View, BottomButton: View>: Vi
         next: @escaping () -> Void,
         isExpanded: Bool = false,
         buttonScale: CGFloat = 1,
+        usesWideAnswerStack: Bool = false,
         @ViewBuilder topButton: @escaping () -> TopButton,
         @ViewBuilder bottomButton: @escaping () -> BottomButton
     ) {
         self.next = next
         self.isExpanded = isExpanded
         self.buttonScale = buttonScale
+        self.usesWideAnswerStack = usesWideAnswerStack
         self.topButton = topButton
         self.bottomButton = bottomButton
     }
 
+    @ViewBuilder
     var body: some View {
-        GeometryReader { proxy in
+        if usesWideAnswerStack {
+            wideStack
+        } else {
+            compactGrid
+        }
+    }
+
+    private var wideStack: some View {
+        let scale = max(buttonScale, 1)
+        let spacing: CGFloat = (isExpanded ? 14 : 12) * scale
+        let buttonHeight = (isExpanded ? 76 : 66) * scale
+
+        return VStack(spacing: spacing) {
+            topButton()
+
+            bottomButton()
+
+            ReviewActionButton(
+                title: "下一个",
+                systemImage: "shuffle",
+                isPrimary: false,
+                tone: .amber,
+                isExpanded: isExpanded,
+                buttonScale: scale,
+                minHeight: buttonHeight,
+                shortcutHints: [.space, .returnKey]
+            ) {
+                next()
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var compactGrid: some View {
+        return GeometryReader { proxy in
             let scale = max(buttonScale, 1)
             let spacing: CGFloat = (isExpanded ? 14 : 12) * scale
             let availableWidth = max(0, proxy.size.width - spacing)
@@ -7558,7 +8612,8 @@ private struct ReviewAnsweredActionGrid<TopButton: View, BottomButton: View>: Vi
                     isVerticalContent: true,
                     isExpanded: isExpanded,
                     buttonScale: scale,
-                    minHeight: gridHeight
+                    minHeight: gridHeight,
+                    shortcutHints: [.space, .returnKey]
                 ) {
                     next()
                 }
@@ -7573,6 +8628,7 @@ private struct NormalReviewAnsweredActionGrid: View {
     let point: KnowledgePoint
     var isExpanded = false
     var buttonScale: CGFloat = 1
+    var usesWideAnswerStack = false
     let addToReinforcement: () -> Void
     let markAsMastered: () -> Void
     let next: () -> Void
@@ -7581,19 +8637,31 @@ private struct NormalReviewAnsweredActionGrid: View {
         let scale = max(buttonScale, 1)
         let buttonHeight = (isExpanded ? 76 : 66) * scale
 
-        ReviewAnsweredActionGrid(next: next, isExpanded: isExpanded, buttonScale: scale) {
+        ReviewAnsweredActionGrid(
+            next: next,
+            isExpanded: isExpanded,
+            buttonScale: scale,
+            usesWideAnswerStack: usesWideAnswerStack
+        ) {
             ReviewActionButton(
                 title: point.reinforcementCount > 0 ? "再次加入 ×\(point.reinforcementCount)" : "加入重点集锦",
                 systemImage: "plus.circle.fill",
                 isPrimary: true,
                 isExpanded: isExpanded,
                 buttonScale: scale,
-                minHeight: buttonHeight
+                minHeight: buttonHeight,
+                shortcutHints: [.l, .semicolon, .quote]
             ) {
                 addToReinforcement()
             }
         } bottomButton: {
-            MasteredReviewButton(isMastered: point.isMastered, isExpanded: isExpanded, buttonScale: scale, minHeight: buttonHeight) {
+            MasteredReviewButton(
+                isMastered: point.isMastered,
+                isExpanded: isExpanded,
+                buttonScale: scale,
+                minHeight: buttonHeight,
+                shortcutHints: point.isMastered ? [] : [.k, .m]
+            ) {
                 markAsMastered()
             }
         }
@@ -7604,6 +8672,7 @@ private struct ReinforcementReviewAnsweredActionGrid: View {
     let point: KnowledgePoint
     var isExpanded = false
     var buttonScale: CGFloat = 1
+    var usesWideAnswerStack = false
     let removeFromReinforcement: () -> Void
     let markAsMastered: () -> Void
     let next: () -> Void
@@ -7612,7 +8681,12 @@ private struct ReinforcementReviewAnsweredActionGrid: View {
         let scale = max(buttonScale, 1)
         let buttonHeight = (isExpanded ? 76 : 66) * scale
 
-        ReviewAnsweredActionGrid(next: next, isExpanded: isExpanded, buttonScale: scale) {
+        ReviewAnsweredActionGrid(
+            next: next,
+            isExpanded: isExpanded,
+            buttonScale: scale,
+            usesWideAnswerStack: usesWideAnswerStack
+        ) {
             ReviewActionButton(
                 title: "移出重点集锦",
                 systemImage: "minus.circle.fill",
@@ -7620,12 +8694,19 @@ private struct ReinforcementReviewAnsweredActionGrid: View {
                 tone: .red,
                 isExpanded: isExpanded,
                 buttonScale: scale,
-                minHeight: buttonHeight
+                minHeight: buttonHeight,
+                shortcutHints: [.l, .semicolon, .quote]
             ) {
                 removeFromReinforcement()
             }
         } bottomButton: {
-            MasteredReviewButton(isMastered: point.isMastered, isExpanded: isExpanded, buttonScale: scale, minHeight: buttonHeight) {
+            MasteredReviewButton(
+                isMastered: point.isMastered,
+                isExpanded: isExpanded,
+                buttonScale: scale,
+                minHeight: buttonHeight,
+                shortcutHints: point.isMastered ? [] : [.k, .m]
+            ) {
                 markAsMastered()
             }
         }
@@ -7636,6 +8717,7 @@ private struct MasteredReviewAnsweredActionGrid: View {
     let point: KnowledgePoint
     var isExpanded = false
     var buttonScale: CGFloat = 1
+    var usesWideAnswerStack = false
     let addToReinforcement: () -> Void
     let removeFromMastered: () -> Void
     let next: () -> Void
@@ -7644,14 +8726,20 @@ private struct MasteredReviewAnsweredActionGrid: View {
         let scale = max(buttonScale, 1)
         let buttonHeight = (isExpanded ? 76 : 66) * scale
 
-        ReviewAnsweredActionGrid(next: next, isExpanded: isExpanded, buttonScale: scale) {
+        ReviewAnsweredActionGrid(
+            next: next,
+            isExpanded: isExpanded,
+            buttonScale: scale,
+            usesWideAnswerStack: usesWideAnswerStack
+        ) {
             ReviewActionButton(
                 title: point.reinforcementCount > 0 ? "再次加入 ×\(point.reinforcementCount)" : "加入重点集锦",
                 systemImage: "plus.circle.fill",
                 isPrimary: true,
                 isExpanded: isExpanded,
                 buttonScale: scale,
-                minHeight: buttonHeight
+                minHeight: buttonHeight,
+                shortcutHints: [.l, .semicolon, .quote]
             ) {
                 addToReinforcement()
             }
@@ -7663,7 +8751,8 @@ private struct MasteredReviewAnsweredActionGrid: View {
                 tone: .red,
                 isExpanded: isExpanded,
                 buttonScale: scale,
-                minHeight: buttonHeight
+                minHeight: buttonHeight,
+                shortcutHints: [.k, .m]
             ) {
                 removeFromMastered()
             }
@@ -7682,6 +8771,7 @@ private struct ReviewActionButton: View {
     var isExpanded = false
     var buttonScale: CGFloat = 1
     var minHeight: CGFloat? = nil
+    var shortcutHints: [KikariaMacShortcutKey] = []
     let action: () -> Void
 
     private var primaryFill: AnyShapeStyle {
@@ -7826,13 +8916,39 @@ private struct ReviewActionButton: View {
                 Image(systemName: systemImage)
                     .font(.system(size: (isExpanded ? 28 : 20) * scale, weight: .semibold))
 
+                #if os(macOS)
+                HStack(spacing: 8 * scale) {
+                    Text(title)
+                        .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
+
+                    KikariaMacShortcutHintGroup(
+                        keys: shortcutHints,
+                        scale: scale,
+                        usesLightForeground: isPrimary || tone == .amber
+                    )
+                }
+                #else
                 Text(title)
                     .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
+                #endif
             }
             .frame(maxWidth: .infinity)
         } else {
+            #if os(macOS)
+            HStack(spacing: 8 * scale) {
+                Label(title, systemImage: systemImage)
+                    .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
+
+                KikariaMacShortcutHintGroup(
+                    keys: shortcutHints,
+                    scale: scale,
+                    usesLightForeground: isPrimary || tone == .amber
+                )
+            }
+            #else
             Label(title, systemImage: systemImage)
                 .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
+            #endif
         }
     }
 }
@@ -7843,6 +8959,7 @@ private struct MasteredReviewButton: View {
     var isExpanded = false
     var buttonScale: CGFloat = 1
     var minHeight: CGFloat? = nil
+    var shortcutHints: [KikariaMacShortcutKey] = []
     let action: () -> Void
 
     var body: some View {
@@ -7857,6 +8974,14 @@ private struct MasteredReviewButton: View {
 
                 Text(isMastered ? "已设定为掌握" : "加入已掌握")
                     .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
+
+                #if os(macOS)
+                KikariaMacShortcutHintGroup(
+                    keys: shortcutHints,
+                    scale: scale,
+                    usesLightForeground: !isMastered
+                )
+                #endif
             }
             .foregroundStyle(isMastered ? KikariaTheme.softText : .white)
             .frame(maxWidth: .infinity)
@@ -8358,8 +9483,7 @@ private struct ReinforcementStartButton: View {
 
             Spacer()
 
-            Text("\(count)")
-                .font(KikariaTypography.number(size: 20, weight: .bold))
+            KikariaTypography.mixedText("\(count)", size: 20, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.sky)
 
@@ -8379,14 +9503,13 @@ private struct MasteredStartButton: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Text("开始已掌握复习")
+            Text("开始复习")
                 .font(KikariaTypography.chineseHeadline(size: 20))
                 .foregroundStyle(KikariaTheme.deepText)
 
             Spacer()
 
-            Text("\(count)")
-                .font(KikariaTypography.number(size: 20, weight: .bold))
+            KikariaTypography.mixedText("\(count)", size: 20, weight: .bold)
                 .monospacedDigit()
                 .foregroundStyle(KikariaTheme.masteredGreen)
 
@@ -8423,14 +9546,12 @@ private struct ReinforcementCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Text(point.title)
-                    .font(.system(size: 22, weight: .semibold, design: .serif))
+                KikariaTypography.mixedText(point.title, size: 22, weight: .semibold)
                     .foregroundStyle(KikariaTheme.deepText)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if showsReinforcementCountBadge, point.reinforcementCount > 0 {
-                    Text("×\(point.reinforcementCount)")
-                        .font(KikariaTypography.number(size: 14, weight: .bold))
+                    KikariaTypography.mixedText("×\(point.reinforcementCount)", size: 14, weight: .bold)
                         .monospacedDigit()
                         .foregroundStyle(KikariaTheme.sky)
                         .padding(.horizontal, 11)
@@ -8511,8 +9632,7 @@ private struct KikariaToast: View {
     let message: String
 
     var body: some View {
-        Text(message)
-            .font(KikariaTypography.chineseBody(size: 14, weight: .semibold))
+        KikariaTypography.mixedText(message, size: 14, weight: .semibold)
             .foregroundStyle(KikariaTheme.deepText)
             .multilineTextAlignment(.center)
             .lineLimit(2)
@@ -8598,8 +9718,7 @@ private struct LightTagRow: View {
     var body: some View {
         CenteredTagFlow(spacing: isExpanded ? 10 : 8, rowSpacing: isExpanded ? 9 : 8) {
             ForEach(tags, id: \.self) { tag in
-                Text(tag)
-                    .font(KikariaTypography.tag(size: isExpanded ? 13 : 12))
+                KikariaTypography.mixedText(tag, size: isExpanded ? 13 : 12, weight: .semibold)
                     .foregroundStyle(KikariaTheme.softText)
                     .padding(.horizontal, isExpanded ? 13 : 11)
                     .padding(.vertical, isExpanded ? 7 : 6)
@@ -8615,8 +9734,7 @@ private struct TodayReviewCountPill: View {
     var isExpanded = false
 
     var body: some View {
-        Text("该知识点今日复习 \(count) 次")
-            .font(KikariaTypography.chineseCaption(size: isExpanded ? 13 : 12, weight: .semibold))
+        KikariaTypography.mixedText("该知识点今日复习 \(count) 次", size: isExpanded ? 13 : 12, weight: .semibold)
             .foregroundStyle(KikariaTheme.deepText.opacity(0.78))
             .monospacedDigit()
             .padding(.horizontal, isExpanded ? 20 : 18)
@@ -8721,12 +9839,10 @@ private struct SoftEmptyState: View {
                 .font(.system(size: 42))
                 .foregroundStyle(KikariaTheme.sky)
 
-            Text(title)
-                .font(KikariaTypography.chineseHeadline(size: 20, weight: .bold))
+            KikariaTypography.mixedText(title, size: 20, weight: .bold)
                 .foregroundStyle(KikariaTheme.deepText)
 
-            Text(subtitle)
-                .font(KikariaTypography.chineseBody(size: 15))
+            KikariaTypography.mixedText(subtitle, size: 15)
                 .foregroundStyle(KikariaTheme.softText)
                 .multilineTextAlignment(.center)
         }

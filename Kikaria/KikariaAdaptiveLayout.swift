@@ -7,6 +7,15 @@
 
 import SwiftUI
 
+#if os(iOS)
+typealias KikariaHorizontalSizeClass = UserInterfaceSizeClass
+#else
+enum KikariaHorizontalSizeClass {
+    case compact
+    case regular
+}
+#endif
+
 enum KikariaAdaptiveLayout {
     enum WidthCategory {
         case compact
@@ -16,9 +25,9 @@ enum KikariaAdaptiveLayout {
 
     struct Metrics {
         let size: CGSize
-        let horizontalSizeClass: UserInterfaceSizeClass?
+        let horizontalSizeClass: KikariaHorizontalSizeClass?
 
-        init(size: CGSize, horizontalSizeClass: UserInterfaceSizeClass? = nil) {
+        init(size: CGSize, horizontalSizeClass: KikariaHorizontalSizeClass? = nil) {
             self.size = size
             self.horizontalSizeClass = horizontalSizeClass
         }
@@ -455,7 +464,7 @@ enum KikariaAdaptiveLayout {
 
     static func metrics(
         for size: CGSize,
-        horizontalSizeClass: UserInterfaceSizeClass? = nil
+        horizontalSizeClass: KikariaHorizontalSizeClass? = nil
     ) -> Metrics {
         Metrics(size: size, horizontalSizeClass: horizontalSizeClass)
     }
@@ -485,7 +494,9 @@ enum KikariaAdaptiveLayout {
 }
 
 struct KikariaAdaptivePage<Content: View>: View {
+    #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     private let content: (KikariaAdaptiveLayout.Metrics) -> Content
 
     init(@ViewBuilder content: @escaping (KikariaAdaptiveLayout.Metrics) -> Content) {
@@ -494,7 +505,13 @@ struct KikariaAdaptivePage<Content: View>: View {
 
     var body: some View {
         GeometryReader { proxy in
-            content(KikariaAdaptiveLayout.metrics(for: proxy.size, horizontalSizeClass: horizontalSizeClass))
+            #if os(iOS)
+            let resolvedHorizontalSizeClass = horizontalSizeClass
+            #else
+            let resolvedHorizontalSizeClass: KikariaHorizontalSizeClass? = .regular
+            #endif
+
+            content(KikariaAdaptiveLayout.metrics(for: proxy.size, horizontalSizeClass: resolvedHorizontalSizeClass))
                 .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }

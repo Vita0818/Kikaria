@@ -7,7 +7,11 @@
 
 import SwiftMath
 import SwiftUI
+#if os(iOS)
 import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 enum KikariaFormulaDisplayStyle {
     case inline
@@ -70,7 +74,7 @@ struct KikariaMathFormulaView: View {
     }
 }
 
-private struct KikariaSwiftMathLabel: UIViewRepresentable {
+private struct KikariaSwiftMathLabel {
     let latex: String
     var displayStyle: KikariaFormulaDisplayStyle
     var fontSize: CGFloat
@@ -78,7 +82,10 @@ private struct KikariaSwiftMathLabel: UIViewRepresentable {
     var alignment: KikariaFormulaAlignment
 
     @Binding var renderFailed: Bool
+}
 
+#if os(iOS)
+extension KikariaSwiftMathLabel: UIViewRepresentable {
     func makeUIView(context: Context) -> MTMathUILabel {
         let label = MTMathUILabel()
         label.backgroundColor = .clear
@@ -124,6 +131,57 @@ private struct KikariaSwiftMathLabel: UIViewRepresentable {
             height: ceil(max(size.height + expansion.height, 1))
         )
     }
+}
+#elseif os(macOS)
+extension KikariaSwiftMathLabel: NSViewRepresentable {
+    func makeNSView(context: Context) -> MTMathUILabel {
+        let label = MTMathUILabel()
+        label.setContentHuggingPriority(.required, for: .horizontal)
+        label.setContentHuggingPriority(.required, for: .vertical)
+        label.setContentCompressionResistancePriority(.required, for: .horizontal)
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        return label
+    }
+
+    func updateNSView(_ label: MTMathUILabel, context: Context) {
+        label.displayErrorInline = false
+        label.labelMode = labelMode
+        label.textAlignment = textAlignment
+        label.textColor = MTColor(textColor)
+        label.contentInsets = contentInsets
+
+        if let mathFont = MTFontManager().font(withName: MathFont.latinModernFont.rawValue, size: fontSize) {
+            label.font = mathFont
+        }
+        label.fontSize = fontSize
+        label.latex = latex
+
+        label.invalidateIntrinsicContentSize()
+
+        let hasError = label.error != nil
+        if renderFailed != hasError {
+            DispatchQueue.main.async {
+                renderFailed = hasError
+            }
+        }
+    }
+
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        nsView label: MTMathUILabel,
+        context: Context
+    ) -> CGSize? {
+        let size = label.intrinsicContentSize
+        let expansion = measurementSafetyExpansion
+        return CGSize(
+            width: ceil(max(size.width + expansion.width, 1)),
+            height: ceil(max(size.height + expansion.height, 1))
+        )
+    }
+}
+#endif
+
+private extension KikariaSwiftMathLabel {
 
     private var labelMode: MTMathUILabelMode {
         switch displayStyle {
