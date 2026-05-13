@@ -30,6 +30,7 @@ struct KikariaMathFormulaView: View {
     var fontSize: CGFloat
     var textColor: Color
     var alignment: KikariaFormulaAlignment
+    var usesGenerousVerticalSpacing = false
 
     @State private var renderFailed = false
 
@@ -43,6 +44,7 @@ struct KikariaMathFormulaView: View {
                 fontSize: fontSize,
                 textColor: textColor,
                 alignment: alignment,
+                usesGenerousVerticalSpacing: usesGenerousVerticalSpacing,
                 renderFailed: $renderFailed
             )
             .fixedSize()
@@ -80,6 +82,7 @@ private struct KikariaSwiftMathLabel {
     var fontSize: CGFloat
     var textColor: Color
     var alignment: KikariaFormulaAlignment
+    var usesGenerousVerticalSpacing: Bool
 
     @Binding var renderFailed: Bool
 }
@@ -202,6 +205,17 @@ private extension KikariaSwiftMathLabel {
     }
 
     private var contentInsets: MTEdgeInsets {
+        #if os(macOS)
+        if usesGenerousVerticalSpacing {
+            switch displayStyle {
+            case .inline:
+                return MTEdgeInsets(top: 4, left: 0, bottom: 4, right: 1)
+            case .block:
+                return MTEdgeInsets(top: 10, left: 4, bottom: 10, right: 8)
+            }
+        }
+        #endif
+
         switch displayStyle {
         case .inline:
             return MTEdgeInsets(top: 2, left: 0, bottom: 2, right: 1)
@@ -211,6 +225,17 @@ private extension KikariaSwiftMathLabel {
     }
 
     private var measurementSafetyExpansion: CGSize {
+        #if os(macOS)
+        if usesGenerousVerticalSpacing {
+            switch displayStyle {
+            case .inline:
+                return CGSize(width: 1, height: 8)
+            case .block:
+                return CGSize(width: 8, height: 16)
+            }
+        }
+        #endif
+
         switch displayStyle {
         case .inline:
             return CGSize(width: 0, height: 2)

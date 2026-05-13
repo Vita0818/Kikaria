@@ -13,6 +13,8 @@ struct KikariaMathText: View {
     var textColor: Color
     var accentColor: Color
     var lineSpacing: CGFloat
+    var usesSystemChineseFont: Bool
+    var usesGenerousFormulaSpacing: Bool
     var onHorizontalMathDrag: (() -> Void)?
 
     private let tokens: [KikariaLatexToken]
@@ -23,6 +25,8 @@ struct KikariaMathText: View {
         textColor: Color,
         accentColor: Color,
         lineSpacing: CGFloat = 3,
+        usesSystemChineseFont: Bool = false,
+        usesGenerousFormulaSpacing: Bool = false,
         onHorizontalMathDrag: (() -> Void)? = nil
     ) {
         self.text = text
@@ -30,16 +34,17 @@ struct KikariaMathText: View {
         self.textColor = textColor
         self.accentColor = accentColor
         self.lineSpacing = lineSpacing
+        self.usesSystemChineseFont = usesSystemChineseFont
+        self.usesGenerousFormulaSpacing = usesGenerousFormulaSpacing
         self.onHorizontalMathDrag = onHorizontalMathDrag
         tokens = KikariaLatexParser.tokenize(text)
     }
 
     var body: some View {
         if let unchangedText = unchangedPlainText {
-            Text(unchangedText)
-                .font(.system(size: fontSize, weight: .regular, design: .serif))
+            mathPlainText(unchangedText)
                 .foregroundStyle(textColor)
-                .lineSpacing(lineSpacing)
+                .lineSpacing(effectiveLineSpacing)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
         } else {
@@ -47,7 +52,7 @@ struct KikariaMathText: View {
                 ForEach(Array(displayBlocks.enumerated()), id: \.offset) { _, block in
                     switch block {
                     case .paragraph(let segments):
-                        KikariaInlineMathFlow(horizontalSpacing: 0.5, rowSpacing: lineSpacing) {
+                        KikariaInlineMathFlow(horizontalSpacing: 0.5, rowSpacing: effectiveLineSpacing) {
                             ForEach(Array(inlineItems(from: segments).enumerated()), id: \.offset) { _, item in
                                 inlineItemView(item)
                             }
@@ -164,11 +169,31 @@ struct KikariaMathText: View {
     }
 
     private var blockVerticalSpacing: CGFloat {
-        max(lineSpacing + 6, 9)
+        let baseSpacing = max(effectiveLineSpacing + 6, 9)
+        return usesGenerousFormulaSpacing ? max(baseSpacing, 15) : baseSpacing
+    }
+
+    private var effectiveLineSpacing: CGFloat {
+        usesGenerousFormulaSpacing ? max(lineSpacing, 7) : lineSpacing
     }
 
     private var blockFontSize: CGFloat {
         min(max(fontSize * 1.34, fontSize + 5), fontSize + 8)
+    }
+
+    private func mathPlainText(_ value: String) -> Text {
+        #if os(macOS)
+        if usesSystemChineseFont {
+            return KikariaTypography.mixedText(
+                value,
+                chineseFont: .system(size: fontSize, weight: .regular),
+                serifFont: .system(size: fontSize, weight: .regular, design: .serif)
+            )
+        }
+        #endif
+
+        return Text(value)
+            .font(.system(size: fontSize, weight: .regular, design: .serif))
     }
 
     private func inlineItems(from segments: [KikariaInlineMathSegment]) -> [KikariaInlineMathItem] {
@@ -230,8 +255,7 @@ struct KikariaMathText: View {
     private func inlineItemView(_ item: KikariaInlineMathItem) -> some View {
         switch item {
         case .text(let value):
-            Text(value)
-                .font(.system(size: fontSize, weight: .regular, design: .serif))
+            mathPlainText(value)
                 .foregroundStyle(textColor)
                 .fixedSize()
         case .inlineMath(let source, let body):
@@ -240,8 +264,7 @@ struct KikariaMathText: View {
             HStack(spacing: 0) {
                 inlineFormulaView(source: source, body: body)
 
-                Text(trailingText)
-                    .font(.system(size: fontSize, weight: .regular, design: .serif))
+                mathPlainText(trailingText)
                     .foregroundStyle(textColor)
                     .fixedSize()
             }
@@ -256,13 +279,16 @@ struct KikariaMathText: View {
             displayStyle: .inline,
             fontSize: fontSize * 1.02,
             textColor: textColor,
-            alignment: .left
+            alignment: .left,
+            usesGenerousVerticalSpacing: usesGenerousFormulaSpacing
         )
             .fixedSize()
     }
 
     private func blockMathView(source: String, body: String) -> some View {
-        ViewThatFits(in: .horizontal) {
+        let verticalPadding: CGFloat = usesGenerousFormulaSpacing ? 14 : 9
+
+        return ViewThatFits(in: .horizontal) {
             HStack {
                 Spacer(minLength: 0)
 
@@ -271,13 +297,13 @@ struct KikariaMathText: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 9)
+            .padding(.vertical, verticalPadding)
             .frame(maxWidth: .infinity, alignment: .center)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 blockRenderer(source: source, body: body)
                     .padding(.horizontal, 8)
-                    .padding(.vertical, 9)
+                    .padding(.vertical, verticalPadding)
             }
             .contentShape(Rectangle())
             .simultaneousGesture(mathHorizontalDragSuppressionGesture)
@@ -316,7 +342,8 @@ struct KikariaMathText: View {
             displayStyle: .block,
             fontSize: blockFontSize,
             textColor: textColor,
-            alignment: .center
+            alignment: .center,
+            usesGenerousVerticalSpacing: usesGenerousFormulaSpacing
         )
             .fixedSize()
     }

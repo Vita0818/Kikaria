@@ -7574,8 +7574,7 @@ struct ReviewView: View {
         let titleSize = 40 * metrics.reviewScale
 
         return VStack(spacing: isExpanded ? 20 : 18) {
-            Text(currentPoint.title)
-                .font(.system(size: titleSize, weight: .semibold, design: .serif))
+            reviewTitleText(currentPoint.title, titleSize: titleSize)
                 .foregroundStyle(KikariaTheme.deepText)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.72)
@@ -7586,6 +7585,19 @@ struct ReviewView: View {
             TodayReviewCountPill(count: currentTodayReviewCount, isExpanded: isExpanded)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func reviewTitleText(_ title: String, titleSize: CGFloat) -> Text {
+        #if os(macOS)
+        return KikariaTypography.mixedText(
+            title,
+            chineseFont: .system(size: titleSize, weight: .semibold),
+            serifFont: .system(size: titleSize, weight: .semibold, design: .serif)
+        )
+        #else
+        return Text(title)
+            .font(.system(size: titleSize, weight: .semibold, design: .serif))
+        #endif
     }
 
     private func centralContentStack(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
@@ -9666,7 +9678,7 @@ private struct FloatingInfoCard: View {
     var onHorizontalMathDrag: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: isExpanded ? 12 : 10) {
+        VStack(alignment: .leading, spacing: bodySpacing) {
             Text(title)
                 .font(KikariaTypography.chineseHeadline(size: isExpanded ? 15 : 14, weight: .bold))
                 .foregroundStyle(KikariaTheme.sky)
@@ -9676,7 +9688,9 @@ private struct FloatingInfoCard: View {
                 fontSize: isExpanded ? 18 : 17,
                 textColor: KikariaTheme.deepText,
                 accentColor: KikariaTheme.sky,
-                lineSpacing: isExpanded ? 4 : 3,
+                lineSpacing: mathLineSpacing,
+                usesSystemChineseFont: usesMacReviewMathRendering,
+                usesGenerousFormulaSpacing: usesMacReviewMathRendering,
                 onHorizontalMathDrag: onHorizontalMathDrag
             )
         }
@@ -9684,6 +9698,30 @@ private struct FloatingInfoCard: View {
         .padding(isExpanded ? 22 : 18)
         .frame(maxWidth: isExpanded ? 820 : 700)
         .liquidGlassCard(cornerRadius: isExpanded ? 28 : 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.42, shadowOpacity: 0.14, shadowRadius: isExpanded ? 20 : 18, shadowY: isExpanded ? 11 : 10)
+    }
+
+    private var bodySpacing: CGFloat {
+        #if os(macOS)
+        return isExpanded ? 16 : 14
+        #else
+        return isExpanded ? 12 : 10
+        #endif
+    }
+
+    private var mathLineSpacing: CGFloat {
+        #if os(macOS)
+        return isExpanded ? 8 : 7
+        #else
+        return isExpanded ? 4 : 3
+        #endif
+    }
+
+    private var usesMacReviewMathRendering: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return false
+        #endif
     }
 
     private var contentVerticalDragSuppressionGesture: some Gesture {
