@@ -20,6 +20,8 @@
 		B60000012FB1800000000008 /* Kikaria/KikariaMathText.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000012FB1800000000018 /* Kikaria/KikariaMathText.swift */; };
 		B60000012FB1800000000009 /* Kikaria/KikariaMathFormulaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60000012FB1800000000019 /* Kikaria/KikariaMathFormulaView.swift */; };
 		B60000012FB180000000000A /* SwiftMath in Frameworks */ = {isa = PBXBuildFile; productRef = B50000012FA9000000000002 /* SwiftMath */; };
+		B70000012FBE000000000001 /* Presets in Resources */ = {isa = PBXBuildFile; fileRef = B70000012FBE000000000011 /* Presets */; };
+		B70000012FBE000000000002 /* Presets in Resources */ = {isa = PBXBuildFile; fileRef = B70000012FBE000000000011 /* Presets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +79,7 @@
 		B60000012FB1800000000017 /* Kikaria/KikariaAdaptiveLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kikaria/KikariaAdaptiveLayout.swift; sourceTree = "<group>"; };
 		B60000012FB1800000000018 /* Kikaria/KikariaMathText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kikaria/KikariaMathText.swift; sourceTree = "<group>"; };
 		B60000012FB1800000000019 /* Kikaria/KikariaMathFormulaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kikaria/KikariaMathFormulaView.swift; sourceTree = "<group>"; };
+		B70000012FBE000000000011 /* Presets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Presets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -162,6 +165,7 @@
 		58D75AFA2FA48E29005294D4 = {
 			isa = PBXGroup;
 			children = (
+				B70000012FBE000000000011 /* Presets */,
 				58D75B052FA48E29005294D4 /* Kikaria */,
 				A10000012FA9000000000002 /* KikariaWidget */,
 				58BD4DD12FB17CC400863A49 /* KikariaMac */,
@@ -369,6 +373,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B70000012FBE000000000002 /* Presets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -390,6 +395,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B70000012FBE000000000001 /* Presets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -770,12 +770,20 @@ private func studyProgressNotificationBody(for presetName: String) -> String {
     "今天的「\(presetName)」学习量尚未达标哦，抓紧学习吧！"
 }
 
-private let retiredBuiltInTemplatePresetID = "template"
+private let retiredBuiltInPresetIDs: Set<String> = [
+    "advanced-math",
+    "college-english",
+    "college-physics",
+    "anatomy",
+    "template",
+    "builtin-university-physics",
+    "builtin-college-english-band4",
+    "builtin-calculus",
+    "builtin-discrete-math"
+]
 
-private func isRetiredBuiltInTemplatePreset(_ preset: KnowledgePreset) -> Bool {
-    preset.id == retiredBuiltInTemplatePresetID &&
-        preset.name == "示例模板" &&
-        preset.category == "模板"
+private func isRetiredBuiltInPreset(_ preset: KnowledgePreset) -> Bool {
+    preset.isBuiltIn && retiredBuiltInPresetIDs.contains(preset.id)
 }
 
 private struct PresetStudyState: Codable {
@@ -888,7 +896,7 @@ private struct PresetLibrarySnapshot: Codable {
 
 private struct KikariaAppState: Codable {
     static let storageKey = "kikaria.appStateJSON"
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = KnowledgePreset.builtInSeedVersion
 
     var schemaVersion: Int
     var presets: [KnowledgePreset]
@@ -2153,7 +2161,7 @@ struct ContentView: View {
             } else {
                 currentPresetID = presets.first?.id ?? KnowledgePreset.defaultPresetID
             }
-            removeRetiredBuiltInTemplatePresetIfNeeded()
+            removeRetiredBuiltInPresetsIfNeeded()
         } else {
             presets = KnowledgePreset.all
             presetStates = [:]
@@ -2186,7 +2194,7 @@ struct ContentView: View {
             currentPresetID = presets.first?.id ?? KnowledgePreset.defaultPresetID
         }
 
-        removeRetiredBuiltInTemplatePresetIfNeeded()
+        removeRetiredBuiltInPresetsIfNeeded()
         ensurePresetStatesExist()
     }
 
@@ -2199,44 +2207,42 @@ struct ContentView: View {
                 presetStates[preset.id] = state
             }
         }
+
+        for preset in presets where preset.isBuiltIn {
+            guard presetStates[preset.id]?.markdownText != preset.markdownText,
+                  let state = initialStudyState(for: preset) else {
+                continue
+            }
+
+            presetStates[preset.id] = state
+        }
     }
 
     private func mergedPresets(with storedPresets: [KnowledgePreset]) -> [KnowledgePreset] {
-        let builtInsByID = Dictionary(uniqueKeysWithValues: KnowledgePreset.all.map { ($0.id, $0) })
-        var merged: [KnowledgePreset] = []
-        var existingIDs = Set<String>()
+        var merged = KnowledgePreset.all
+        var existingIDs = Set(merged.map(\.id))
 
-        for storedPreset in storedPresets {
-            existingIDs.insert(storedPreset.id)
-
-            if storedPreset.isBuiltIn, let updatedBuiltInPreset = builtInsByID[storedPreset.id] {
-                merged.append(updatedBuiltInPreset)
-            } else {
-                merged.append(storedPreset)
+        for storedPreset in storedPresets where !storedPreset.isBuiltIn {
+            guard !existingIDs.contains(storedPreset.id) else {
+                continue
             }
-        }
 
-        for builtInPreset in KnowledgePreset.all where !existingIDs.contains(builtInPreset.id) {
-            merged.append(builtInPreset)
+            merged.append(storedPreset)
+            existingIDs.insert(storedPreset.id)
         }
 
         return merged
     }
 
-    private func removeRetiredBuiltInTemplatePresetIfNeeded() {
-        let removedIDs = Set(presets.filter(isRetiredBuiltInTemplatePreset).map(\.id))
+    private func removeRetiredBuiltInPresetsIfNeeded() {
+        let removedIDs = Set(presets.filter(isRetiredBuiltInPreset).map(\.id))
+            .union(Set(presetStates.keys).intersection(retiredBuiltInPresetIDs))
 
         if !removedIDs.isEmpty {
-            presets.removeAll(where: isRetiredBuiltInTemplatePreset)
+            presets.removeAll(where: isRetiredBuiltInPreset)
         }
 
-        var stateIDsToClear = removedIDs
-        if !presets.contains(where: { $0.id == retiredBuiltInTemplatePresetID }),
-           presetStates[retiredBuiltInTemplatePresetID] != nil {
-            stateIDsToClear.insert(retiredBuiltInTemplatePresetID)
-        }
-
-        for presetID in stateIDsToClear {
+        for presetID in removedIDs {
             presetStates[presetID] = nil
             KikariaNotificationManager.cancelStudyProgressWarning(for: presetID)
         }
@@ -2585,7 +2591,7 @@ private struct OnboardingView: View {
     private let pages = [
         OnboardingPage(
             title: "选择一套预设",
-            subtitle: "从高等数学、英语、医学等预设开始，也可以上传自己的 Markdown 知识点。",
+            subtitle: "从数学、物理、计算机科学与英语预设开始，也可以上传自己的 Markdown 知识点。",
             systemImage: "books.vertical.fill"
         ),
         OnboardingPage(
