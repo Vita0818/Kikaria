@@ -2297,13 +2297,14 @@ struct ContentView: View {
         }
     }
 
-    private func createPreset(name: String, category: String, description: String, markdownText: String) -> PresetCreationOutcome {
+    private func createPreset(name: String, category: String, markdownText: String) -> PresetCreationOutcome {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
             return .failure("请填写预设名称。")
         }
 
         let trimmedMarkdown = markdownText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsedPoints = try? KnowledgePoint.parseMarkdown(trimmedMarkdown) else {
             return .failure("没有解析到有效知识点。请检查 # 标题、tags、hint: 和 content:。")
         }
@@ -2313,9 +2314,9 @@ struct ContentView: View {
         let preset = KnowledgePreset(
             id: "user-\(UUID().uuidString)",
             name: trimmedName,
-            subtitle: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义知识点" : description.trimmingCharacters(in: .whitespacesAndNewlines),
-            description: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义上传的知识点预设。" : description.trimmingCharacters(in: .whitespacesAndNewlines),
-            category: category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "自定义" : category.trimmingCharacters(in: .whitespacesAndNewlines),
+            subtitle: "自定义知识点",
+            description: "",
+            category: trimmedCategory.isEmpty ? "自定义" : trimmedCategory,
             markdownText: trimmedMarkdown,
             isBuiltIn: false
         )
@@ -2343,19 +2344,16 @@ struct ContentView: View {
         return .success(preset)
     }
 
-    private func updatePresetMetadata(presetID: String, name: String, category: String, description: String) {
+    private func updatePresetMetadata(presetID: String, name: String, category: String) {
         guard let index = presets.firstIndex(where: { $0.id == presetID }) else {
             return
         }
 
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
 
         presets[index].name = trimmedName.isEmpty ? presets[index].name : trimmedName
         presets[index].category = trimmedCategory.isEmpty ? "自定义" : trimmedCategory
-        presets[index].subtitle = trimmedDescription.isEmpty ? presets[index].subtitle : trimmedDescription
-        presets[index].description = trimmedDescription.isEmpty ? presets[index].description : trimmedDescription
         persistLibrary()
         rescheduleAllPresetNotifications()
         if presetID == currentPresetID {
@@ -5072,12 +5070,6 @@ private struct PresetCard: View {
                     .buttonStyle(.plain)
                 }
             }
-
-            KikariaTypography.mixedText(preset.description, size: 14 * scale)
-                .foregroundStyle(KikariaTheme.softText)
-                .lineLimit(2)
-                .lineSpacing(3 * scale)
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(18 * scale)
         .frame(maxWidth: .infinity)
@@ -5089,10 +5081,9 @@ private struct PresetCard: View {
 
 private struct NewPresetView: View {
     @Environment(\.dismiss) private var dismiss
-    let createPreset: (String, String, String, String) -> PresetCreationOutcome
+    let createPreset: (String, String, String) -> PresetCreationOutcome
     @State private var name = ""
     @State private var category = ""
-    @State private var description = ""
     @State private var markdownText = ""
     @State private var errorMessage: String?
     @State private var isImportingFile = false
@@ -5152,7 +5143,6 @@ private struct NewPresetView: View {
                         VStack(spacing: 16 * scale) {
                             ProfileTextField(title: "预设名称", text: $name, scale: scale, minHeight: inputHeight)
                             ProfileTextField(title: "分类", text: $category, scale: scale, minHeight: inputHeight)
-                            ProfileTextField(title: "简短描述", text: $description, scale: scale, minHeight: inputHeight)
 
                             Button {
                                 isImportingFile = true
@@ -5256,7 +5246,7 @@ private struct NewPresetView: View {
     }
 
     private func savePreset() {
-        switch createPreset(name, category, description, markdownText) {
+        switch createPreset(name, category, markdownText) {
         case .success(let preset):
             showToast("已创建「\(preset.name)」")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
@@ -5616,14 +5606,13 @@ private struct EditPresetView: View {
     @Environment(\.dismiss) private var dismiss
     let preset: KnowledgePreset
     let knowledgePoints: [KnowledgePoint]
-    let onSavePreset: (String, String, String, String) -> Void
+    let onSavePreset: (String, String, String) -> Void
     let onAddPoint: () -> Void
     let onEditPoint: (UUID) -> Void
     let onDeletePoint: (UUID, String) -> Void
     let onDeletePreset: (String) -> Void
     @State private var name: String
     @State private var category: String
-    @State private var description: String
     @State private var searchText = ""
     @State private var pendingDeletePoint: KnowledgePoint?
     @State private var isConfirmingPresetDelete = false
@@ -5634,7 +5623,7 @@ private struct EditPresetView: View {
     init(
         preset: KnowledgePreset,
         knowledgePoints: [KnowledgePoint],
-        onSavePreset: @escaping (String, String, String, String) -> Void,
+        onSavePreset: @escaping (String, String, String) -> Void,
         onAddPoint: @escaping () -> Void,
         onEditPoint: @escaping (UUID) -> Void,
         onDeletePoint: @escaping (UUID, String) -> Void,
@@ -5649,7 +5638,6 @@ private struct EditPresetView: View {
         self.onDeletePreset = onDeletePreset
         _name = State(initialValue: preset.name)
         _category = State(initialValue: preset.category)
-        _description = State(initialValue: preset.description)
     }
 
     private var filteredKnowledgePoints: [KnowledgePoint] {
@@ -5681,7 +5669,7 @@ private struct EditPresetView: View {
                         Spacer()
 
                         Button("保存") {
-                            onSavePreset(preset.id, name, category, description)
+                            onSavePreset(preset.id, name, category)
                             dismiss()
                         }
                         .font(KikariaTypography.chineseButton(size: 17 * scale))
@@ -5698,7 +5686,6 @@ private struct EditPresetView: View {
                         VStack(spacing: 16) {
                         ProfileTextField(title: "预设名称", text: $name)
                         ProfileTextField(title: "分类", text: $category)
-                        ProfileTextField(title: "简短描述", text: $description)
 
                         Button(action: exportMarkdown) {
                             Label("导出 Markdown", systemImage: "square.and.arrow.up")
@@ -7251,9 +7238,114 @@ private struct ScopeTagChip: View {
     }
 }
 
-private enum ReviewGestureSuppressionReason {
-    case mathHorizontalScroll
-    case contentVerticalScroll
+private enum ReviewGestureOwner: Equatable {
+    case undecided
+    case formulaHorizontal
+    case cardVerticalScroll
+    case fullScreenNavigation
+    case ignored
+}
+
+private enum ReviewDragAxis: Equatable {
+    case horizontal
+    case vertical
+}
+
+private enum ReviewScrollCoordinateSpace {
+    static let readingContent = "review-reading-content-scroll"
+}
+
+private struct ReviewScrollContentMetrics: Equatable {
+    var contentHeight: CGFloat = 0
+    var contentMinY: CGFloat = 0
+}
+
+private struct ReviewScrollContentMetricsPreferenceKey: PreferenceKey {
+    static var defaultValue = ReviewScrollContentMetrics()
+
+    static func reduce(value: inout ReviewScrollContentMetrics, nextValue: () -> ReviewScrollContentMetrics) {
+        value = nextValue()
+    }
+}
+
+private struct ReviewScrollMetricsReader: View {
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: ReviewScrollContentMetricsPreferenceKey.self,
+                value: ReviewScrollContentMetrics(
+                    contentHeight: proxy.size.height,
+                    contentMinY: proxy.frame(in: .named(ReviewScrollCoordinateSpace.readingContent)).minY
+                )
+            )
+        }
+    }
+}
+
+private struct ReviewCardFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [CGRect] = []
+
+    static func reduce(value: inout [CGRect], nextValue: () -> [CGRect]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
+private struct ReviewContainerFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
+private struct ReviewCardFrameReader: View {
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: ReviewCardFramePreferenceKey.self,
+                value: [proxy.frame(in: .global)]
+            )
+        }
+    }
+}
+
+private struct ReviewContainerFrameReader: View {
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: ReviewContainerFramePreferenceKey.self,
+                value: proxy.frame(in: .global)
+            )
+        }
+    }
+}
+
+private struct ReviewScrollState {
+    var viewportHeight: CGFloat = 0
+    var contentHeight: CGFloat = 0
+    var scrollOffset: CGFloat = 0
+
+    var maxScrollOffset: CGFloat {
+        max(0, contentHeight - viewportHeight)
+    }
+
+    var isAtBottom: Bool {
+        !isScrollable || scrollOffset >= maxScrollOffset - 18
+    }
+
+    var isScrollable: Bool {
+        maxScrollOffset > 2
+    }
+
+    var hasMetrics: Bool {
+        viewportHeight > 0 && contentHeight > 0
+    }
+
+    mutating func update(contentMetrics: ReviewScrollContentMetrics, viewportHeight: CGFloat) {
+        self.viewportHeight = viewportHeight
+        self.contentHeight = contentMetrics.contentHeight
+        self.scrollOffset = max(0, -contentMetrics.contentMinY)
+    }
 }
 
 #if os(macOS)
@@ -7408,8 +7500,11 @@ struct ReviewView: View {
     @State private var isShowingScopePanel = false
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
-    @State private var activeGestureSuppressionReason: ReviewGestureSuppressionReason?
-    @State private var gestureSuppressionToken = UUID()
+    @State private var reviewScrollState = ReviewScrollState()
+    @State private var reviewGestureOwner = ReviewGestureOwner.undecided
+    @State private var reviewCardFrames: [CGRect] = []
+    @State private var reviewFormulaFrames: [CGRect] = []
+    @State private var reviewContainerFrame = CGRect.zero
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
@@ -7617,13 +7712,7 @@ struct ReviewView: View {
                 FloatingInfoCard(
                     title: "提示",
                     text: currentPoint.hint,
-                    isExpanded: isExpanded,
-                    onVerticalContentDrag: {
-                        suppressReviewGesture(.contentVerticalScroll)
-                    },
-                    onHorizontalMathDrag: {
-                        suppressReviewGesture(.mathHorizontalScroll)
-                    }
+                    isExpanded: isExpanded
                 )
                     .transition(.move(edge: .bottom))
             }
@@ -7632,13 +7721,7 @@ struct ReviewView: View {
                 FloatingInfoCard(
                     title: "答案",
                     text: currentPoint.content,
-                    isExpanded: isExpanded,
-                    onVerticalContentDrag: {
-                        suppressReviewGesture(.contentVerticalScroll)
-                    },
-                    onHorizontalMathDrag: {
-                        suppressReviewGesture(.mathHorizontalScroll)
-                    }
+                    isExpanded: isExpanded
                 )
                     .transition(.move(edge: .bottom))
             }
@@ -7656,14 +7739,18 @@ struct ReviewView: View {
                     .padding(.vertical, metrics.isPadPortrait ? 34 : (metrics.isPadWidth ? 30 : 24))
                     .frame(maxWidth: metrics.reviewMaxWidth)
                     .frame(maxWidth: .infinity)
+                    .background(ReviewScrollMetricsReader())
                     .frame(
                         minHeight: proxy.size.height + metrics.reviewContentVerticalOffset * 2,
                         alignment: .center
                     )
             }
             .scrollIndicators(.hidden)
+            .coordinateSpace(name: ReviewScrollCoordinateSpace.readingContent)
+            .onPreferenceChange(ReviewScrollContentMetricsPreferenceKey.self) { contentMetrics in
+                updateReviewScrollState(contentMetrics, viewportHeight: proxy.size.height)
+            }
         }
-        .highPriorityGestureIf(!isShowingContent, preAnswerSwipeUpGesture)
     }
 
     private func reviewLandscapeReadingColumn(
@@ -7681,13 +7768,17 @@ struct ReviewView: View {
                     .padding(.vertical, 24)
                     .frame(maxWidth: metrics.reviewMaxWidth)
                     .frame(maxWidth: .infinity)
+                    .background(ReviewScrollMetricsReader())
                     .frame(minHeight: safeContentHeight, alignment: .center)
                     .padding(.top, safeTop)
                     .padding(.bottom, safeBottom)
             }
             .scrollIndicators(.hidden)
-            .highPriorityGestureIf(!isShowingContent, preAnswerSwipeUpGesture)
-            .simultaneousGesture(reviewDragGesture(containerHeight: proxy.size.height))
+            .coordinateSpace(name: ReviewScrollCoordinateSpace.readingContent)
+            .onPreferenceChange(ReviewScrollContentMetricsPreferenceKey.self) { contentMetrics in
+                updateReviewScrollState(contentMetrics, viewportHeight: proxy.size.height)
+            }
+            .simultaneousGesture(reviewDragGesture())
         }
     }
 
@@ -7877,7 +7968,17 @@ struct ReviewView: View {
                         .zIndex(6)
                 }
             }
-            .simultaneousGestureIf(!metrics.reviewUsesTwoColumnLayout, reviewDragGesture(containerHeight: metrics.height))
+            .background(ReviewContainerFrameReader())
+            .onPreferenceChange(ReviewContainerFramePreferenceKey.self) { frame in
+                reviewContainerFrame = frame
+            }
+            .onPreferenceChange(ReviewCardFramePreferenceKey.self) { frames in
+                reviewCardFrames = frames
+            }
+            .onPreferenceChange(KikariaMathBlockFramePreferenceKey.self) { frames in
+                reviewFormulaFrames = frames
+            }
+            .simultaneousGestureIf(!metrics.reviewUsesTwoColumnLayout, reviewDragGesture())
             .navigationBarBackButtonHidden(metrics.isPadPortrait)
         }
         .navigationTitle("")
@@ -7906,74 +8007,120 @@ struct ReviewView: View {
         #endif
     }
 
-    private func reviewDragGesture(containerHeight: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 28, coordinateSpace: .local)
+    private func reviewDragGesture() -> some Gesture {
+        DragGesture(minimumDistance: 24, coordinateSpace: .global)
+            .onChanged { value in
+                decideReviewGestureOwnerIfNeeded(for: value)
+            }
             .onEnded { value in
-                guard !isReviewGlobalGestureSuppressed else {
+                decideReviewGestureOwnerIfNeeded(for: value)
+                let owner = reviewGestureOwner
+                reviewGestureOwner = .undecided
+
+                guard owner == .fullScreenNavigation else {
                     return
                 }
 
-                handleDragGesture(
+                handleFullScreenDragGesture(
                     translation: value.translation,
-                    startLocation: value.startLocation,
-                    containerHeight: containerHeight
+                    startLocation: value.startLocation
                 )
             }
     }
 
-    private var preAnswerSwipeUpGesture: some Gesture {
-        DragGesture(minimumDistance: 24, coordinateSpace: .local)
-            .onEnded { value in
-                guard !isShowingScopePanel,
-                      !isShowingContent,
-                      !isReviewGlobalGestureSuppressed
-                else {
-                    return
-                }
-
-                let dx = value.translation.width
-                let dy = value.translation.height
-                let horizontal = abs(dx)
-                let vertical = abs(dy)
-
-                guard dy < 0,
-                      vertical > 80,
-                      vertical > horizontal * 1.4
-                else {
-                    return
-                }
-
-                triggerGestureFeedback()
-                withAnimation(revealAnimation) {
-                    revealContent()
-                }
-            }
-    }
-
-    private var isReviewGlobalGestureSuppressed: Bool {
-        activeGestureSuppressionReason != nil
-    }
-
-    private func suppressReviewGesture(_ reason: ReviewGestureSuppressionReason) {
-        activeGestureSuppressionReason = reason
-        let token = UUID()
-        gestureSuppressionToken = token
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
-            guard gestureSuppressionToken == token else {
-                return
-            }
-
-            activeGestureSuppressionReason = nil
-        }
-    }
-
-    private func handleDragGesture(translation: CGSize, startLocation: CGPoint, containerHeight: CGFloat) {
-        guard !isShowingScopePanel,
-              !isReviewGlobalGestureSuppressed
+    private func decideReviewGestureOwnerIfNeeded(for value: DragGesture.Value) {
+        guard reviewGestureOwner == .undecided,
+              let owner = reviewGestureOwner(for: value)
         else {
             return
         }
+
+        reviewGestureOwner = owner
+    }
+
+    private func updateReviewScrollState(_ contentMetrics: ReviewScrollContentMetrics, viewportHeight: CGFloat) {
+        reviewScrollState.update(contentMetrics: contentMetrics, viewportHeight: viewportHeight)
+    }
+
+    private func reviewGestureOwner(for value: DragGesture.Value) -> ReviewGestureOwner? {
+        guard currentPoint != nil else {
+            return .ignored
+        }
+
+        guard !isShowingScopePanel else {
+            return .ignored
+        }
+
+        guard let axis = dominantDragAxis(for: value.translation) else {
+            return nil
+        }
+
+        if startsInFormulaArea(value.startLocation) {
+            return axis == .horizontal ? .formulaHorizontal : .cardVerticalScroll
+        }
+
+        if startsInCardArea(value.startLocation) {
+            switch axis {
+            case .horizontal:
+                return .fullScreenNavigation
+            case .vertical:
+                guard reviewScrollState.hasMetrics else {
+                    return .cardVerticalScroll
+                }
+
+                return reviewScrollState.isScrollable ? .cardVerticalScroll : .fullScreenNavigation
+            }
+        }
+
+        return .fullScreenNavigation
+    }
+
+    private func dominantDragAxis(for translation: CGSize) -> ReviewDragAxis? {
+        let horizontal = abs(translation.width)
+        let vertical = abs(translation.height)
+        let minimumDistance: CGFloat = 14
+        let dominance: CGFloat = 1.15
+
+        guard max(horizontal, vertical) >= minimumDistance else {
+            return nil
+        }
+
+        if horizontal > vertical * dominance {
+            return .horizontal
+        }
+
+        if vertical > horizontal * dominance {
+            return .vertical
+        }
+
+        return nil
+    }
+
+    private func startsInFormulaArea(_ location: CGPoint) -> Bool {
+        reviewFormulaFrames.contains { frame in
+            frame.insetBy(dx: -12, dy: -12).contains(location)
+        }
+    }
+
+    private func startsInCardArea(_ location: CGPoint) -> Bool {
+        reviewCardFrames.contains { frame in
+            frame.insetBy(dx: -10, dy: -10).contains(location)
+        }
+    }
+
+    private func localReviewLocation(from globalLocation: CGPoint) -> CGPoint {
+        CGPoint(
+            x: globalLocation.x - reviewContainerFrame.minX,
+            y: globalLocation.y - reviewContainerFrame.minY
+        )
+    }
+
+    private func handleFullScreenDragGesture(translation: CGSize, startLocation: CGPoint) {
+        guard !isShowingScopePanel else {
+            return
+        }
+
+        let localStartLocation = localReviewLocation(from: startLocation)
 
         let dx = translation.width
         let dy = translation.height
@@ -7984,11 +8131,10 @@ struct ReviewView: View {
         let nextAfterAnswerSwipeThreshold: CGFloat = 160
         let verticalThreshold: CGFloat = isShowingContent ? nextAfterAnswerSwipeThreshold : revealAnswerSwipeThreshold
         let dominance: CGFloat = 1.4
-        let isCentralReadingArea = startLocation.y > 190 && startLocation.y < containerHeight - 190
 
         if horizontal > horizontalThreshold && horizontal > vertical * dominance {
             if dx > 0 {
-                guard mode.isNormal, startLocation.x > 34 else {
+                guard mode.isNormal, localStartLocation.x > 34 else {
                     return
                 }
 
@@ -8013,7 +8159,7 @@ struct ReviewView: View {
                     }
                 }
             } else {
-                if isShowingContent, isCentralReadingArea {
+                if isShowingContent, startsInCardArea(startLocation) {
                     return
                 }
 
@@ -8182,6 +8328,10 @@ struct ReviewView: View {
     private func resetRevealState() {
         isShowingHint = false
         isShowingContent = false
+        reviewScrollState = ReviewScrollState()
+        reviewGestureOwner = .undecided
+        reviewCardFrames = []
+        reviewFormulaFrames = []
     }
 
     private func revealHint() {
@@ -9680,8 +9830,6 @@ private struct FloatingInfoCard: View {
     let title: String
     let text: String
     var isExpanded = false
-    var onVerticalContentDrag: (() -> Void)?
-    var onHorizontalMathDrag: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: bodySpacing) {
@@ -9696,13 +9844,12 @@ private struct FloatingInfoCard: View {
                 accentColor: KikariaTheme.sky,
                 lineSpacing: mathLineSpacing,
                 usesSystemChineseFont: usesMacReviewMathRendering,
-                usesGenerousFormulaSpacing: usesMacReviewMathRendering,
-                onHorizontalMathDrag: onHorizontalMathDrag
+                usesGenerousFormulaSpacing: usesMacReviewMathRendering
             )
         }
-        .simultaneousGesture(contentVerticalDragSuppressionGesture)
         .padding(isExpanded ? 22 : 18)
         .frame(maxWidth: isExpanded ? 820 : 700)
+        .background(ReviewCardFrameReader())
         .liquidGlassCard(cornerRadius: isExpanded ? 28 : 26, material: .thinMaterial, fillOpacity: 0.56, strokeOpacity: 0.42, shadowOpacity: 0.14, shadowRadius: isExpanded ? 20 : 18, shadowY: isExpanded ? 11 : 10)
     }
 
@@ -9728,30 +9875,6 @@ private struct FloatingInfoCard: View {
         #else
         return false
         #endif
-    }
-
-    private var contentVerticalDragSuppressionGesture: some Gesture {
-        DragGesture(minimumDistance: 12, coordinateSpace: .local)
-            .onChanged { value in
-                guard isVerticalContentDrag(value.translation) else {
-                    return
-                }
-
-                onVerticalContentDrag?()
-            }
-            .onEnded { value in
-                guard isVerticalContentDrag(value.translation) else {
-                    return
-                }
-
-                onVerticalContentDrag?()
-            }
-    }
-
-    private func isVerticalContentDrag(_ translation: CGSize) -> Bool {
-        let horizontal = abs(translation.width)
-        let vertical = abs(translation.height)
-        return vertical > 16 && vertical > horizontal * 1.2
     }
 }
 

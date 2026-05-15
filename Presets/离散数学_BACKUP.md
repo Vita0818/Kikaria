@@ -76,8 +76,10 @@ $$
 
 真值表为：
 
-- $p$：T；$\neg p$：F。
-- $p$：F；$\neg p$：T。
+| $p$ | $\neg p$ |
+|---|---|
+| T | F |
+| F | T |
 
 ---
 
@@ -101,10 +103,12 @@ $$
 
 真值表为：
 
-- 当$p$=T，$q$=T时，$p\land q$=T。
-- 当$p$=T，$q$=F时，$p\land q$=F。
-- 当$p$=F，$q$=T时，$p\land q$=F。
-- 当$p$=F，$q$=F时，$p\land q$=F。
+| $p$ | $q$ | $p\land q$ |
+|---|---|---|
+| T | T | T |
+| T | F | F |
+| F | T | F |
+| F | F | F |
 
 ---
 
@@ -128,10 +132,12 @@ $$
 
 真值表为：
 
-- 当$p$=T，$q$=T时，$p\lor q$=T。
-- 当$p$=T，$q$=F时，$p\lor q$=T。
-- 当$p$=F，$q$=T时，$p\lor q$=T。
-- 当$p$=F，$q$=F时，$p\lor q$=F。
+| $p$ | $q$ | $p\lor q$ |
+|---|---|---|
+| T | T | T |
+| T | F | T |
+| F | T | T |
+| F | F | F |
 
 ---
 
@@ -155,10 +161,12 @@ $$
 
 真值表为：
 
-- 当$p$=T，$q$=T时，$p\oplus q$=F。
-- 当$p$=T，$q$=F时，$p\oplus q$=T。
-- 当$p$=F，$q$=T时，$p\oplus q$=T。
-- 当$p$=F，$q$=F时，$p\oplus q$=F。
+| $p$ | $q$ | $p\oplus q$ |
+|---|---|---|
+| T | T | F |
+| T | F | T |
+| F | T | T |
+| F | F | F |
 
 ---
 
@@ -184,10 +192,12 @@ $$
 
 真值表为：
 
-- 当$p$=T，$q$=T时，$p\to q$=T。
-- 当$p$=T，$q$=F时，$p\to q$=F。
-- 当$p$=F，$q$=T时，$p\to q$=T。
-- 当$p$=F，$q$=F时，$p\to q$=T。
+| $p$ | $q$ | $p\to q$ |
+|---|---|---|
+| T | T | T |
+| T | F | F |
+| F | T | T |
+| F | F | T |
 
 ---
 
@@ -283,10 +293,12 @@ $$
 
 真值表为：
 
-- 当$p$=T，$q$=T时，$p\leftrightarrow q$=T。
-- 当$p$=T，$q$=F时，$p\leftrightarrow q$=F。
-- 当$p$=F，$q$=T时，$p\leftrightarrow q$=F。
-- 当$p$=F，$q$=F时，$p\leftrightarrow q$=T。
+| $p$ | $q$ | $p\leftrightarrow q$ |
+|---|---|---|
+| T | T | T |
+| T | F | F |
+| F | T | F |
+| F | F | T |
 
 双条件语句等价于两个方向的蕴含同时成立：
 
@@ -2365,7 +2377,7 @@ $$
 
 ---
 
-# 有序 n 元组
+# 有序 $n$ 元组
 
 tags: 2.1 Sets
 
@@ -4556,7 +4568,7 @@ $$
 
 ---
 
-# 大 O 记号
+# 大 $O$ 记号
 
 tags: 3.2 The Growth of Functions
 
@@ -4582,7 +4594,7 @@ $$
 
 ---
 
-# 大 O 的见证
+# 大 $O$ 的见证
 
 tags: 3.2 The Growth of Functions
 
@@ -4618,7 +4630,7 @@ $$
 
 ---
 
-# 多项式的大 O 估计
+# 多项式的大 $O$ 估计
 
 tags: 3.2 The Growth of Functions
 
@@ -4648,7 +4660,7 @@ $$
 
 ---
 
-# 大 O 的加法与乘法性质
+# 大 $O$ 的加法与乘法性质
 
 tags: 3.2 The Growth of Functions
 
@@ -4684,7 +4696,7 @@ $$
 
 ---
 
-# 大 Omega 记号
+# 大 $\Omega$ 记号
 
 tags: 3.2 The Growth of Functions
 
@@ -4708,7 +4720,7 @@ $$
 
 ---
 
-# 大 Theta 记号
+# 大 $\Theta$ 记号
 
 tags: 3.2 The Growth of Functions
 
@@ -4738,7 +4750,7 @@ $$
 
 ---
 
-# 多项式的 Theta 阶
+# 多项式的 $\Theta$ 阶
 
 tags: 3.2 The Growth of Functions
 
@@ -5247,13 +5259,15 @@ hint:
 content:
 常见复杂度类型包括：
 
-- $\Theta(1)$：常数复杂度。
-- $\Theta(\log n)$：对数复杂度。
-- $\Theta(n)$：线性复杂度。
-- $\Theta(n\log n)$：线性对数复杂度。
-- $\Theta(n^b)$：多项式复杂度。
-- $\Theta(b^n)$：指数复杂度。
-- $\Theta(n!)$：阶乘复杂度。
+| 表达式 | 名称 |
+|---|---|
+| $\Theta(1)$ | 常数复杂度 |
+| $\Theta(\log n)$ | 对数复杂度 |
+| $\Theta(n)$ | 线性复杂度 |
+| $\Theta(n\log n)$ | 线性对数复杂度 |
+| $\Theta(n^b)$ | 多项式复杂度 |
+| $\Theta(b^n)$ | 指数复杂度 |
+| $\Theta(n!)$ | 阶乘复杂度 |
 
 其中 $b>1$。
 
@@ -5337,7 +5351,7 @@ content:
 
 ---
 
-# 类 P
+# 类 $P$
 
 tags: 3.3 Complexity of Algorithms
 
@@ -5359,7 +5373,7 @@ $P$ 类问题通常被视为理论上可有效求解的问题。
 
 ---
 
-# 类 NP
+# 类 $NP$
 
 tags: 3.3 Complexity of Algorithms
 
@@ -5381,7 +5395,7 @@ $$
 
 ---
 
-# NP 完全问题
+# $NP$ 完全问题
 
 tags: 3.3 Complexity of Algorithms
 
@@ -5679,13 +5693,13 @@ $$
 则称 $a$ 与 $b$ 模 $m$ 同余，记为：
 
 $$
-a\equiv b\pmod{m}
+a\equiv b\pmod m
 $$
 
 若 $a$ 与 $b$ 模 $m$ 不同余，记为：
 
 $$
-a\not\equiv b\pmod{m}
+a\not\equiv b\pmod m
 $$
 
 这里 $m$ 称为模数。
@@ -5703,7 +5717,7 @@ content:
 设 $a,b$ 为整数，$m$ 为正整数。则：
 
 $$
-a\equiv b\pmod{m}
+a\equiv b\pmod m
 $$
 
 当且仅当：
@@ -5727,37 +5741,37 @@ content:
 设 $m$ 为正整数。若：
 
 $$
-a\equiv b\pmod{m}
+a\equiv b\pmod m
 $$
 
 且：
 
 $$
-c\equiv d\pmod{m}
+c\equiv d\pmod m
 $$
 
 则：
 
 $$
-a+c\equiv b+d\pmod{m}
+a+c\equiv b+d\pmod m
 $$
 
 并且：
 
 $$
-ac\equiv bd\pmod{m}
+ac\equiv bd\pmod m
 $$
 
 特别地，若：
 
 $$
-a\equiv b\pmod{m}
+a\equiv b\pmod m
 $$
 
 则对任意正整数 $k$，有：
 
 $$
-a^k\equiv b^k\pmod{m}
+a^k\equiv b^k\pmod m
 $$
 
 ---
@@ -5786,7 +5800,7 @@ $$
 
 ---
 
-# 模 m 加法与乘法
+# 模 $m$ 加法与乘法
 
 tags: 4.1 Divisibility and Modular Arithmetic
 
@@ -5816,7 +5830,7 @@ $$
 
 ---
 
-# 模 m 算术的基本性质
+# 模 $m$ 算术的基本性质
 
 tags: 4.1 Divisibility and Modular Arithmetic
 
@@ -5842,7 +5856,7 @@ $$
 
 ---
 
-# b 进制展开
+# $b$ 进制展开
 
 tags: 4.2 Integer Representations and Algorithms
 
@@ -5904,7 +5918,7 @@ $$
 
 ---
 
-# 从十进制转换到 b 进制
+# 从十进制转换到 $b$ 进制
 
 tags: 4.2 Integer Representations and Algorithms
 
@@ -5934,7 +5948,7 @@ $$
 
 ---
 
-# 构造 b 进制展开的算法
+# 构造 $b$ 进制展开的算法
 
 tags: 4.2 Integer Representations and Algorithms
 
@@ -6673,7 +6687,7 @@ content:
 若：
 
 $$
-ac\equiv bc\pmod{m}
+ac\equiv bc\pmod m
 $$
 
 且：
@@ -6685,7 +6699,7 @@ $$
 则：
 
 $$
-a\equiv b\pmod{m}
+a\equiv b\pmod m
 $$
 
 也就是说，只有当被约去的因子与模数互素时，才可以安全地在同余式两边约去它。
@@ -6705,7 +6719,7 @@ content:
 若整数 $\overline{a}$ 满足：
 
 $$
-a\overline{a}\equiv1\pmod{m}
+a\overline{a}\equiv1\pmod m
 $$
 
 则称 $\overline{a}$ 是 $a$ 模 $m$ 的逆元。
@@ -6743,7 +6757,7 @@ $$
 两边对 $m$ 取模，得到：
 
 $$
-sa\equiv1\pmod{m}
+sa\equiv1\pmod m
 $$
 
 因此：
@@ -6763,13 +6777,13 @@ $$
 tags: 4.4 Solving Congruences
 
 hint:
-形如 $ax\equiv b\pmod{m}$ 的方程怎样求解？
+形如 $ax\equiv b\pmod m$ 的方程怎样求解？
 
 content:
 线性同余方程形如：
 
 $$
-ax\equiv b\pmod{m}
+ax\equiv b\pmod m
 $$
 
 其中 $x$ 是整数变量。
@@ -6783,7 +6797,7 @@ $$
 则 $a$ 有模 $m$ 逆元 $\overline{a}$，两边乘以 $\overline{a}$ 得：
 
 $$
-x\equiv \overline{a}b\pmod{m}
+x\equiv \overline{a}b\pmod m
 $$
 
 这给出模 $m$ 意义下唯一的解。
@@ -6795,7 +6809,7 @@ $$
 tags: 4.4 Solving Congruences
 
 hint:
-当 $a$ 与 $m$ 不互素时，$ax\equiv b\pmod{m}$ 何时有解？
+当 $a$ 与 $m$ 不互素时，$ax\equiv b\pmod m$ 何时有解？
 
 content:
 设：
@@ -6807,7 +6821,7 @@ $$
 线性同余方程：
 
 $$
-ax\equiv b\pmod{m}
+ax\equiv b\pmod m
 $$
 
 有解当且仅当：
@@ -6855,11 +6869,11 @@ $$
 同余方程组：
 
 $$
-x\equiv a_1\pmod{m_1}
+x\equiv a_1\pmod {m_1}
 $$
 
 $$
-x\equiv a_2\pmod{m_2}
+x\equiv a_2\pmod {m_2}
 $$
 
 $$
@@ -6867,7 +6881,7 @@ $$
 $$
 
 $$
-x\equiv a_n\pmod{m_n}
+x\equiv a_n\pmod {m_n}
 $$
 
 在模：
@@ -6903,7 +6917,7 @@ $$
 由于 $m_k$ 与 $M_k$ 互素，存在 $y_k$，使得：
 
 $$
-M_ky_k\equiv1\pmod{m_k}
+M_ky_k\equiv1\pmod {m_k}
 $$
 
 则同余方程组的一个解为：
@@ -6927,7 +6941,7 @@ content:
 若 $p$ 是素数，且整数 $a$ 不能被 $p$ 整除，则：
 
 $$
-a^{p-1}\equiv1\pmod{p}
+a^{p-1}\equiv1\pmod p
 $$
 
 这是费马小定理。
@@ -6935,7 +6949,7 @@ $$
 等价地，对任意整数 $a$，都有：
 
 $$
-a^p\equiv a\pmod{p}
+a^p\equiv a\pmod p
 $$
 
 费马小定理是快速模运算、素性测试和 RSA 正确性的基础之一。
@@ -6953,7 +6967,7 @@ content:
 设 $b$ 为正整数。若合数 $n$ 满足：
 
 $$
-b^{n-1}\equiv1\pmod{n}
+b^{n-1}\equiv1\pmod n
 $$
 
 则称 $n$ 是以 $b$ 为底的伪素数。
@@ -6979,7 +6993,7 @@ $$
 的正整数 $b$，都有：
 
 $$
-b^{n-1}\equiv1\pmod{n}
+b^{n-1}\equiv1\pmod n
 $$
 
 卡迈克尔数是特殊的伪素数，会让简单费马素性测试失效。
@@ -7019,7 +7033,7 @@ content:
 若：
 
 $$
-r^e\equiv a\pmod{p}
+r^e\equiv a\pmod p
 $$
 
 且：
@@ -7169,7 +7183,7 @@ $$
 最后一位 $x_{12}$ 是校验位，要求：
 
 $$
-3x_1+x_2+3x_3+x_4+\cdots+3x_{11}+x_{12}\equiv0\pmod{10}
+3x_1+x_2+3x_3+x_4+\cdots+3x_{11}+x_{12}\equiv0\pmod {10}
 $$
 
 也就是说，奇数位置权重为 $3$，偶数位置权重为 $1$，加权和必须能被 $10$ 整除。
@@ -7193,13 +7207,13 @@ $$
 最后一位 $x_{10}$ 是校验位，要求：
 
 $$
-\sum_{i=1}^{10}ix_i\equiv0\pmod{11}
+\sum_{i=1}^{10}ix_i\equiv0\pmod {11}
 $$
 
 等价地：
 
 $$
-x_{10}\equiv\sum_{i=1}^{9}ix_i\pmod{11}
+x_{10}\equiv\sum_{i=1}^{9}ix_i\pmod {11}
 $$
 
 因为模 $11$ 的余数可能是 $10$，所以用字母 $X$ 表示校验位 $10$。
@@ -7217,7 +7231,7 @@ content:
 ISBN-10 的校验规则：
 
 $$
-\sum_{i=1}^{10}ix_i\equiv0\pmod{11}
+\sum_{i=1}^{10}ix_i\equiv0\pmod {11}
 $$
 
 可以检测任意单个数字错误。
@@ -7573,13 +7587,13 @@ $$
 若：
 
 $$
-c\equiv m^e\pmod{n}
+c\equiv m^e\pmod n
 $$
 
 则有：
 
 $$
-c^d\equiv m\pmod{n}
+c^d\equiv m\pmod n
 $$
 
 这保证了正确解密。
@@ -10461,7 +10475,7 @@ $$
 
 ---
 
-# r 排列
+# $r$ 排列
 
 tags: 6.3 Permutations and Combinations
 
@@ -10893,7 +10907,7 @@ content:
 
 ---
 
-# 允许重复的 r 排列
+# 允许重复的 $r$ 排列
 
 tags: 6.5 Generalized Permutations and Combinations
 
@@ -10913,7 +10927,7 @@ $$
 
 ---
 
-# 允许重复的 r 组合
+# 允许重复的 $r$ 组合
 
 tags: 6.5 Generalized Permutations and Combinations
 
@@ -12117,7 +12131,7 @@ $$
 
 ---
 
-# 独立 Bernoulli 试验中恰好 k 次成功
+# 独立 Bernoulli 试验中恰好 $k$ 次成功
 
 tags: 7.2 Probability Theory
 
@@ -15050,7 +15064,7 @@ $$
 
 ---
 
-# 恰有 k 个固定点的排列
+# 恰有 $k$ 个固定点的排列
 
 tags: 8.6 Applications of Inclusion–Exclusion
 
@@ -15645,7 +15659,7 @@ $$
 
 ---
 
-# n 元关系
+# $n$ 元关系
 
 tags: 9.2 n-ary Relations and Their Applications
 
@@ -16674,7 +16688,7 @@ $$
 
 ---
 
-# 同余模 m 是等价关系
+# 同余模 $m$ 是等价关系
 
 tags: 9.5 Equivalence Relations
 
@@ -16685,7 +16699,7 @@ content:
 设 $m$ 为正整数。在整数集合上定义关系：
 
 $$
-aRb\iff a\equiv b\pmod{m}
+aRb\iff a\equiv b\pmod m
 $$
 
 该关系是等价关系。
@@ -18364,7 +18378,7 @@ $$
 
 ---
 
-# n 维超立方体
+# $n$ 维超立方体
 
 tags: 10.2 Graph Terminology and Special Types of Graphs
 
@@ -19372,7 +19386,7 @@ content:
 即对所有顶点 $v$，都有：
 
 $$
-\deg(v)\equiv0\pmod{2}
+\deg(v)\equiv0\pmod 2
 $$
 
 直观原因是：每次进入一个非起终点顶点，都必须从另一条边离开，因此边在该顶点成对出现。
@@ -20014,7 +20028,7 @@ $$
 
 ---
 
-# K5 非平面
+# $K_5$ 非平面
 
 tags: 10.7 Planar Graphs
 
@@ -20060,7 +20074,7 @@ $$
 
 ---
 
-# K3,3 非平面
+# $K_{3,3}$ 非平面
 
 tags: 10.7 Planar Graphs
 
@@ -20788,7 +20802,7 @@ content:
 
 ---
 
-# m 叉树
+# $m$ 叉树
 
 tags: 11.1 Introduction to Trees
 
@@ -20810,7 +20824,7 @@ $m$ 叉树用于表示每个决策点最多有 $m$ 种选择的层级结构。
 
 ---
 
-# 满 m 叉树
+# 满 $m$ 叉树
 
 tags: 11.1 Introduction to Trees
 
@@ -20826,7 +20840,7 @@ content:
 
 ---
 
-# 满 m 叉树的顶点数
+# 满 $m$ 叉树的顶点数
 
 tags: 11.1 Introduction to Trees
 
@@ -20850,7 +20864,7 @@ $$
 
 ---
 
-# 满 m 叉树的叶节点数
+# 满 $m$ 叉树的叶节点数
 
 tags: 11.1 Introduction to Trees
 
@@ -20882,7 +20896,7 @@ $$
 
 ---
 
-# 满 m 叉树的等价公式
+# 满 $m$ 叉树的等价公式
 
 tags: 11.1 Introduction to Trees
 
@@ -21016,7 +21030,7 @@ $$
 
 ---
 
-# 平衡 m 叉树
+# 平衡 $m$ 叉树
 
 tags: 11.1 Introduction to Trees
 
@@ -21032,7 +21046,7 @@ content:
 
 ---
 
-# m 叉树的叶节点上界
+# $m$ 叉树的叶节点上界
 
 tags: 11.1 Introduction to Trees
 
@@ -22507,10 +22521,12 @@ $$
 
 其取值规则为：
 
-- 当$x$=1，$y$=1时，$x+y$=1。
-- 当$x$=1，$y$=0时，$x+y$=1。
-- 当$x$=0，$y$=1时，$x+y$=1。
-- 当$x$=0，$y$=0时，$x+y$=0。
+| $x$ | $y$ | $x+y$ |
+|---|---|---|
+| 1 | 1 | 1 |
+| 1 | 0 | 1 |
+| 0 | 1 | 1 |
+| 0 | 0 | 0 |
 
 布尔和对应命题逻辑中的析取：
 
@@ -22544,10 +22560,12 @@ $$
 
 其取值规则为：
 
-- 当$x$=1，$y$=1时，$xy$=1。
-- 当$x$=1，$y$=0时，$xy$=0。
-- 当$x$=0，$y$=1时，$xy$=0。
-- 当$x$=0，$y$=0时，$xy$=0。
+| $x$ | $y$ | $xy$ |
+|---|---|---|
+| 1 | 1 | 1 |
+| 1 | 0 | 0 |
+| 0 | 1 | 0 |
+| 0 | 0 | 0 |
 
 布尔积对应命题逻辑中的合取：
 
@@ -22787,11 +22805,13 @@ content:
 
 对应关系为：
 
-- $0$：$F$。
-- $1$：$T$。
-- $x+y$：$p\lor q$。
-- $xy$：$p\land q$。
-- $\overline{x}$：$\neg p$。
+| 布尔代数 | 命题逻辑 |
+|---|---|
+| $0$ | $F$ |
+| $1$ | $T$ |
+| $x+y$ | $p\lor q$ |
+| $xy$ | $p\land q$ |
+| $\overline{x}$ | $\neg p$ |
 
 因此，布尔恒等式可以转化为命题逻辑等价式。
 
@@ -23470,7 +23490,7 @@ $$
 
 ---
 
-# 加法和补的函数完备性
+# $\{+,\overline{\phantom{x}}\}$ 的函数完备性
 
 tags: 12.2 Representing Boolean Functions
 
@@ -23496,7 +23516,7 @@ $$
 
 ---
 
-# 乘法和补的函数完备性
+# $\{\cdot,\overline{\phantom{x}}\}$ 的函数完备性
 
 tags: 12.2 Representing Boolean Functions
 
@@ -26488,7 +26508,7 @@ content:
 
 ---
 
-# 识别 0^n1^n 的图灵机思想
+# 识别 $\{0^n1^n\}$ 的图灵机思想
 
 tags: 13.5 Turing Machines
 
@@ -26826,7 +26846,7 @@ $$
 
 ---
 
-# 类 P 的图灵机定义
+# 类 $P$ 的图灵机定义
 
 tags: 13.5 Turing Machines
 
@@ -26848,7 +26868,7 @@ $$
 
 ---
 
-# 类 NP 的图灵机定义
+# 类 $NP$ 的图灵机定义
 
 tags: 13.5 Turing Machines
 
@@ -26864,7 +26884,7 @@ content:
 
 ---
 
-# P 是 NP 的子集
+# $P\subseteq NP$
 
 tags: 13.5 Turing Machines
 
@@ -26884,7 +26904,7 @@ $$
 
 ---
 
-# P 与 NP 问题
+# $P$ 与 $NP$ 问题
 
 tags: 13.5 Turing Machines
 
@@ -26916,7 +26936,7 @@ $$
 
 ---
 
-# NP 完全问题
+# $NP$ 完全问题
 
 tags: 13.5 Turing Machines
 

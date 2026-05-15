@@ -7,6 +7,14 @@
 
 import SwiftUI
 
+struct KikariaMathBlockFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [CGRect] = []
+
+    static func reduce(value: inout [CGRect], nextValue: () -> [CGRect]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
 struct KikariaMathText: View {
     let text: String
     var fontSize: CGFloat
@@ -15,7 +23,6 @@ struct KikariaMathText: View {
     var lineSpacing: CGFloat
     var usesSystemChineseFont: Bool
     var usesGenerousFormulaSpacing: Bool
-    var onHorizontalMathDrag: (() -> Void)?
 
     private let tokens: [KikariaLatexToken]
 
@@ -26,8 +33,7 @@ struct KikariaMathText: View {
         accentColor: Color,
         lineSpacing: CGFloat = 3,
         usesSystemChineseFont: Bool = false,
-        usesGenerousFormulaSpacing: Bool = false,
-        onHorizontalMathDrag: (() -> Void)? = nil
+        usesGenerousFormulaSpacing: Bool = false
     ) {
         self.text = text
         self.fontSize = fontSize
@@ -36,7 +42,6 @@ struct KikariaMathText: View {
         self.lineSpacing = lineSpacing
         self.usesSystemChineseFont = usesSystemChineseFont
         self.usesGenerousFormulaSpacing = usesGenerousFormulaSpacing
-        self.onHorizontalMathDrag = onHorizontalMathDrag
         tokens = KikariaLatexParser.tokenize(text)
     }
 
@@ -52,9 +57,10 @@ struct KikariaMathText: View {
                 ForEach(Array(displayBlocks.enumerated()), id: \.offset) { _, block in
                     switch block {
                     case .paragraph(let segments):
+                        let items = inlineItems(from: segments)
                         KikariaInlineMathFlow(horizontalSpacing: 0.5, rowSpacing: effectiveLineSpacing) {
-                            ForEach(Array(inlineItems(from: segments).enumerated()), id: \.offset) { _, item in
-                                inlineItemView(item)
+                            ForEach(items.indices, id: \.self) { index in
+                                inlineItemView(items[index])
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -306,46 +312,29 @@ struct KikariaMathText: View {
                     .padding(.vertical, verticalPadding)
             }
             .contentShape(Rectangle())
-            .simultaneousGesture(mathHorizontalDragSuppressionGesture)
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: KikariaMathBlockFramePreferenceKey.self,
+                    value: [proxy.frame(in: .global)]
+                )
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var mathHorizontalDragSuppressionGesture: some Gesture {
-        DragGesture(minimumDistance: 12, coordinateSpace: .local)
-            .onChanged { value in
-                guard isHorizontalMathDrag(value.translation) else {
-                    return
-                }
-
-                onHorizontalMathDrag?()
-            }
-            .onEnded { value in
-                guard isHorizontalMathDrag(value.translation) else {
-                    return
-                }
-
-                onHorizontalMathDrag?()
-            }
-    }
-
-    private func isHorizontalMathDrag(_ translation: CGSize) -> Bool {
-        let horizontal = abs(translation.width)
-        let vertical = abs(translation.height)
-        return horizontal > 16 && horizontal > vertical * 1.2
     }
 
     private func blockRenderer(source: String, body: String) -> some View {
         KikariaMathFormulaView(
             latex: body,
-            fallbackSource: source,
+            fallbackSource: body,
             displayStyle: .block,
             fontSize: blockFontSize,
             textColor: textColor,
             alignment: .center,
             usesGenerousVerticalSpacing: usesGenerousFormulaSpacing
         )
-            .fixedSize()
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func normalizedBlocks(_ blocks: [KikariaMathTextBlock]) -> [KikariaMathTextBlock] {
