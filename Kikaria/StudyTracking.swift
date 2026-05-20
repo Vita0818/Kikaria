@@ -131,11 +131,9 @@ enum WidgetDataStore {
 
         if let appGroupDefaults = UserDefaults(suiteName: appGroupID) {
             appGroupDefaults.set(data, forKey: snapshotKey)
-            appGroupDefaults.synchronize()
         }
 
         UserDefaults.standard.set(data, forKey: snapshotKey)
-        UserDefaults.standard.synchronize()
         WidgetCenter.shared.reloadAllTimelines()
     }
 }

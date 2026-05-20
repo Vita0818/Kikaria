@@ -82,6 +82,16 @@
 		B70000012FBE000000000011 /* Presets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Presets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C10000012FC0000000000001 /* Exceptions for "Kikaria" folder in "Kikaria" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 58D75B022FA48E29005294D4 /* Kikaria */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		58BD4DD12FB17CC400863A49 /* KikariaMac */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -100,6 +110,9 @@
 		};
 		58D75B052FA48E29005294D4 /* Kikaria */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C10000012FC0000000000001 /* Exceptions for "Kikaria" folder in "Kikaria" target */,
+			);
 			path = Kikaria;
 			sourceTree = "<group>";
 		};
@@ -760,7 +773,8 @@
 				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = L5ZXXFUZTL;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Kikaria/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Kikaria;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -795,7 +809,8 @@
 				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = L5ZXXFUZTL;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Kikaria/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Kikaria;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

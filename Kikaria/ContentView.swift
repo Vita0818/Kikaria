@@ -1235,6 +1235,8 @@ struct ContentView: View {
     @State private var dangerPercent = 80
     @State private var hasLoadedInitialPresetState = false
     @State private var isApplyingPresetState = false
+    @State private var pendingStudyStatePersistenceWorkItem: DispatchWorkItem?
+    @State private var pendingStudyStatePersistenceRefreshesWidget = false
     @State private var hasCompletedProfileSetup = false
     @State private var isShowingProfileSetup = false
     @State private var hasCompletedOnboarding = false
@@ -1459,16 +1461,16 @@ struct ContentView: View {
                 }
             }
             .onChange(of: knowledgePoints) { _ in
-                persistCurrentStudyStateIfReady()
+                persistCurrentStudyStateIfReady(refreshWidget: true)
             }
             .onChange(of: selectedTags) { _ in
                 persistCurrentStudyStateIfReady()
             }
             .onChange(of: dailyReviewRecords) { _ in
-                persistCurrentStudyStateIfReady()
+                persistCurrentStudyStateIfReady(refreshWidget: true)
             }
             .onChange(of: activityRecords) { _ in
-                persistCurrentStudyStateIfReady()
+                persistCurrentStudyStateIfReady(refreshWidget: true)
             }
             .onChange(of: userProfile) { _ in
                 saveAppStateIfReady()
@@ -2050,6 +2052,7 @@ struct ContentView: View {
         dailyGoal = goal
         presetStates[currentPresetID] = currentPresetStateSnapshot()
         persistLibrary()
+        rescheduleAllPresetNotifications()
         updateWidgetSnapshot()
     }
 
@@ -2122,14 +2125,62 @@ struct ContentView: View {
         return 20
     }
 
-    private func persistCurrentStudyStateIfReady() {
+    private func persistCurrentStudyStateIfReady(refreshWidget: Bool = false) {
         guard hasLoadedInitialPresetState, !isApplyingPresetState else {
             return
         }
 
         presetStates[currentPresetID] = currentPresetStateSnapshot()
-        persistLibrary()
-        rescheduleAllPresetNotifications()
+        scheduleStudyStatePersistence(refreshWidget: refreshWidget)
+    }
+
+    private func scheduleStudyStatePersistence(refreshWidget: Bool) {
+        pendingStudyStatePersistenceWorkItem?.cancel()
+        pendingStudyStatePersistenceRefreshesWidget = pendingStudyStatePersistenceRefreshesWidget || refreshWidget
+
+        var workItem: DispatchWorkItem?
+        workItem = DispatchWorkItem {
+            guard workItem?.isCancelled == false else {
+                return
+            }
+
+            let shouldRefreshWidget = pendingStudyStatePersistenceRefreshesWidget
+            pendingStudyStatePersistenceWorkItem = nil
+            pendingStudyStatePersistenceRefreshesWidget = false
+            saveAppState()
+
+            if shouldRefreshWidget {
+                updateWidgetSnapshot()
+            }
+        }
+
+        pendingStudyStatePersistenceWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: workItem!)
+    }
+
+    private func cancelPendingStudyStatePersistence() -> (hadPendingWork: Bool, shouldRefreshWidget: Bool) {
+        let hadPendingWork = pendingStudyStatePersistenceWorkItem != nil
+        let shouldRefreshWidget = hadPendingWork && pendingStudyStatePersistenceRefreshesWidget
+        pendingStudyStatePersistenceWorkItem?.cancel()
+        pendingStudyStatePersistenceWorkItem = nil
+        pendingStudyStatePersistenceRefreshesWidget = false
+        return (hadPendingWork, shouldRefreshWidget)
+    }
+
+    @discardableResult
+    private func flushPendingStudyStatePersistenceIfNeeded() -> Bool {
+        let pendingPersistence = cancelPendingStudyStatePersistence()
+        guard pendingPersistence.hadPendingWork else {
+            return false
+        }
+
+        saveAppState()
+
+        if pendingPersistence.shouldRefreshWidget {
+            updateWidgetSnapshot()
+        }
+
+        return true
     }
 
     private func loadAppState() {
@@ -2257,7 +2308,12 @@ struct ContentView: View {
     }
 
     private func persistLibrary() {
+        let pendingPersistence = cancelPendingStudyStatePersistence()
         saveAppState()
+
+        if pendingPersistence.shouldRefreshWidget {
+            updateWidgetSnapshot()
+        }
     }
 
     private func saveAppStateIfReady() {
@@ -2265,7 +2321,9 @@ struct ContentView: View {
             return
         }
 
-        saveAppState()
+        if !flushPendingStudyStatePersistenceIfNeeded() {
+            saveAppState()
+        }
     }
 
     private func saveAppState() {
@@ -2539,7 +2597,6 @@ struct ContentView: View {
                 pointTitle: point.title
             )
         )
-        updateWidgetSnapshot()
     }
 
     private func updateWidgetSnapshot() {
@@ -2714,6 +2771,10 @@ private struct OnboardingPageCard: View {
 private extension KnowledgePoint {
     func matchesSearchQuery(_ query: String) -> Bool {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return matchesPreparedSearchQuery(trimmedQuery)
+    }
+
+    func matchesPreparedSearchQuery(_ trimmedQuery: String) -> Bool {
         guard !trimmedQuery.isEmpty else {
             return true
         }
@@ -3629,6 +3690,7 @@ private struct SettingsView: View {
                 showsChevron: false,
                 scale: rowScale
             )
+
         }
     }
 
@@ -3904,6 +3966,7 @@ private struct SettingsView: View {
                                 showsChevron: false,
                                 scale: rowScale
                             )
+
                         }
                     }
                     .padding(.horizontal, pagePadding)
@@ -4098,6 +4161,7 @@ private struct SettingsView: View {
             }
         }
     }
+
 }
 
 private struct SettingsSectionCard<Content: View>: View {
@@ -7257,7 +7321,6 @@ private enum ReviewScrollCoordinateSpace {
 
 private struct ReviewScrollContentMetrics: Equatable {
     var contentHeight: CGFloat = 0
-    var contentMinY: CGFloat = 0
 }
 
 private struct ReviewScrollContentMetricsPreferenceKey: PreferenceKey {
@@ -7274,8 +7337,7 @@ private struct ReviewScrollMetricsReader: View {
             Color.clear.preference(
                 key: ReviewScrollContentMetricsPreferenceKey.self,
                 value: ReviewScrollContentMetrics(
-                    contentHeight: proxy.size.height,
-                    contentMinY: proxy.frame(in: .named(ReviewScrollCoordinateSpace.readingContent)).minY
+                    contentHeight: proxy.size.height
                 )
             )
         }
@@ -7323,14 +7385,9 @@ private struct ReviewContainerFrameReader: View {
 private struct ReviewScrollState {
     var viewportHeight: CGFloat = 0
     var contentHeight: CGFloat = 0
-    var scrollOffset: CGFloat = 0
 
     var maxScrollOffset: CGFloat {
         max(0, contentHeight - viewportHeight)
-    }
-
-    var isAtBottom: Bool {
-        !isScrollable || scrollOffset >= maxScrollOffset - 18
     }
 
     var isScrollable: Bool {
@@ -7341,10 +7398,14 @@ private struct ReviewScrollState {
         viewportHeight > 0 && contentHeight > 0
     }
 
+    func needsUpdate(contentMetrics: ReviewScrollContentMetrics, viewportHeight: CGFloat) -> Bool {
+        abs(self.viewportHeight - viewportHeight) > 0.5 ||
+            abs(contentHeight - contentMetrics.contentHeight) > 0.5
+    }
+
     mutating func update(contentMetrics: ReviewScrollContentMetrics, viewportHeight: CGFloat) {
         self.viewportHeight = viewportHeight
         self.contentHeight = contentMetrics.contentHeight
-        self.scrollOffset = max(0, -contentMetrics.contentMinY)
     }
 }
 
@@ -7505,26 +7566,19 @@ struct ReviewView: View {
     @State private var reviewCardFrames: [CGRect] = []
     @State private var reviewFormulaFrames: [CGRect] = []
     @State private var reviewContainerFrame = CGRect.zero
+    @State private var isReviewPointTransitioning = false
+    @State private var reviewPointTransitionToken = UUID()
+    @State private var isReviewTextVisible = true
+    @State private var matchingPointIDsCache: [KnowledgePoint.ID] = []
+    @State private var hasPreparedReviewQueue = false
+    @State private var pendingAnswerRevealToken: UUID?
 
     private var allTags: [String] {
         Array(Set(knowledgePoints.flatMap(\.tags))).sorted()
     }
 
-    private var matchingPoints: [KnowledgePoint] {
-        switch mode {
-        case .normal:
-            if selectedTags.isEmpty {
-                return knowledgePoints
-            }
-
-            return knowledgePoints.filter { point in
-                point.tags.contains { selectedTags.contains($0) }
-            }
-        case .reinforcement:
-            return knowledgePoints.filter { $0.reinforcementCount > 0 }
-        case .mastered:
-            return knowledgePoints.filter(\.isMastered)
-        }
+    private var matchingPointIDs: [KnowledgePoint.ID] {
+        matchingPointIDsCache
     }
 
     private var currentPoint: KnowledgePoint? {
@@ -7535,23 +7589,110 @@ struct ReviewView: View {
         return knowledgePoints.first { $0.id == currentPointID }
     }
 
-    private var matchingPointIDs: [KnowledgePoint.ID] {
-        matchingPoints.map(\.id)
+    private func makeMatchingPointIDs() -> [KnowledgePoint.ID] {
+        switch mode {
+        case .normal:
+            if selectedTags.isEmpty {
+                return knowledgePoints.map(\.id)
+            }
+
+            return knowledgePoints
+                .filter { point in
+                    point.tags.contains { selectedTags.contains($0) }
+                }
+                .map(\.id)
+        case .reinforcement:
+            return knowledgePoints
+                .filter { $0.reinforcementCount > 0 }
+                .map(\.id)
+        case .mastered:
+            return knowledgePoints
+                .filter(\.isMastered)
+                .map(\.id)
+        }
     }
 
-    private var currentTodayReviewCount: Int {
-        guard let currentPointID else {
-            return 0
-        }
-
-        return todayReviewCount(for: currentPointID)
+    private func refreshMatchingPointIDs() {
+        matchingPointIDsCache = makeMatchingPointIDs()
+        hasPreparedReviewQueue = true
     }
 
     private var revealAnimation: Animation {
         .spring(response: 0.42, dampingFraction: 0.88)
     }
 
-    private func revealButtons(isExpanded: Bool, buttonScale: CGFloat) -> some View {
+    private var reviewUnusedComponentFadeOutDuration: TimeInterval {
+        0.18
+    }
+
+    private var reviewTextFadeInDuration: TimeInterval {
+        0.20
+    }
+
+    private var reviewPointSwapDelay: TimeInterval {
+        reviewUnusedComponentFadeOutDuration + 0.03
+    }
+
+    private var reviewUnusedComponentFadeOutAnimation: Animation {
+        .easeOut(duration: reviewUnusedComponentFadeOutDuration)
+    }
+
+    private var reviewTextFadeInAnimation: Animation {
+        .easeIn(duration: reviewTextFadeInDuration)
+    }
+
+    private var reviewEphemeralStateTransition: AnyTransition {
+        .asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 0.98)),
+            removal: .opacity
+        )
+    }
+
+    private var reviewLongAnswerRevealAnimation: Animation {
+        .easeInOut(duration: 0.24)
+    }
+
+    private var reviewDeferredAnswerRevealDelay: TimeInterval {
+        0.05
+    }
+
+    private var pointTransitionDelay: TimeInterval {
+        0.36
+    }
+
+    private func usesLightweightAnswerReveal(for point: KnowledgePoint) -> Bool {
+        point.content.count >= 180 ||
+            point.content.contains("$") ||
+            point.content.contains("\n")
+    }
+
+    private func answerRevealAnimation(for point: KnowledgePoint) -> Animation? {
+        guard !isReviewPointTransitioning else {
+            return nil
+        }
+
+        return usesLightweightAnswerReveal(for: point) ? reviewLongAnswerRevealAnimation : revealAnimation
+    }
+
+    private func answerTransition(for point: KnowledgePoint) -> AnyTransition {
+        usesLightweightAnswerReveal(for: point) ? .opacity : reviewEphemeralStateTransition
+    }
+
+    private func prewarmReviewMathText(for point: KnowledgePoint) {
+        let hint = point.hint
+        let content = point.content
+
+        DispatchQueue.global(qos: .utility).async {
+            KikariaMathText.prewarm(hint)
+            KikariaMathText.prewarm(content)
+        }
+    }
+
+    private func revealButtons(
+        isExpanded: Bool,
+        buttonScale: CGFloat,
+        isInteractive: Bool
+    ) -> some View {
         let minButtonHeight: CGFloat? = isExpanded ? 76 * buttonScale : nil
 
         return VStack(spacing: (isExpanded ? 16 : 14) * buttonScale) {
@@ -7569,7 +7710,7 @@ struct ReviewView: View {
                 }
             }
             .opacity(isShowingHint ? 0 : 1)
-            .allowsHitTesting(!isShowingHint)
+            .allowsHitTesting(isInteractive && !isShowingHint)
 
             ReviewActionButton(
                 title: "查看答案",
@@ -7585,7 +7726,7 @@ struct ReviewView: View {
                 }
             }
         }
-        .animation(.easeInOut(duration: 0.18), value: isShowingHint)
+        .animation(isReviewPointTransitioning ? nil : .easeInOut(duration: 0.18), value: isShowingHint)
     }
 
     @ViewBuilder
@@ -7682,8 +7823,12 @@ struct ReviewView: View {
                 .padding(.horizontal, isExpanded ? 26 : 22)
 
             LightTagRow(tags: currentPoint.tags, isExpanded: isExpanded)
+                .id("tags-\(currentPoint.id)")
+                .transition(reviewEphemeralStateTransition)
 
-            TodayReviewCountPill(count: currentTodayReviewCount, isExpanded: isExpanded)
+            TodayReviewCountPill(count: todayReviewCount(for: currentPoint.id), isExpanded: isExpanded)
+                .id("today-review-\(currentPoint.id)")
+                .transition(reviewEphemeralStateTransition)
         }
         .frame(maxWidth: .infinity)
     }
@@ -7704,6 +7849,7 @@ struct ReviewView: View {
     private func centralContentStack(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
         let isExpanded = metrics.isPadWidth
         let stackSpacing: CGFloat = metrics.isPadPortrait ? 20 : (isExpanded ? 18 : 14)
+        let textVisibilityAnimation = isReviewTextVisible ? reviewTextFadeInAnimation : reviewUnusedComponentFadeOutAnimation
 
         return VStack(spacing: stackSpacing) {
             titleGroup(for: currentPoint, metrics: metrics)
@@ -7714,7 +7860,7 @@ struct ReviewView: View {
                     text: currentPoint.hint,
                     isExpanded: isExpanded
                 )
-                    .transition(.move(edge: .bottom))
+                .transition(reviewEphemeralStateTransition)
             }
 
             if isShowingContent {
@@ -7723,15 +7869,20 @@ struct ReviewView: View {
                     text: currentPoint.content,
                     isExpanded: isExpanded
                 )
-                    .transition(.move(edge: .bottom))
+                .transition(answerTransition(for: currentPoint))
             }
         }
         .frame(maxWidth: .infinity)
-        .animation(revealAnimation, value: isShowingHint)
-        .animation(revealAnimation, value: isShowingContent)
+        .opacity(isReviewTextVisible ? 1 : 0)
+        .animation(isReviewPointTransitioning ? nil : revealAnimation, value: isShowingHint)
+        .animation(answerRevealAnimation(for: currentPoint), value: isShowingContent)
+        .animation(textVisibilityAnimation, value: isReviewTextVisible)
     }
 
-    private func contentRegion(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+    private func contentRegion(
+        for currentPoint: KnowledgePoint,
+        metrics: KikariaAdaptiveLayout.Metrics
+    ) -> some View {
         GeometryReader { proxy in
             ScrollView {
                 centralContentStack(for: currentPoint, metrics: metrics)
@@ -7739,7 +7890,9 @@ struct ReviewView: View {
                     .padding(.vertical, metrics.isPadPortrait ? 34 : (metrics.isPadWidth ? 30 : 24))
                     .frame(maxWidth: metrics.reviewMaxWidth)
                     .frame(maxWidth: .infinity)
-                    .background(ReviewScrollMetricsReader())
+                    .background {
+                        ReviewScrollMetricsReader()
+                    }
                     .frame(
                         minHeight: proxy.size.height + metrics.reviewContentVerticalOffset * 2,
                         alignment: .center
@@ -7768,7 +7921,9 @@ struct ReviewView: View {
                     .padding(.vertical, 24)
                     .frame(maxWidth: metrics.reviewMaxWidth)
                     .frame(maxWidth: .infinity)
-                    .background(ReviewScrollMetricsReader())
+                    .background {
+                        ReviewScrollMetricsReader()
+                    }
                     .frame(minHeight: safeContentHeight, alignment: .center)
                     .padding(.top, safeTop)
                     .padding(.bottom, safeBottom)
@@ -7786,12 +7941,17 @@ struct ReviewView: View {
         for currentPoint: KnowledgePoint,
         isExpanded: Bool,
         buttonScale: CGFloat,
-        usesWideAnswerStack: Bool
+        usesWideAnswerStack: Bool,
+        isInteractive: Bool
     ) -> some View {
         ZStack {
-            revealButtons(isExpanded: isExpanded, buttonScale: buttonScale)
+            revealButtons(
+                isExpanded: isExpanded,
+                buttonScale: buttonScale,
+                isInteractive: isInteractive
+            )
                 .opacity(isShowingContent ? 0 : 1)
-                .allowsHitTesting(!isShowingContent)
+                .allowsHitTesting(isInteractive && !isShowingContent)
 
             answeredActionGrid(
                 for: currentPoint,
@@ -7800,12 +7960,17 @@ struct ReviewView: View {
                 usesWideAnswerStack: usesWideAnswerStack
             )
                 .opacity(isShowingContent ? 1 : 0)
-                .allowsHitTesting(isShowingContent)
+                .allowsHitTesting(isInteractive && isShowingContent)
         }
-        .animation(.easeInOut(duration: 0.18), value: isShowingContent)
+        .animation(isReviewPointTransitioning ? nil : .easeInOut(duration: 0.18), value: isShowingContent)
+        .allowsHitTesting(isInteractive && !isReviewPointTransitioning)
     }
 
-    private func actionRegion(for currentPoint: KnowledgePoint, metrics: KikariaAdaptiveLayout.Metrics) -> some View {
+    private func actionRegion(
+        for currentPoint: KnowledgePoint,
+        metrics: KikariaAdaptiveLayout.Metrics,
+        isInteractive: Bool
+    ) -> some View {
         let isExpanded = metrics.isPadWidth
         let buttonScale = metrics.reviewButtonScale
         let usesWideAnswerStack = usesWideAnswerActionStack(metrics: metrics)
@@ -7814,7 +7979,8 @@ struct ReviewView: View {
             for: currentPoint,
             isExpanded: isExpanded,
             buttonScale: buttonScale,
-            usesWideAnswerStack: usesWideAnswerStack
+            usesWideAnswerStack: usesWideAnswerStack,
+            isInteractive: isInteractive
         )
         .frame(maxWidth: .infinity)
         .frame(
@@ -7830,7 +7996,8 @@ struct ReviewView: View {
 
     private func reviewLandscapeActionPanel(
         for currentPoint: KnowledgePoint,
-        metrics: KikariaAdaptiveLayout.Metrics
+        metrics: KikariaAdaptiveLayout.Metrics,
+        isInteractive: Bool
     ) -> some View {
         let isExpanded = metrics.isPadWidth
         let buttonScale = metrics.reviewButtonScale
@@ -7843,7 +8010,8 @@ struct ReviewView: View {
                 for: currentPoint,
                 isExpanded: isExpanded,
                 buttonScale: buttonScale,
-                usesWideAnswerStack: usesWideAnswerStack
+                usesWideAnswerStack: usesWideAnswerStack,
+                isInteractive: isInteractive
             )
                 .frame(maxWidth: .infinity)
                 .frame(
@@ -7865,19 +8033,59 @@ struct ReviewView: View {
 
     private func reviewLandscapeContent(
         for currentPoint: KnowledgePoint,
-        metrics: KikariaAdaptiveLayout.Metrics
+        metrics: KikariaAdaptiveLayout.Metrics,
+        isInteractive: Bool
     ) -> some View {
         HStack(alignment: .center, spacing: metrics.reviewLandscapeColumnSpacing) {
-            reviewLandscapeReadingColumn(for: currentPoint, metrics: metrics)
+            reviewLandscapeReadingColumn(
+                for: currentPoint,
+                metrics: metrics
+            )
                 .frame(width: metrics.reviewLandscapeLeftWidth)
                 .frame(maxHeight: .infinity)
 
-            reviewLandscapeActionPanel(for: currentPoint, metrics: metrics)
+            reviewLandscapeActionPanel(
+                for: currentPoint,
+                metrics: metrics,
+                isInteractive: isInteractive
+            )
         }
         .frame(maxWidth: metrics.reviewLandscapeMaxWidth)
         .padding(.horizontal, metrics.horizontalPadding)
         .padding(.vertical, 28)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+
+    @ViewBuilder
+    private func reviewContent(
+        for currentPoint: KnowledgePoint,
+        metrics: KikariaAdaptiveLayout.Metrics
+    ) -> some View {
+        if metrics.reviewUsesTwoColumnLayout {
+            reviewLandscapeContent(
+                for: currentPoint,
+                metrics: metrics,
+                isInteractive: !isReviewPointTransitioning
+            )
+        } else {
+            VStack(spacing: 0) {
+                contentRegion(
+                    for: currentPoint,
+                    metrics: metrics
+                )
+
+                actionRegion(
+                    for: currentPoint,
+                    metrics: metrics,
+                    isInteractive: !isReviewPointTransitioning
+                )
+                    .padding(.horizontal, metrics.horizontalPadding)
+                    .padding(.top, 12)
+                    .padding(.bottom, metrics.reviewActionBottomPadding)
+                    .frame(maxWidth: metrics.reviewMaxWidth)
+                    .frame(maxWidth: .infinity)
+            }
+        }
     }
 
     private func reviewBackButton(metrics: KikariaAdaptiveLayout.Metrics) -> some View {
@@ -7903,7 +8111,9 @@ struct ReviewView: View {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
 
-                if matchingPoints.isEmpty {
+                if hasPreparedReviewQueue &&
+                    matchingPointIDsCache.isEmpty &&
+                    currentPoint == nil {
                     if mode.isReinforcement || mode.isMastered {
                         ReinforcementCompletionView {
                             if let onReturnHome {
@@ -7924,20 +8134,7 @@ struct ReviewView: View {
                         .frame(maxWidth: metrics.reviewMaxWidth)
                     }
                 } else if let currentPoint {
-                    if metrics.reviewUsesTwoColumnLayout {
-                        reviewLandscapeContent(for: currentPoint, metrics: metrics)
-                    } else {
-                        VStack(spacing: 0) {
-                            contentRegion(for: currentPoint, metrics: metrics)
-
-                            actionRegion(for: currentPoint, metrics: metrics)
-                                .padding(.horizontal, metrics.horizontalPadding)
-                                .padding(.top, 12)
-                                .padding(.bottom, metrics.reviewActionBottomPadding)
-                                .frame(maxWidth: metrics.reviewMaxWidth)
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
+                    reviewContent(for: currentPoint, metrics: metrics)
                 } else {
                     ProgressView()
                 }
@@ -7984,14 +8181,26 @@ struct ReviewView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
+            refreshMatchingPointIDs()
+
             if currentPointID == nil {
                 rebuildReviewQueue(avoiding: lastQueuePointID)
             }
+
+            if let currentPoint {
+                prewarmReviewMathText(for: currentPoint)
+            }
+
         }
         .onChange(of: selectedTags) { _ in
             if mode.isNormal {
+                refreshMatchingPointIDs()
                 rebuildReviewQueue(avoiding: currentPointID)
             }
+        }
+        .onChange(of: knowledgePoints) { _ in
+            refreshMatchingPointIDs()
+            reconcileReviewQueue()
         }
         #if os(macOS)
         .background {
@@ -8039,6 +8248,10 @@ struct ReviewView: View {
     }
 
     private func updateReviewScrollState(_ contentMetrics: ReviewScrollContentMetrics, viewportHeight: CGFloat) {
+        guard reviewScrollState.needsUpdate(contentMetrics: contentMetrics, viewportHeight: viewportHeight) else {
+            return
+        }
+
         reviewScrollState.update(contentMetrics: contentMetrics, viewportHeight: viewportHeight)
     }
 
@@ -8120,6 +8333,10 @@ struct ReviewView: View {
             return
         }
 
+        guard !isReviewPointTransitioning else {
+            return
+        }
+
         let localStartLocation = localReviewLocation(from: startLocation)
 
         let dx = translation.width
@@ -8150,9 +8367,7 @@ struct ReviewView: View {
             if dy < 0 {
                 triggerGestureFeedback()
                 if isShowingContent {
-                    withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                        chooseRandomPoint()
-                    }
+                    transitionToNextPoint()
                 } else {
                     withAnimation(revealAnimation) {
                         revealContent()
@@ -8164,9 +8379,7 @@ struct ReviewView: View {
                 }
 
                 triggerGestureFeedback()
-                withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-                    goBackOrChooseRandom()
-                }
+                transitionToPreviousPoint()
             }
         }
     }
@@ -8195,17 +8408,13 @@ struct ReviewView: View {
     private func handleReinforcementSwipeLeft() {
         // Reinforcement-mode left swipe only removes from reinforcement; mastered status is untouched.
         removeCurrentPointFromReinforcement(shouldShowToast: true)
-        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-            chooseRandomPoint()
-        }
+        transitionToNextPoint()
     }
 
     private func handleMasteredSwipeLeft() {
         // Mastered-mode left swipe only removes from mastered; reinforcement status is untouched.
         removeCurrentPointFromMastered(shouldShowToast: true)
-        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
-            chooseRandomPoint()
-        }
+        transitionToNextPoint()
     }
 
     private func triggerGestureFeedback() {
@@ -8225,12 +8434,79 @@ struct ReviewView: View {
     }
 
     private func advanceToNextPoint() {
-        withAnimation(.spring(response: 0.44, dampingFraction: 0.9)) {
+        transitionToNextPoint()
+    }
+
+    private func transitionToNextPoint() {
+        transitionReviewPoint {
             chooseRandomPoint()
         }
     }
 
+    private func transitionToPreviousPoint() {
+        transitionReviewPoint {
+            goBackOrChooseRandom()
+        }
+    }
+
+    private func transitionReviewPoint(_ updateCurrentPoint: @escaping () -> Void) {
+        guard !isReviewPointTransitioning else {
+            return
+        }
+
+        guard currentPoint != nil else {
+            updateCurrentPoint()
+            return
+        }
+
+        let token = UUID()
+
+        reviewPointTransitionToken = token
+        isReviewPointTransitioning = true
+
+        withAnimation(reviewUnusedComponentFadeOutAnimation) {
+            isReviewTextVisible = false
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + reviewPointSwapDelay) {
+            guard reviewPointTransitionToken == token else {
+                return
+            }
+
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+
+            withTransaction(transaction) {
+                updateCurrentPoint()
+                reviewScrollState = ReviewScrollState()
+                reviewGestureOwner = .undecided
+                reviewCardFrames = []
+                reviewFormulaFrames = []
+            }
+
+            withAnimation(reviewTextFadeInAnimation) {
+                isReviewTextVisible = true
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + pointTransitionDelay) {
+            guard reviewPointTransitionToken == token else {
+                return
+            }
+
+            isReviewPointTransitioning = false
+        }
+    }
+
+    private func cancelReviewPointTransition() {
+        reviewPointTransitionToken = UUID()
+        isReviewPointTransitioning = false
+        isReviewTextVisible = true
+    }
+
     private func rebuildReviewQueue(avoiding avoidedFirstID: KnowledgePoint.ID? = nil) {
+        cancelReviewPointTransition()
+        refreshMatchingPointIDs()
         var shuffledIDs = matchingPointIDs.shuffled()
 
         guard !shuffledIDs.isEmpty else {
@@ -8323,11 +8599,16 @@ struct ReviewView: View {
         currentPointID = reviewQueue[index]
         lastQueuePointID = currentPointID
         resetRevealState()
+
+        if let currentPoint {
+            prewarmReviewMathText(for: currentPoint)
+        }
     }
 
     private func resetRevealState() {
         isShowingHint = false
         isShowingContent = false
+        pendingAnswerRevealToken = nil
         reviewScrollState = ReviewScrollState()
         reviewGestureOwner = .undecided
         reviewCardFrames = []
@@ -8345,14 +8626,66 @@ struct ReviewView: View {
     }
 
     private func revealContent() {
-        if !isShowingContent,
-           let currentPointID,
-           let point = knowledgePoints.first(where: { $0.id == currentPointID }) {
-            incrementTodayReviewCount(for: currentPointID)
-            onRecordActivity(.reviewedAnswer, point)
+        guard !isShowingContent, pendingAnswerRevealToken == nil else {
+            return
         }
 
-        isShowingContent = true
+        guard let currentPointID, let point = currentPoint else {
+            return
+        }
+
+        if usesLightweightAnswerReveal(for: point) {
+            let revealToken = UUID()
+            let content = point.content
+            let revealDelay = reviewDeferredAnswerRevealDelay
+            pendingAnswerRevealToken = revealToken
+
+            DispatchQueue.global(qos: .utility).async {
+                KikariaMathText.prewarm(content)
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + revealDelay) {
+                guard pendingAnswerRevealToken == revealToken else {
+                    return
+                }
+
+                guard self.currentPointID == currentPointID else {
+                    pendingAnswerRevealToken = nil
+                    return
+                }
+
+                pendingAnswerRevealToken = nil
+                showAnswerContent(for: point)
+                finishAnswerReveal(pointID: currentPointID, point: point)
+            }
+            return
+        }
+
+        showAnswerContent(for: point)
+        finishAnswerReveal(pointID: currentPointID, point: point)
+    }
+
+    private func showAnswerContent(for point: KnowledgePoint) {
+        if usesLightweightAnswerReveal(for: point) {
+            var transaction = Transaction(animation: reviewLongAnswerRevealAnimation)
+            transaction.disablesAnimations = false
+            withTransaction(transaction) {
+                isShowingContent = true
+            }
+        } else {
+            isShowingContent = true
+        }
+    }
+
+    private func finishAnswerReveal(pointID: KnowledgePoint.ID, point: KnowledgePoint) {
+        DispatchQueue.main.async {
+            guard currentPointID == pointID, isShowingContent else {
+                return
+            }
+
+            incrementTodayReviewCount(for: pointID)
+            onRecordActivity(.reviewedAnswer, point)
+        }
     }
 
     private func todayReviewCount(for pointID: KnowledgePoint.ID) -> Int {
@@ -8398,21 +8731,37 @@ struct ReviewView: View {
     }
 
     private func addCurrentPointToReinforcementAndAdvance() {
+        guard !isReviewPointTransitioning else {
+            return
+        }
+
         addCurrentPointToReinforcement(shouldShowToast: true)
         advanceToNextPoint()
     }
 
     private func markCurrentPointAsMasteredAndAdvance() {
+        guard !isReviewPointTransitioning else {
+            return
+        }
+
         markCurrentPointAsMastered()
         advanceToNextPoint()
     }
 
     private func removeCurrentPointFromReinforcementAndAdvance() {
+        guard !isReviewPointTransitioning else {
+            return
+        }
+
         removeCurrentPointFromReinforcement(shouldShowToast: true)
         advanceToNextPoint()
     }
 
     private func removeCurrentPointFromMasteredAndAdvance() {
+        guard !isReviewPointTransitioning else {
+            return
+        }
+
         removeCurrentPointFromMastered(shouldShowToast: true)
         advanceToNextPoint()
     }
@@ -9218,6 +9567,69 @@ private struct ReinforcementCompletionView: View {
     }
 }
 
+private enum KnowledgeCollectionKind {
+    case reinforcement
+    case mastered
+}
+
+private struct KnowledgeCollectionSnapshot: Equatable {
+    var knowledgePointCount: Int
+    var items: [KnowledgePoint]
+    var filteredItems: [KnowledgePoint]
+    var searchTextIsEmpty: Bool
+
+    static let empty = KnowledgeCollectionSnapshot(
+        knowledgePointCount: 0,
+        items: [],
+        filteredItems: [],
+        searchTextIsEmpty: true
+    )
+
+    static func make(
+        kind: KnowledgeCollectionKind,
+        knowledgePoints: [KnowledgePoint],
+        searchText: String
+    ) -> KnowledgeCollectionSnapshot {
+        let collectionItems: [KnowledgePoint]
+
+        switch kind {
+        case .reinforcement:
+            collectionItems = knowledgePoints
+                .filter { $0.reinforcementCount > 0 }
+                .sorted { lhs, rhs in
+                    if lhs.reinforcementCount != rhs.reinforcementCount {
+                        return lhs.reinforcementCount > rhs.reinforcementCount
+                    }
+
+                    switch (lhs.lastReinforcedAt, rhs.lastReinforcedAt) {
+                    case let (lhsDate?, rhsDate?):
+                        return lhsDate > rhsDate
+                    case (_?, nil):
+                        return true
+                    case (nil, _?):
+                        return false
+                    case (nil, nil):
+                        return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+                    }
+                }
+        case .mastered:
+            collectionItems = knowledgePoints.filter(\.isMastered)
+        }
+
+        let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filteredItems = trimmedSearchText.isEmpty
+            ? collectionItems
+            : collectionItems.filter { $0.matchesPreparedSearchQuery(trimmedSearchText) }
+
+        return KnowledgeCollectionSnapshot(
+            knowledgePointCount: knowledgePoints.count,
+            items: collectionItems,
+            filteredItems: filteredItems,
+            searchTextIsEmpty: trimmedSearchText.isEmpty
+        )
+    }
+}
+
 struct ReinforcementView: View {
     @Binding var knowledgePoints: [KnowledgePoint]
     let onRecordActivity: (StudyActivityType, KnowledgePoint) -> Void
@@ -9225,35 +9637,39 @@ struct ReinforcementView: View {
     @State private var searchText = ""
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
+    @State private var collectionSnapshot: KnowledgeCollectionSnapshot
 
-    private var reinforcedPoints: [KnowledgePoint] {
-        knowledgePoints
-            .filter { $0.reinforcementCount > 0 }
-            .sorted { lhs, rhs in
-                if lhs.reinforcementCount != rhs.reinforcementCount {
-                    return lhs.reinforcementCount > rhs.reinforcementCount
-                }
-
-                switch (lhs.lastReinforcedAt, rhs.lastReinforcedAt) {
-                case let (lhsDate?, rhsDate?):
-                    return lhsDate > rhsDate
-                case (_?, nil):
-                    return true
-                case (nil, _?):
-                    return false
-                case (nil, nil):
-                    return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
-                }
-            }
+    init(
+        knowledgePoints: Binding<[KnowledgePoint]>,
+        onRecordActivity: @escaping (StudyActivityType, KnowledgePoint) -> Void,
+        onStartReview: @escaping () -> Void
+    ) {
+        self._knowledgePoints = knowledgePoints
+        self.onRecordActivity = onRecordActivity
+        self.onStartReview = onStartReview
+        self._collectionSnapshot = State(
+            initialValue: KnowledgeCollectionSnapshot.make(
+                kind: .reinforcement,
+                knowledgePoints: knowledgePoints.wrappedValue,
+                searchText: ""
+            )
+        )
     }
 
-    private var filteredReinforcedPoints: [KnowledgePoint] {
-        reinforcedPoints.filter { $0.matchesSearchQuery(searchText) }
+    private func refreshCollectionSnapshot() {
+        let snapshot = KnowledgeCollectionSnapshot.make(
+            kind: .reinforcement,
+            knowledgePoints: knowledgePoints,
+            searchText: searchText
+        )
+        collectionSnapshot = snapshot
     }
 
     private func landscapeContent(
         metrics: KikariaAdaptiveLayout.Metrics,
-        titleFontSize: CGFloat
+        titleFontSize: CGFloat,
+        reinforcedPoints: [KnowledgePoint],
+        filteredReinforcedPoints: [KnowledgePoint]
     ) -> some View {
         let gridSpacing = min(max(metrics.collectionLandscapeAvailableWidth * 0.026, 24), 32)
         let gridColumns = [
@@ -9323,14 +9739,22 @@ struct ReinforcementView: View {
             let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32)
             let titleTopPadding = metrics.pageTitleTopPadding(defaultValue: 18)
             let titleSpacing = metrics.pageTitleSpacing(defaultValue: 18)
+            let currentSnapshot = collectionSnapshot
+            let currentReinforcedPoints = currentSnapshot.items
+            let currentFilteredReinforcedPoints = currentSnapshot.filteredItems
 
             ZStack {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
 
                 if metrics.collectionUsesTwoColumnLayout {
-                    landscapeContent(metrics: metrics, titleFontSize: titleFontSize)
-                } else if reinforcedPoints.isEmpty {
+                    landscapeContent(
+                        metrics: metrics,
+                        titleFontSize: titleFontSize,
+                        reinforcedPoints: currentReinforcedPoints,
+                        filteredReinforcedPoints: currentFilteredReinforcedPoints
+                    )
+                } else if currentReinforcedPoints.isEmpty {
                     SoftEmptyState(
                         title: "还没有重点",
                         subtitle: "在背诵时查看答案后，可以把知识点加入这里。",
@@ -9341,7 +9765,7 @@ struct ReinforcementView: View {
                 } else {
                     VStack(spacing: 0) {
                         ScrollView {
-                            VStack(alignment: .leading, spacing: titleSpacing) {
+                            LazyVStack(alignment: .leading, spacing: titleSpacing) {
                                 Text("重点集锦")
                                     .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
@@ -9349,7 +9773,7 @@ struct ReinforcementView: View {
 
                                 KikariaSearchBar(text: $searchText)
 
-                                if filteredReinforcedPoints.isEmpty {
+                                if currentFilteredReinforcedPoints.isEmpty {
                                     SoftEmptyState(
                                         title: "没有找到相关知识点",
                                         subtitle: "换个关键词试试看。",
@@ -9357,7 +9781,7 @@ struct ReinforcementView: View {
                                     )
                                     .padding(.top, 12)
                                 } else {
-                                    ForEach(filteredReinforcedPoints) { point in
+                                    ForEach(currentFilteredReinforcedPoints) { point in
                                         ReinforcementCard(point: point) {
                                             removeFromReinforcement(point)
                                         }
@@ -9372,7 +9796,7 @@ struct ReinforcementView: View {
 
                         VStack(spacing: 0) {
                             Button(action: onStartReview) {
-                                ReinforcementStartButton(count: reinforcedPoints.count)
+                                ReinforcementStartButton(count: currentReinforcedPoints.count)
                             }
                             .buttonStyle(.plain)
                         }
@@ -9394,6 +9818,15 @@ struct ReinforcementView: View {
                 metrics: metrics,
                 outerMaxWidth: metrics.collectionUsesTwoColumnLayout ? metrics.collectionLandscapeMaxWidth : metrics.mainMaxWidth
             )
+        }
+        .onAppear {
+            refreshCollectionSnapshot()
+        }
+        .onChange(of: knowledgePoints) { _ in
+            refreshCollectionSnapshot()
+        }
+        .onChange(of: searchText) { _ in
+            refreshCollectionSnapshot()
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -9439,18 +9872,39 @@ struct MasteredView: View {
     @State private var searchText = ""
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
+    @State private var collectionSnapshot: KnowledgeCollectionSnapshot
 
-    private var masteredPoints: [KnowledgePoint] {
-        knowledgePoints.filter(\.isMastered)
+    init(
+        knowledgePoints: Binding<[KnowledgePoint]>,
+        onRecordActivity: @escaping (StudyActivityType, KnowledgePoint) -> Void,
+        onStartReview: @escaping () -> Void
+    ) {
+        self._knowledgePoints = knowledgePoints
+        self.onRecordActivity = onRecordActivity
+        self.onStartReview = onStartReview
+        self._collectionSnapshot = State(
+            initialValue: KnowledgeCollectionSnapshot.make(
+                kind: .mastered,
+                knowledgePoints: knowledgePoints.wrappedValue,
+                searchText: ""
+            )
+        )
     }
 
-    private var filteredMasteredPoints: [KnowledgePoint] {
-        masteredPoints.filter { $0.matchesSearchQuery(searchText) }
+    private func refreshCollectionSnapshot() {
+        let snapshot = KnowledgeCollectionSnapshot.make(
+            kind: .mastered,
+            knowledgePoints: knowledgePoints,
+            searchText: searchText
+        )
+        collectionSnapshot = snapshot
     }
 
     private func landscapeContent(
         metrics: KikariaAdaptiveLayout.Metrics,
-        titleFontSize: CGFloat
+        titleFontSize: CGFloat,
+        masteredPoints: [KnowledgePoint],
+        filteredMasteredPoints: [KnowledgePoint]
     ) -> some View {
         let gridSpacing = min(max(metrics.collectionLandscapeAvailableWidth * 0.026, 24), 32)
         let gridColumns = [
@@ -9525,14 +9979,22 @@ struct MasteredView: View {
             let titleFontSize = metrics.pageTitleFontSize(defaultValue: 32)
             let titleTopPadding = metrics.pageTitleTopPadding(defaultValue: 18)
             let titleSpacing = metrics.pageTitleSpacing(defaultValue: 18)
+            let currentSnapshot = collectionSnapshot
+            let currentMasteredPoints = currentSnapshot.items
+            let currentFilteredMasteredPoints = currentSnapshot.filteredItems
 
             ZStack {
                 KikariaTheme.pageGradient
                     .ignoresSafeArea()
 
                 if metrics.collectionUsesTwoColumnLayout {
-                    landscapeContent(metrics: metrics, titleFontSize: titleFontSize)
-                } else if masteredPoints.isEmpty {
+                    landscapeContent(
+                        metrics: metrics,
+                        titleFontSize: titleFontSize,
+                        masteredPoints: currentMasteredPoints,
+                        filteredMasteredPoints: currentFilteredMasteredPoints
+                    )
+                } else if currentMasteredPoints.isEmpty {
                     SoftEmptyState(
                         title: "还没有已掌握",
                         subtitle: "在背诵时查看答案后，可以把真正熟悉的知识点标记到这里。",
@@ -9543,7 +10005,7 @@ struct MasteredView: View {
                 } else {
                     VStack(spacing: 0) {
                         ScrollView {
-                            VStack(alignment: .leading, spacing: titleSpacing) {
+                            LazyVStack(alignment: .leading, spacing: titleSpacing) {
                                 Text("已掌握")
                                     .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
@@ -9551,7 +10013,7 @@ struct MasteredView: View {
 
                                 KikariaSearchBar(text: $searchText)
 
-                                if filteredMasteredPoints.isEmpty {
+                                if currentFilteredMasteredPoints.isEmpty {
                                     SoftEmptyState(
                                         title: "没有找到相关知识点",
                                         subtitle: "换个关键词试试看。",
@@ -9559,7 +10021,7 @@ struct MasteredView: View {
                                     )
                                     .padding(.top, 12)
                                 } else {
-                                    ForEach(filteredMasteredPoints) { point in
+                                    ForEach(currentFilteredMasteredPoints) { point in
                                         ReinforcementCard(
                                             point: point,
                                             removeTitle: "移出已掌握",
@@ -9579,7 +10041,7 @@ struct MasteredView: View {
 
                         VStack(spacing: 0) {
                             Button(action: onStartReview) {
-                                MasteredStartButton(count: masteredPoints.count)
+                                MasteredStartButton(count: currentMasteredPoints.count)
                             }
                             .buttonStyle(.plain)
                         }
@@ -9601,6 +10063,15 @@ struct MasteredView: View {
                 metrics: metrics,
                 outerMaxWidth: metrics.collectionUsesTwoColumnLayout ? metrics.collectionLandscapeMaxWidth : metrics.mainMaxWidth
             )
+        }
+        .onAppear {
+            refreshCollectionSnapshot()
+        }
+        .onChange(of: knowledgePoints) { _ in
+            refreshCollectionSnapshot()
+        }
+        .onChange(of: searchText) { _ in
+            refreshCollectionSnapshot()
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -9692,11 +10163,26 @@ private struct MasteredStartButton: View {
     }
 }
 
+private enum ReinforcementCardInteractionMode {
+    case list
+    case review
+
+    var enablesCardSwipeGesture: Bool {
+        switch self {
+        case .list:
+            return false
+        case .review:
+            return true
+        }
+    }
+}
+
 private struct ReinforcementCard: View {
     let point: KnowledgePoint
     var removeTitle = "移出重点集锦"
     var removeSystemImage = "minus.circle.fill"
     var showsReinforcementCountBadge = true
+    var interactionMode: ReinforcementCardInteractionMode = .list
     let removeAction: () -> Void
     @GestureState private var dragTranslation: CGSize = .zero
 
@@ -9730,11 +10216,9 @@ private struct ReinforcementCard: View {
 
             LightTagRow(tags: point.tags)
 
-            FloatingInfoCard(title: "提示", text: point.hint)
-                .shadow(color: .clear, radius: 0)
+            KnowledgeListInfoPreview(title: "提示", text: point.hint)
 
-            FloatingInfoCard(title: "答案", text: point.content)
-                .shadow(color: .clear, radius: 0)
+            KnowledgeListInfoPreview(title: "答案", text: point.content)
 
             Button(action: removeAction) {
                 Label(removeTitle, systemImage: removeSystemImage)
@@ -9769,7 +10253,7 @@ private struct ReinforcementCard: View {
         .padding(18)
         .liquidGlassCard(cornerRadius: 30, material: .thinMaterial, fillOpacity: 0.42, strokeOpacity: 0.40, shadowOpacity: 0.12, shadowRadius: 20, shadowY: 12)
         .offset(x: previewOffset)
-        .simultaneousGesture(cardSwipeGesture)
+        .simultaneousGestureIf(interactionMode.enablesCardSwipeGesture, cardSwipeGesture)
     }
 
     private var cardSwipeGesture: some Gesture {
@@ -9823,6 +10307,49 @@ private struct KikariaToastLayer: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .allowsHitTesting(false)
+    }
+}
+
+private struct KnowledgeListInfoPreview: View {
+    let title: String
+    let text: String
+    private let maxPreviewCharacters = 120
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(KikariaTypography.chineseHeadline(size: 13, weight: .bold))
+                .foregroundStyle(KikariaTheme.sky)
+
+            Text(previewText)
+                .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
+                .foregroundStyle(KikariaTheme.deepText.opacity(0.82))
+                .lineSpacing(3)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var previewText: String {
+        let collapsedText = text
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\t", with: " ")
+            .split(separator: " ", omittingEmptySubsequences: true)
+            .joined(separator: " ")
+
+        guard !collapsedText.isEmpty else {
+            return "暂无内容"
+        }
+
+        guard collapsedText.count > maxPreviewCharacters else {
+            return collapsedText
+        }
+
+        let preview = collapsedText
+            .prefix(maxPreviewCharacters)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(preview)..."
     }
 }
 

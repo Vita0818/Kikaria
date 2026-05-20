@@ -5,6 +5,7 @@
 //  Created by Codex on 2026/5/10.
 //
 
+import Foundation
 import SwiftUI
 
 struct KikariaMathBlockFramePreferenceKey: PreferenceKey {
@@ -24,7 +25,7 @@ struct KikariaMathText: View {
     var usesSystemChineseFont: Bool
     var usesGenerousFormulaSpacing: Bool
 
-    private let tokens: [KikariaLatexToken]
+    private let parsedContent: KikariaMathTextParsedContent
 
     init(
         _ text: String,
@@ -42,11 +43,19 @@ struct KikariaMathText: View {
         self.lineSpacing = lineSpacing
         self.usesSystemChineseFont = usesSystemChineseFont
         self.usesGenerousFormulaSpacing = usesGenerousFormulaSpacing
-        tokens = KikariaLatexParser.tokenize(text)
+        parsedContent = KikariaMathTextParseCache.shared.parsedContent(for: text).content
+    }
+
+    static func prewarm(_ text: String) {
+        _ = KikariaMathTextParseCache.shared.parsedContent(for: text)
+    }
+
+    static func cacheSummary(for text: String) -> KikariaMathTextCacheSummary {
+        KikariaMathTextParseCache.shared.cacheSummary(for: text)
     }
 
     var body: some View {
-        if let unchangedText = unchangedPlainText {
+        if let unchangedText = parsedContent.unchangedPlainText {
             mathPlainText(unchangedText)
                 .foregroundStyle(textColor)
                 .lineSpacing(effectiveLineSpacing)
@@ -54,10 +63,11 @@ struct KikariaMathText: View {
                 .fixedSize(horizontal: false, vertical: true)
         } else {
             VStack(alignment: .leading, spacing: blockVerticalSpacing) {
-                ForEach(Array(displayBlocks.enumerated()), id: \.offset) { _, block in
+                ForEach(parsedContent.blocks.indices, id: \.self) { index in
+                    let block = parsedContent.blocks[index]
                     switch block {
-                    case .paragraph(let segments):
-                        let items = inlineItems(from: segments)
+                    case .paragraph:
+                        let items = parsedContent.inlineItemsByBlock[index] ?? []
                         KikariaInlineMathFlow(horizontalSpacing: 0.5, rowSpacing: effectiveLineSpacing) {
                             ForEach(items.indices, id: \.self) { index in
                                 inlineItemView(items[index])
@@ -78,100 +88,6 @@ struct KikariaMathText: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    private var unchangedPlainText: String? {
-        guard tokens.count == 1,
-              case .text(let value) = tokens[0],
-              value == text
-        else {
-            return nil
-        }
-
-        return value
-    }
-
-    private var displayBlocks: [KikariaMathTextBlock] {
-        var blocks: [KikariaMathTextBlock] = []
-        var currentSegments: [KikariaInlineMathSegment] = []
-
-        func flushParagraph() {
-            if currentSegments.isEmpty {
-                blocks.append(.blankLine)
-            } else {
-                appendParagraphOrStandaloneMath(currentSegments, to: &blocks)
-                currentSegments.removeAll()
-            }
-        }
-
-        func appendText(_ value: String) {
-            let parts = value.components(separatedBy: "\n")
-            for partIndex in parts.indices {
-                if !parts[partIndex].isEmpty {
-                    currentSegments.append(.text(parts[partIndex]))
-                }
-
-                if partIndex < parts.index(before: parts.endIndex) {
-                    flushParagraph()
-                }
-            }
-        }
-
-        for token in tokens {
-            switch token {
-            case .text(let value):
-                appendText(value)
-            case .fallback(let value):
-                appendText(value)
-            case .inlineMath(let source, let body):
-                currentSegments.append(.inlineMath(source: source, body: body))
-            case .blockMath(let source, let body):
-                if !currentSegments.isEmpty {
-                    appendParagraphOrStandaloneMath(currentSegments, to: &blocks)
-                    currentSegments.removeAll()
-                }
-                blocks.append(.blockMath(source: source, body: body))
-            }
-        }
-
-        if !currentSegments.isEmpty {
-            appendParagraphOrStandaloneMath(currentSegments, to: &blocks)
-        }
-
-        return normalizedBlocks(blocks.isEmpty ? [.paragraph([.text("")])] : blocks)
-    }
-
-    private func appendParagraphOrStandaloneMath(
-        _ segments: [KikariaInlineMathSegment],
-        to blocks: inout [KikariaMathTextBlock]
-    ) {
-        if let standaloneMath = standaloneInlineMath(in: segments) {
-            blocks.append(.blockMath(source: standaloneMath.source, body: standaloneMath.body))
-        } else {
-            blocks.append(.paragraph(segments))
-        }
-    }
-
-    private func standaloneInlineMath(
-        in segments: [KikariaInlineMathSegment]
-    ) -> (source: String, body: String)? {
-        var standaloneMath: (source: String, body: String)?
-
-        for segment in segments {
-            switch segment {
-            case .text(let value):
-                if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    return nil
-                }
-            case .inlineMath(let source, let body):
-                guard standaloneMath == nil else {
-                    return nil
-                }
-                standaloneMath = (source, body)
-            }
-        }
-
-        return standaloneMath
     }
 
     private var blockVerticalSpacing: CGFloat {
@@ -200,61 +116,6 @@ struct KikariaMathText: View {
 
         return Text(value)
             .font(.system(size: fontSize, weight: .regular, design: .serif))
-    }
-
-    private func inlineItems(from segments: [KikariaInlineMathSegment]) -> [KikariaInlineMathItem] {
-        let rawItems = segments.flatMap { segment in
-            switch segment {
-            case .text(let value):
-                return splitPlainTextIntoItems(value)
-            case .inlineMath(let source, let body):
-                return [.inlineMath(source: source, body: body)]
-            }
-        }
-
-        return attachingTrailingPunctuation(in: rawItems)
-    }
-
-    private func splitPlainTextIntoItems(_ value: String) -> [KikariaInlineMathItem] {
-        var items: [KikariaInlineMathItem] = []
-        var currentWord = ""
-
-        func flushWord() {
-            guard !currentWord.isEmpty else {
-                return
-            }
-
-            items.append(.text(currentWord))
-            currentWord.removeAll(keepingCapacity: true)
-        }
-
-        for character in value {
-            if character.isASCIIWordCharacter {
-                currentWord.append(character)
-            } else {
-                flushWord()
-                items.append(.text(String(character)))
-            }
-        }
-
-        flushWord()
-        return items
-    }
-
-    private func attachingTrailingPunctuation(in items: [KikariaInlineMathItem]) -> [KikariaInlineMathItem] {
-        var result: [KikariaInlineMathItem] = []
-
-        for item in items {
-            if case .text(let value) = item,
-               value.isNonbreakingTrailingPunctuation,
-               let previous = result.popLast() {
-                result.append(previous.appendingTrailingText(value))
-            } else {
-                result.append(item)
-            }
-        }
-
-        return result
     }
 
     @ViewBuilder
@@ -336,8 +197,281 @@ struct KikariaMathText: View {
         )
             .fixedSize(horizontal: false, vertical: true)
     }
+}
 
-    private func normalizedBlocks(_ blocks: [KikariaMathTextBlock]) -> [KikariaMathTextBlock] {
+struct KikariaMathTextCacheSummary {
+    let cacheHit: Bool
+    let tokenCount: Int?
+    let blockCount: Int?
+    let containsFormula: Bool
+    let lineCount: Int
+}
+
+private struct KikariaMathTextParseLookup {
+    let content: KikariaMathTextParsedContent
+    let cacheHit: Bool
+}
+
+private struct KikariaMathTextParsedContent {
+    let unchangedPlainText: String?
+    let blocks: [KikariaMathTextBlock]
+    let inlineItemsByBlock: [Int: [KikariaInlineMathItem]]
+    let tokenCount: Int
+    let blockCount: Int
+    let containsFormula: Bool
+    let lineCount: Int
+}
+
+private final class KikariaMathTextParseCache {
+    static let shared = KikariaMathTextParseCache()
+
+    private let lock = NSLock()
+    private let limit = 180
+    private var entries: [String: KikariaMathTextParsedContent] = [:]
+    private var recency: [String] = []
+
+    func parsedContent(for text: String) -> KikariaMathTextParseLookup {
+        lock.lock()
+        if let cachedContent = entries[text] {
+            promote(text)
+            lock.unlock()
+            return KikariaMathTextParseLookup(content: cachedContent, cacheHit: true)
+        }
+        lock.unlock()
+
+        let parsedContent = Self.makeParsedContent(from: text)
+
+        lock.lock()
+        if let cachedContent = entries[text] {
+            promote(text)
+            lock.unlock()
+            return KikariaMathTextParseLookup(content: cachedContent, cacheHit: true)
+        }
+
+        entries[text] = parsedContent
+        recency.append(text)
+        trimIfNeeded()
+        lock.unlock()
+
+        return KikariaMathTextParseLookup(content: parsedContent, cacheHit: false)
+    }
+
+    func cacheSummary(for text: String) -> KikariaMathTextCacheSummary {
+        lock.lock()
+        let cachedContent = entries[text]
+        lock.unlock()
+
+        if let cachedContent {
+            return KikariaMathTextCacheSummary(
+                cacheHit: true,
+                tokenCount: cachedContent.tokenCount,
+                blockCount: cachedContent.blockCount,
+                containsFormula: cachedContent.containsFormula,
+                lineCount: cachedContent.lineCount
+            )
+        }
+
+        return KikariaMathTextCacheSummary(
+            cacheHit: false,
+            tokenCount: nil,
+            blockCount: nil,
+            containsFormula: text.contains("$"),
+            lineCount: Self.lineCount(in: text)
+        )
+    }
+
+    private func promote(_ key: String) {
+        recency.removeAll { $0 == key }
+        recency.append(key)
+    }
+
+    private func trimIfNeeded() {
+        while entries.count > limit, let oldestKey = recency.first {
+            recency.removeFirst()
+            entries.removeValue(forKey: oldestKey)
+        }
+    }
+
+    private static func makeParsedContent(from text: String) -> KikariaMathTextParsedContent {
+        let tokens = KikariaLatexParser.tokenize(text)
+        let unchangedPlainText: String? = {
+            guard tokens.count == 1,
+                  case .text(let value) = tokens[0],
+                  value == text
+            else {
+                return nil
+            }
+
+            return value
+        }()
+
+        let blocks = displayBlocks(from: tokens)
+        var inlineItemsByBlock: [Int: [KikariaInlineMathItem]] = [:]
+        for (index, block) in blocks.enumerated() {
+            guard case .paragraph(let segments) = block else {
+                continue
+            }
+
+            inlineItemsByBlock[index] = inlineItems(from: segments)
+        }
+
+        return KikariaMathTextParsedContent(
+            unchangedPlainText: unchangedPlainText,
+            blocks: blocks,
+            inlineItemsByBlock: inlineItemsByBlock,
+            tokenCount: tokens.count,
+            blockCount: blocks.count,
+            containsFormula: tokens.contains { token in
+                switch token {
+                case .inlineMath, .blockMath:
+                    return true
+                case .text, .fallback:
+                    return false
+                }
+            },
+            lineCount: lineCount(in: text)
+        )
+    }
+
+    private static func displayBlocks(from tokens: [KikariaLatexToken]) -> [KikariaMathTextBlock] {
+        var blocks: [KikariaMathTextBlock] = []
+        var currentSegments: [KikariaInlineMathSegment] = []
+
+        func flushParagraph() {
+            if currentSegments.isEmpty {
+                blocks.append(.blankLine)
+            } else {
+                appendParagraphOrStandaloneMath(currentSegments, to: &blocks)
+                currentSegments.removeAll()
+            }
+        }
+
+        func appendText(_ value: String) {
+            let parts = value.components(separatedBy: "\n")
+            for partIndex in parts.indices {
+                if !parts[partIndex].isEmpty {
+                    currentSegments.append(.text(parts[partIndex]))
+                }
+
+                if partIndex < parts.index(before: parts.endIndex) {
+                    flushParagraph()
+                }
+            }
+        }
+
+        for token in tokens {
+            switch token {
+            case .text(let value):
+                appendText(value)
+            case .fallback(let value):
+                appendText(value)
+            case .inlineMath(let source, let body):
+                currentSegments.append(.inlineMath(source: source, body: body))
+            case .blockMath(let source, let body):
+                if !currentSegments.isEmpty {
+                    appendParagraphOrStandaloneMath(currentSegments, to: &blocks)
+                    currentSegments.removeAll()
+                }
+                blocks.append(.blockMath(source: source, body: body))
+            }
+        }
+
+        if !currentSegments.isEmpty {
+            appendParagraphOrStandaloneMath(currentSegments, to: &blocks)
+        }
+
+        return normalizedBlocks(blocks.isEmpty ? [.paragraph([.text("")])] : blocks)
+    }
+
+    private static func appendParagraphOrStandaloneMath(
+        _ segments: [KikariaInlineMathSegment],
+        to blocks: inout [KikariaMathTextBlock]
+    ) {
+        if let standaloneMath = standaloneInlineMath(in: segments) {
+            blocks.append(.blockMath(source: standaloneMath.source, body: standaloneMath.body))
+        } else {
+            blocks.append(.paragraph(segments))
+        }
+    }
+
+    private static func standaloneInlineMath(
+        in segments: [KikariaInlineMathSegment]
+    ) -> (source: String, body: String)? {
+        var standaloneMath: (source: String, body: String)?
+
+        for segment in segments {
+            switch segment {
+            case .text(let value):
+                if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return nil
+                }
+            case .inlineMath(let source, let body):
+                guard standaloneMath == nil else {
+                    return nil
+                }
+                standaloneMath = (source, body)
+            }
+        }
+
+        return standaloneMath
+    }
+
+    private static func inlineItems(from segments: [KikariaInlineMathSegment]) -> [KikariaInlineMathItem] {
+        let rawItems = segments.flatMap { segment in
+            switch segment {
+            case .text(let value):
+                return splitPlainTextIntoItems(value)
+            case .inlineMath(let source, let body):
+                return [.inlineMath(source: source, body: body)]
+            }
+        }
+
+        return attachingTrailingPunctuation(in: rawItems)
+    }
+
+    private static func splitPlainTextIntoItems(_ value: String) -> [KikariaInlineMathItem] {
+        var items: [KikariaInlineMathItem] = []
+        var currentWord = ""
+
+        func flushWord() {
+            guard !currentWord.isEmpty else {
+                return
+            }
+
+            items.append(.text(currentWord))
+            currentWord.removeAll(keepingCapacity: true)
+        }
+
+        for character in value {
+            if character.isASCIIWordCharacter {
+                currentWord.append(character)
+            } else {
+                flushWord()
+                items.append(.text(String(character)))
+            }
+        }
+
+        flushWord()
+        return items
+    }
+
+    private static func attachingTrailingPunctuation(in items: [KikariaInlineMathItem]) -> [KikariaInlineMathItem] {
+        var result: [KikariaInlineMathItem] = []
+
+        for item in items {
+            if case .text(let value) = item,
+               value.isNonbreakingTrailingPunctuation,
+               let previous = result.popLast() {
+                result.append(previous.appendingTrailingText(value))
+            } else {
+                result.append(item)
+            }
+        }
+
+        return result
+    }
+
+    private static func normalizedBlocks(_ blocks: [KikariaMathTextBlock]) -> [KikariaMathTextBlock] {
         blocks.enumerated().compactMap { index, block in
             guard case .blankLine = block else {
                 return block
@@ -347,6 +481,12 @@ struct KikariaMathText: View {
             let nextIsFormula = index + 1 < blocks.count && blocks[index + 1].isBlockMath
             return previousIsFormula || nextIsFormula ? nil : block
         }
+    }
+
+    private static func lineCount(in text: String) -> Int {
+        max(1, text.reduce(1) { count, character in
+            character == "\n" ? count + 1 : count
+        })
     }
 }
 
