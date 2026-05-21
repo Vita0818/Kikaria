@@ -3691,6 +3691,9 @@ private struct SettingsView: View {
                 scale: rowScale
             )
 
+            SettingsSectionDivider(scale: scale)
+
+            SettingsInfoTextRow(text: "浙ICP备2026034004号", scale: rowScale)
         }
     }
 
@@ -3967,6 +3970,9 @@ private struct SettingsView: View {
                                 scale: rowScale
                             )
 
+                            SettingsSectionDivider(scale: scale)
+
+                            SettingsInfoTextRow(text: "浙ICP备2026034004号", scale: rowScale)
                         }
                     }
                     .padding(.horizontal, pagePadding)
@@ -4260,6 +4266,22 @@ private struct SettingsListRow: View {
                 SettingsRowContent(title: title, valueText: valueText, showsChevron: false, scale: scale)
             }
         }
+    }
+}
+
+private struct SettingsInfoTextRow: View {
+    let text: String
+    var scale: CGFloat = 1
+
+    var body: some View {
+        let resolvedScale = max(scale, 1)
+
+        KikariaTypography.mixedText(text, size: 16 * resolvedScale, weight: .semibold)
+            .foregroundStyle(KikariaTheme.softText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .padding(.horizontal, 18 * resolvedScale)
+            .frame(maxWidth: .infinity, minHeight: 58 * resolvedScale, alignment: .trailing)
     }
 }
 
