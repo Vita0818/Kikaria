@@ -1,0 +1,993 @@
+2026-06-15 10:55:32 +0000  Initial pipeline context: <IDEDistributionProcessingPipelineContext: 0x9f2c37600; archive(resolved)="<IDEArchive: 0x9f63d4850>", distributionTask(resolved)="2", distributionDestination(resolved)="1", distributionMethod(resolved)="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team(resolved)="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	Chain (16, self inclusive):
+	<IDEDistributionProcessingPipelineContext: 0x9f2c37600; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionProcessingPipelineContext: 0x9f2c37300; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f0c2e080; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f0c2c500; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f1359900; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f135b480; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f1358f00; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f135bc00; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f1359680; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f135a300; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f135a580; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f1359400; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="<IDEProvisioningDisambiguatableBasicTeam: 0x9ff604700; teamID='L5ZXXFUZTL', teamName='Vita Chi', teamType='Individual', username='vita0818@icloud.com', isFreeProvisioningTeam='0'>">
+	<IDEDistributionContext: 0x9f135a800; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="(null)">
+	<IDEDistributionContext: 0x9f1359e00; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="<IDEDistributionMethodiOSAppStoreDistribution: 0xa06aea780>", team="(null)">
+	<IDEDistributionContext: 0x9f0ce6580; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="(null)", team="(null)">
+	<IDEDistributionContext: 0x9f0ce6800; archive = "<IDEArchive: 0x9f63d4850>", distributionMethod="(null)", team="(null)">
+</IDEDistributionProcessingPipelineContext: 0x9f2c37600>
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionCreateDestRootStep
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionCopyItemStep
+2026-06-15 10:55:32 +0000  Running /usr/bin/ditto '-V' '/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app' '/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app'
+2026-06-15 10:55:32 +0000  >>> Copying /Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app 
+2026-06-15 10:55:32 +0000  copying file ./_CodeSignature/CodeResources ... 
+2026-06-15 10:55:32 +0000  14033 bytes for ./_CodeSignature/CodeResources
+2026-06-15 10:55:32 +0000  copying file ./PlugIns/KikariaWidget.appex/_CodeSignature/CodeResources ... 
+2026-06-15 10:55:32 +0000  2040 bytes for ./PlugIns/KikariaWidget.appex/_CodeSignature/CodeResources
+2026-06-15 10:55:32 +0000  copying file ./PlugIns/KikariaWidget.appex/KikariaWidget ... 
+2026-06-15 10:55:32 +0000  206016 bytes for ./PlugIns/KikariaWidget.appex/KikariaWidget
+2026-06-15 10:55:32 +0000  copying file ./PlugIns/KikariaWidget.appex/embedded.mobileprovision ... 
+2026-06-15 10:55:32 +0000  12898 bytes for ./PlugIns/KikariaWidget.appex/embedded.mobileprovision
+2026-06-15 10:55:32 +0000  copying file ./PlugIns/KikariaWidget.appex/Info.plist ... 
+2026-06-15 10:55:32 +0000  843 bytes for ./PlugIns/KikariaWidget.appex/Info.plist
+2026-06-15 10:55:32 +0000  copying file ./AppIcon60x60@2x.png ... 
+2026-06-15 10:55:32 +0000  18284 bytes for ./AppIcon60x60@2x.png
+2026-06-15 10:55:32 +0000  copying file ./Assets.car ... 
+2026-06-15 10:55:32 +0000  7557976 bytes for ./Assets.car
+2026-06-15 10:55:32 +0000  copying file ./AppIcon76x76@2x~ipad.png ... 
+2026-06-15 10:55:32 +0000  28029 bytes for ./AppIcon76x76@2x~ipad.png
+2026-06-15 10:55:32 +0000  copying file ./Presets/大学物理.md ... 
+2026-06-15 10:55:32 +0000  88236 bytes for ./Presets/大学物理.md
+2026-06-15 10:55:32 +0000  copying file ./Presets/离散数学.md ... 
+2026-06-15 10:55:32 +0000  428646 bytes for ./Presets/离散数学.md
+2026-06-15 10:55:32 +0000  copying file ./Presets/离散数学_BACKUP.md ... 
+2026-06-15 10:55:32 +0000  428379 bytes for ./Presets/离散数学_BACKUP.md
+2026-06-15 10:55:32 +0000  copying file ./Presets/微积分.md ... 
+2026-06-15 10:55:32 +0000  103907 bytes for ./Presets/微积分.md
+2026-06-15 10:55:32 +0000  copying file ./Presets/大学英语Band4.md ... 
+2026-06-15 10:55:32 +0000  189847 bytes for ./Presets/大学英语Band4.md
+2026-06-15 10:55:32 +0000  copying file ./embedded.mobileprovision ... 
+2026-06-15 10:55:32 +0000  12804 bytes for ./embedded.mobileprovision
+2026-06-15 10:55:32 +0000  copying file ./Kikaria ... 
+2026-06-15 10:55:32 +0000  2208848 bytes for ./Kikaria
+2026-06-15 10:55:32 +0000  copying file ./Info.plist ... 
+2026-06-15 10:55:32 +0000  1484 bytes for ./Info.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.plist ... 
+2026-06-15 10:55:32 +0000  153377 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.otf ... 
+2026-06-15 10:55:32 +0000  293084 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.otf ... 
+2026-06-15 10:55:32 +0000  440268 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.plist ... 
+2026-06-15 10:55:32 +0000  99277 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.plist ... 
+2026-06-15 10:55:32 +0000  99401 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.plist ... 
+2026-06-15 10:55:32 +0000  50321 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LICENSE ... 
+2026-06-15 10:55:32 +0000  1075 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LICENSE
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/math_table_to_plist.py ... 
+2026-06-15 10:55:32 +0000  7145 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/math_table_to_plist.py
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.plist ... 
+2026-06-15 10:55:32 +0000  74123 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.otf ... 
+2026-06-15 10:55:32 +0000  498408 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.plist ... 
+2026-06-15 10:55:32 +0000  58011 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.plist ... 
+2026-06-15 10:55:32 +0000  105024 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.otf ... 
+2026-06-15 10:55:32 +0000  823988 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.otf ... 
+2026-06-15 10:55:32 +0000  179840 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.plist ... 
+2026-06-15 10:55:32 +0000  192517 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.otf ... 
+2026-06-15 10:55:32 +0000  733736 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.otf ... 
+2026-06-15 10:55:32 +0000  433528 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.otf ... 
+2026-06-15 10:55:32 +0000  451008 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.plist ... 
+2026-06-15 10:55:32 +0000  131044 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.otf ... 
+2026-06-15 10:55:32 +0000  428792 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/OFL.txt ... 
+2026-06-15 10:55:32 +0000  5104 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/OFL.txt
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.otf ... 
+2026-06-15 10:55:32 +0000  538696 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/GUST-FONT-LICENSE.txt ... 
+2026-06-15 10:55:32 +0000  1456 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/GUST-FONT-LICENSE.txt
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.otf ... 
+2026-06-15 10:55:32 +0000  588848 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.otf ... 
+2026-06-15 10:55:32 +0000  532404 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.otf
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.plist ... 
+2026-06-15 10:55:32 +0000  65067 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.plist ... 
+2026-06-15 10:55:32 +0000  225479 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.plist ... 
+2026-06-15 10:55:32 +0000  152248 bytes for ./SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.plist
+2026-06-15 10:55:32 +0000  copying file ./SwiftMath_SwiftMath.bundle/Info.plist ... 
+2026-06-15 10:55:32 +0000  681 bytes for ./SwiftMath_SwiftMath.bundle/Info.plist
+2026-06-15 10:55:32 +0000  copying file ./PkgInfo ... 
+2026-06-15 10:55:32 +0000  8 bytes for ./PkgInfo
+2026-06-15 10:55:32 +0000  /usr/bin/ditto exited with 0
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionEmbedProfileStep
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionInfoPlistStep
+2026-06-15 10:55:32 +0000  Skipping setting DTXcodeBuildDistribution because toolsBuildVersionName was nil.
+2026-06-15 10:55:32 +0000  Skipping setting DTXcodeBuildDistribution because toolsBuildVersionName was nil.
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionItemRemovalStep
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionAppThinningPlistStep
+2026-06-15 10:55:32 +0000  Skipping step: IDEDistributionAppThinningPlistStep because it said so
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionSymbolsStep
+2026-06-15 10:55:32 +0000  Writing /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Symbols/B2F9BBA4-77FA-304F-8756-80F4E04053C0.symbols
+2026-06-15 10:55:32 +0000  Writing /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Symbols/07B0D8F3-58C3-32C4-85EA-8D6A468C57E9.symbols
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionCopyAppleProvidedContentStep
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionAppThinningStep
+2026-06-15 10:55:32 +0000  Skipping step: IDEDistributionAppThinningStep because it said so
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionArchThinningStep
+2026-06-15 10:55:32 +0000  Archs to thin for item /Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/PlugIns/KikariaWidget.appex are []
+2026-06-15 10:55:32 +0000  Archs to thin for item /Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app are []
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionODRStep
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionStripXattrsStep
+2026-06-15 10:55:32 +0000  Skipping stripping extended attributes because the codesign step will strip them.
+2026-06-15 10:55:32 +0000  Skipping stripping extended attributes because the codesign step will strip them.
+2026-06-15 10:55:32 +0000  Processing step: IDEDistributionCodesignStep
+2026-06-15 10:55:32 +0000  Entitlements for <IDEDistributionItem: 0xa0750dbc0; bundleID='com.Vita0818.Kikaria.KikariaWidget', path='<DVTFilePath:0x9f109cd20:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/PlugIns/KikariaWidget.appex'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xa0750df80; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xa076ef780; name='Apple Development: 8613924000275 (3RXSHW2LS9)', hash='92FCE91AAEDFD5BF12C75536FF3FED235BFEAC12', serialNumber='56E4ADFB8EC2716F682AAC11D91C9132', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2026-05-01 07:19:43 +0000''>', entitlements='{
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria.KikariaWidget";
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 1;
+}', teamID='L5ZXXFUZTL', identifier='com.Vita0818.Kikaria.KikariaWidget', executablePath='<DVTFilePath:0xa0750e460:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/PlugIns/KikariaWidget.appex/KikariaWidget'>', hardenedRuntime='0'>'>: {
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria.KikariaWidget";
+    "beta-reports-active" = 1;
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 0;
+}
+2026-06-15 10:55:32 +0000  Associated App Clip Identifiers Filter: Skipping because "com.apple.developer.associated-appclip-app-identifiers" is not present
+2026-06-15 10:55:32 +0000  Entitlements for <IDEDistributionItem: 0xa0750dbc0; bundleID='com.Vita0818.Kikaria.KikariaWidget', path='<DVTFilePath:0x9f109cd20:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/PlugIns/KikariaWidget.appex'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xa0750df80; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xa076ee880; name='Apple Development: 8613924000275 (3RXSHW2LS9)', hash='92FCE91AAEDFD5BF12C75536FF3FED235BFEAC12', serialNumber='56E4ADFB8EC2716F682AAC11D91C9132', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2026-05-01 07:19:43 +0000''>', entitlements='{
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria.KikariaWidget";
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 1;
+}', teamID='L5ZXXFUZTL', identifier='com.Vita0818.Kikaria.KikariaWidget', executablePath='<DVTFilePath:0xa0750e460:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/PlugIns/KikariaWidget.appex/KikariaWidget'>', hardenedRuntime='0'>'> are: {
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria.KikariaWidget";
+    "beta-reports-active" = 1;
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 0;
+}
+2026-06-15 10:55:32 +0000  Writing entitlements for <IDEDistributionItem: 0xa0750dbc0; bundleID='com.Vita0818.Kikaria.KikariaWidget', path='<DVTFilePath:0x9f109cd20:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/PlugIns/KikariaWidget.appex'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xa0750df80; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xa076ee880; name='Apple Development: 8613924000275 (3RXSHW2LS9)', hash='92FCE91AAEDFD5BF12C75536FF3FED235BFEAC12', serialNumber='56E4ADFB8EC2716F682AAC11D91C9132', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2026-05-01 07:19:43 +0000''>', entitlements='{
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria.KikariaWidget";
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 1;
+}', teamID='L5ZXXFUZTL', identifier='com.Vita0818.Kikaria.KikariaWidget', executablePath='<DVTFilePath:0xa0750e460:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/PlugIns/KikariaWidget.appex/KikariaWidget'>', hardenedRuntime='0'>'> to: /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/entitlements~~~pTs9QA
+2026-06-15 10:55:32 +0000  invoking codesign: <NSConcreteTask: 0x9f8fe8cd0; launchPath='/usr/bin/codesign', arguments='(
+    "-f",
+    "-s",
+    "-",
+    "--signature-size",
+    16000,
+    "--entitlements",
+    "/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/entitlements~~~pTs9QA",
+    "--requirements",
+    "=designated => anchor apple generic and identifier \"com.Vita0818.Kikaria.KikariaWidget\" and certificate leaf[subject.CN] = \"Apple Distribution: Vita Chi (L5ZXXFUZTL)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */",
+    "--preserve-metadata=identifier,flags,runtime,launch-constraints,library-constraints",
+    "--omit-adhoc-flag",
+    "--team-identifier",
+    L5ZXXFUZTL,
+    "--generate-entitlement-der",
+    "--strip-disallowed-xattrs",
+    "-vvv",
+    "/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app/PlugIns/KikariaWidget.appex"
+)'>
+2026-06-15 10:55:32 +0000  codesign output: /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app/PlugIns/KikariaWidget.appex: replacing existing signature
+/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app/PlugIns/KikariaWidget.appex: signed bundle with Mach-O thin (arm64) [com.Vita0818.Kikaria.KikariaWidget]
+2026-06-15 10:55:32 +0000  Remote code signing '/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app/PlugIns/KikariaWidget.appex' with signature slices '[<DVTCodeSignatureSlice: 0x9f6069f50; architecture='arm64', cmsDigest='<DVTCodeSignatureHash: 0xa0758a800; digestAlgorithmDescription='sha256', cdHashHexEncoded='3bc5212a7602fa3e63753b3a69c17d108100f335101cb7df9a5f46817db4c09b'>', codeSignatureHashes='{(
+    <DVTCodeSignatureHash: 0xa0758b0a0; digestAlgorithmDescription='sha256', cdHashHexEncoded='3bc5212a7602fa3e63753b3a69c17d108100f335101cb7df9a5f46817db4c09b'>
+)}', cmsHexEncoded=''>]' and configuration 'RemoteSigningToolConfiguration(path: <DVTFilePath:0x9f10a6df0:'/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app/PlugIns/KikariaWidget.appex'>, signingCertificate: <DVTSigningCertificate: 0xa076ee4c0; name='Apple Distribution: Vita Chi (L5ZXXFUZTL)', hash='4F9053FCFEEFEBC56A03CA61C65FE2FD07F0BA18', serialNumber='29D75F842E03AC82AAB87CF9A899A22B', certificateKinds='(
+    "1.2.840.113635.100.6.1.7",
+    "1.2.840.113635.100.6.1.4"
+), issueDate='2026-05-07 09:27:09 +0000''>, session: <DVTServicesAccountBasedSession: 0x9fb05f360; account='<DVTAppleIDBasedDeveloperAccount: 0x9fc9cdb80; username='vita0818@icloud.com'>'>, team: <DVTPortalTeam: 0xa05053bc0; name='Vita Chi', teamID='L5ZXXFUZTL', type='Individual', memberships='(
+    "<DVTPortalMembership: 0x9f4921440; programs='{(\n    <DVTPortalProgram: 0x9f83ee6c0; <DVTPortalProgram: 0x9f83ee6c0; identifier='Xcode.Portal.Program.iOS'>>\n)}'>",
+    "<DVTPortalMembership: 0x9f4921740; programs='{(\n    <DVTPortalProgram: 0x9f83ecd70; <DVTPortalProgram: 0x9f83ecd70; identifier='Xcode.Portal.Program.Mac'>>\n)}'>"
+)'>, codeResourcesDictionary: [AnyHashable("files"): {
+    "Info.plist" = {length = 20, bytes = 0x3b90195a56b53367a328b7ff8380db8cf4643686};
+    "embedded.mobileprovision" = {length = 20, bytes = 0xaafc25d992b3c0bf491156456ca9deb495686442};
+}, AnyHashable("rules"): {
+    "^.*" = 1;
+    "^.*\\.lproj/" =     {
+        optional = 1;
+        weight = 1000;
+    };
+    "^.*\\.lproj/locversion.plist$" =     {
+        omit = 1;
+        weight = 1100;
+    };
+    "^Base\\.lproj/" =     {
+        weight = 1010;
+    };
+    "^version.plist$" = 1;
+}, AnyHashable("files2"): {
+    "embedded.mobileprovision" =     {
+        hash2 = {length = 32, bytes = 0x6b6a91c3 4c821182 14aff586 9c47d3d2 ... a66045ae 0fd84b1c };
+    };
+}, AnyHashable("rules2"): {
+    ".*\\.dSYM($|/)" =     {
+        weight = 11;
+    };
+    "^(.*/)?\\.DS_Store$" =     {
+        omit = 1;
+        weight = 2000;
+    };
+    "^.*" = 1;
+    "^.*\\.lproj/" =     {
+        optional = 1;
+        weight = 1000;
+    };
+    "^.*\\.lproj/locversion.plist$" =     {
+        omit = 1;
+        weight = 1100;
+    };
+    "^Base\\.lproj/" =     {
+        weight = 1010;
+    };
+    "^Info\\.plist$" =     {
+        omit = 1;
+        weight = 20;
+    };
+    "^PkgInfo$" =     {
+        omit = 1;
+        weight = 20;
+    };
+    "^embedded\\.provisionprofile$" =     {
+        weight = 20;
+    };
+    "^version\\.plist$" =     {
+        weight = 20;
+    };
+}], enableSignatureValidation: true, logAspect: <DVTLogAspect:0xa07593c00:IDEDistributionPipeline:level=verbose(3):effective-level=verbose(3)>)'
+2026-06-15 10:55:32 +0000  Sending request A9BD6723-6A04-4C25-9EC9-82DED450D9F3 to <https://developerservices2.apple.com/services/v1/certificates> for session <DVTServicesAccountBasedSession: 0x9fb05f360; account='<DVTAppleIDBasedDeveloperAccount: 0x9fc9cdb80; username='vita0818@icloud.com'>'>.
+Method: POST
+
+Headers:
+{
+    Accept = "application/vnd.api+json";
+    "Accept-Encoding" = "gzip, deflate";
+    "Content-Length" = 113;
+    "Content-Type" = "application/vnd.api+json";
+    DSESSIONID = 1qu7opbldfnvq5m2ua9ue25q1uouqtlt09d7ot8234qus8os9a67;
+    "User-Agent" = Xcode;
+    "X-Apple-App-Info" = "com.apple.gs.xcode.auth";
+    "X-Apple-GS-Token" = "AAAABLwIAAAAAGoOrzIRDWdzLnhjb2RlLmF1dGi9AEF7qQBVzXkpx3dLyBD7f+yat/VPHrNFX+GgYWs4SOM20GU7icCipVOWtoukAyJIqUioLXWKkezJPEHwvdfpmbjVfOYEHk8NcdHz3iHVK/2RjUq/P2at2zqp09DGB4aBXw1qhjx8xCqWsLn09boRD2eZ5/og";
+    "X-Apple-I-Identity-Id" = "000473-08-72e0224f-915a-4341-ae3c-c285c8b000db";
+    "X-HTTP-Method-Override" = GET;
+    "X-MMe-Client-Info" = "<Mac17,2> <macOS;26.5.1;25F80> <com.apple.AuthKit/1 (com.apple.dt.Xcode/24943)>";
+    "X-Mme-Device-Id" = "18256743-5183-5FA8-A781-8AE05F7241A0";
+    "X-Xcode-Version" = "26.5 (17F42)";
+}
+
+Payload:
+{"urlEncodedQueryParams":"teamId=L5ZXXFUZTL&filter%5BserialNumber%5D=29D75F842E03AC82AAB87CF9A899A22B&limit=200"}
+2026-06-15 10:55:33 +0000  Received response for A9BD6723-6A04-4C25-9EC9-82DED450D9F3 @ <https://developerservices2.apple.com/services/v1/certificates>. Code = 0
+2026-06-15 10:55:33 +0000  Response payload: {
+  "data" : [ {
+    "type" : "certificates",
+    "id" : "43P6X6T432",
+    "attributes" : {
+      "requesterEmail" : "vita0818@icloud.com",
+      "serialNumber" : "29D75F842E03AC82AAB87CF9A899A22B",
+      "certificateContent" : "MIIF0TCCBLmgAwIBAgIQKddfhC4DrIKquHz5qJmiKzANBgkqhkiG9w0BAQsFADB1MUQwQgYDVQQDDDtBcHBsZSBXb3JsZHdpZGUgRGV2ZWxvcGVyIFJlbGF0aW9ucyBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTELMAkGA1UECwwCRzMxEzARBgNVBAoMCkFwcGxlIEluYy4xCzAJBgNVBAYTAlVTMB4XDTI2MDUwNzA5MjcwOVoXDTI3MDUwNzA5MjcwOFowgYUxGjAYBgoJkiaJk/IsZAEBDApMNVpYWEZVWlRMMTIwMAYDVQQDDClBcHBsZSBEaXN0cmlidXRpb246IFZpdGEgQ2hpIChMNVpYWEZVWlRMKTETMBEGA1UECwwKTDVaWFhGVVpUTDERMA8GA1UECgwIVml0YSBDaGkxCzAJBgNVBAYTAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3jQIQkOl6GA+rooVLdn0QbrEYo66cMVYEzruAOe58VJ/uR63Xbkjo7KbRg+UYA5haCRqJtMbYDefKtEHJ0fHxZmVaHag5Kb1JgL8fb5o1e1NgEIImBbhMyvYQbIUUxq/7nYN/EJyHxXgAlJI92tCFRAA22dpc0DGERzXMe+G0DWBFPsVKLzhL11Kk2GdPFdYGKByBtsLRtm+YAvQ+1KQfL77ro+9JTT78Q/rhUaE7K1u2VfyXsOWbqp//7DIjQfd2SzCsFAjluMeBoJKvoErbpXaErDjTx//stpKcvqvDPJ/MnROx1SLpIqBLRgat1CCQZ6s9mBFEeOv4EDbdZa5oQIDAQABo4ICSjCCAkYwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBQJ/sAVkPmvZAqSErkmKGMMl+ynsjBwBggrBgEFBQcBAQRkMGIwLQYIKwYBBQUHMAKGIWh0dHA6Ly9jZXJ0cy5hcHBsZS5jb20vd3dkcmczLmRlcjAxBggrBgEFBQcwAYYlaHR0cDovL29jc3AuYXBwbGUuY29tL29jc3AwMy13d2RyZzMxMTCCAR4GA1UdIASCARUwggERMIIBDQYJKoZIhvdjZAUBMIH/MIHDBggrBgEFBQcCAjCBtgyBs1JlbGlhbmNlIG9uIHRoaXMgY2VydGlmaWNhdGUgYnkgYW55IHBhcnR5IGFzc3VtZXMgYWNjZXB0YW5jZSBvZiB0aGUgdGhlbiBhcHBsaWNhYmxlIHN0YW5kYXJkIHRlcm1zIGFuZCBjb25kaXRpb25zIG9mIHVzZSwgY2VydGlmaWNhdGUgcG9saWN5IGFuZCBjZXJ0aWZpY2F0aW9uIHByYWN0aWNlIHN0YXRlbWVudHMuMDcGCCsGAQUFBwIBFitodHRwczovL3d3dy5hcHBsZS5jb20vY2VydGlmaWNhdGVhdXRob3JpdHkvMBYGA1UdJQEB/wQMMAoGCCsGAQUFBwMDMB0GA1UdDgQWBBSjKEnhULoCAzs+tmKY4mNGR3LdijAOBgNVHQ8BAf8EBAMCB4AwEwYKKoZIhvdjZAYBBwEB/wQCBQAwEAYKKoZIhvdjZAYBIAQCBQAwEwYKKoZIhvdjZAYBBAEB/wQCBQAwDQYJKoZIhvcNAQELBQADggEBACmec4/uR2cPBULcct8h16WEiwABJ5B14VpAiy8V9JN8E/f8aq0o6dr5G6vaCHxn4X28U9Gk/aT0GVEOZTwaTuKrYdKuCfM7Oegl174VCLZNJloIq1H/Oe1PGxUw64nk8TERaoliB+v9IWqtkVi5OWlWH0Q3Fzn6oelkuBNhJHcYoQybszJDUawPkEUId1l/DyhtKnsLWzBRaen1FrLTVHsurPfmgzp4CpfrkQ316WzjqFv7f0vOW2Url7FumkXNl9+MQh1Q4exw+M9Zp3ciB4wuTaQe5Zr6S44hzgJWeTbZe90/cgiw9pneESknLGnUzPyOu1kGU+kM/zoa5ybTnak=",
+      "displayName" : "Vita Chi",
+      "requesterLastName" : "Qi",
+      "csrContent" : null,
+      "machineName" : null,
+      "platform" : null,
+      "requesterFirstName" : "Ji",
+      "machineId" : null,
+      "name" : "Apple Distribution: Vita Chi",
+      "responseId" : "61d7e17c-eea0-4b76-b20c-f14ec3d167ad",
+      "expirationDate" : "2027-05-07T09:27:08.000+00:00",
+      "certificateType" : "DISTRIBUTION_MANAGED"
+    },
+    "links" : {
+      "self" : "https://developerservices2.apple.com:443/services/v1/certificates/43P6X6T432"
+    }
+  } ],
+  "links" : {
+    "self" : "https://developerservices2.apple.com:443/services/v1/certificates?filter%5BserialNumber%5D=29D75F842E03AC82AAB87CF9A899A22B&limit=200"
+  },
+  "meta" : {
+    "paging" : {
+      "total" : 1,
+      "limit" : 200
+    }
+  }
+}
+
+2026-06-15 10:55:33 +0000  Sending request C5A48B9D-1117-47B0-BCA5-B4F2E47FD500 to <https://developerservices3.apple.com/services/v1/batch> for session <DVTServicesAccountBasedSession: 0x9fb05f360; account='<DVTAppleIDBasedDeveloperAccount: 0x9fc9cdb80; username='vita0818@icloud.com'>'>.
+Method: POST
+
+Headers:
+{
+    Accept = "application/vnd.api+json";
+    "Accept-Encoding" = "gzip, deflate";
+    "Content-Length" = 488;
+    "Content-Type" = "application/vnd.api+json";
+    DSESSIONID = 1qu7opbldfnvq5m2ua9ue25q1uouqtlt09d7ot8234qus8os9a67;
+    "User-Agent" = Xcode;
+    "X-Apple-App-Info" = "com.apple.gs.xcode.auth";
+    "X-Apple-GS-Token" = "AAAABLwIAAAAAGoOrzIRDWdzLnhjb2RlLmF1dGi9AEF7qQBVzXkpx3dLyBD7f+yat/VPHrNFX+GgYWs4SOM20GU7icCipVOWtoukAyJIqUioLXWKkezJPEHwvdfpmbjVfOYEHk8NcdHz3iHVK/2RjUq/P2at2zqp09DGB4aBXw1qhjx8xCqWsLn09boRD2eZ5/og";
+    "X-Apple-I-Identity-Id" = "000473-08-72e0224f-915a-4341-ae3c-c285c8b000db";
+    "X-MMe-Client-Info" = "<Mac17,2> <macOS;26.5.1;25F80> <com.apple.AuthKit/1 (com.apple.dt.Xcode/24943)>";
+    "X-Mme-Device-Id" = "18256743-5183-5FA8-A781-8AE05F7241A0";
+    "X-Xcode-Version" = "26.5 (17F42)";
+}
+
+Payload:
+{"data":{"attributes":{"resourceVersion":"1","resourceList":[{"data":{"relationships":{"bundleId":{"data":{"id":"RK69HUG34Y","type":"bundleIds"}},"certificate":{"data":{"id":"43P6X6T432","type":"certificates"}}},"attributes":{"name":"0","digestHash":"3BC5212A7602FA3E63753B3A69C17D108100F335101CB7DF9A5F46817DB4C09B","teamId":"L5ZXXFUZTL","cdHashSha256":"3BC5212A7602FA3E63753B3A69C17D108100F335101CB7DF9A5F46817DB4C09B"},"type":"codeSignatures"}}],"teamId":"L5ZXXFUZTL"},"type":"batch"}}
+2026-06-15 10:55:34 +0000  Received response for C5A48B9D-1117-47B0-BCA5-B4F2E47FD500 @ <https://developerservices3.apple.com/services/v1/batch>. Code = 0
+2026-06-15 10:55:34 +0000  Response payload: {
+  "data" : {
+    "type" : "batch",
+    "id" : "c2bae74a-d2fa-4142-94c1-af6a9abee470",
+    "attributes" : {
+      "responseId" : "c2bae74a-d2fa-4142-94c1-af6a9abee470",
+      "resourceList" : [ {
+        "type" : "codeSignatures",
+        "id" : "0bf86bd7-8d26-4488-8214-d06b2c371687",
+        "attributes" : {
+          "digestHash" : "3BC5212A7602FA3E63753B3A69C17D108100F335101CB7DF9A5F46817DB4C09B",
+          "cdHashSha256" : "3BC5212A7602FA3E63753B3A69C17D108100F335101CB7DF9A5F46817DB4C09B",
+          "signature" : "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",
+          "name" : "0",
+          "responseId" : "c2bae74a-d2fa-4142-94c1-af6a9abee470",
+          "cmsSignature" : "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",
+          "timestamp" : false
+        },
+        "relationships" : {
+          "bundleId" : {
+            "data" : {
+              "type" : "bundleIds",
+              "id" : "RK69HUG34Y"
+            },
+            "links" : {
+              "self" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/0bf86bd7-8d26-4488-8214-d06b2c371687/relationships/bundleId"
+              },
+              "related" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/0bf86bd7-8d26-4488-8214-d06b2c371687/bundleId"
+              }
+            }
+          },
+          "certificate" : {
+            "data" : {
+              "type" : "certificates",
+              "id" : "43P6X6T432"
+            },
+            "links" : {
+              "self" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/0bf86bd7-8d26-4488-8214-d06b2c371687/relationships/certificate"
+              },
+              "related" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/0bf86bd7-8d26-4488-8214-d06b2c371687/certificate"
+              }
+            }
+          }
+        },
+        "links" : {
+          "self" : {
+            "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/0bf86bd7-8d26-4488-8214-d06b2c371687"
+          }
+        }
+      } ],
+      "resourceVersion" : "1"
+    },
+    "links" : {
+      "self" : "https://developerservices3.apple.com:443/services/v1/batch/c2bae74a-d2fa-4142-94c1-af6a9abee470"
+    }
+  },
+  "links" : {
+    "self" : "https://developerservices3.apple.com:443/services/v1/batch"
+  }
+}
+
+2026-06-15 10:55:34 +0000  Remote signature for /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app/PlugIns/KikariaWidget.appex (arch: arm64) is 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
+2026-06-15 10:55:34 +0000  invoking codesign: <NSConcreteTask: 0x9f8fe8cd0; launchPath='/usr/bin/codesign', arguments='(
+    "-e",
+    "--edit-cms",
+    "/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/cms~~~wnuyXH",
+    "/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app/PlugIns/KikariaWidget.appex"
+)'>
+2026-06-15 10:55:34 +0000  codesign output: 
+2026-06-15 10:55:34 +0000  Entitlements for <IDEDistributionItem: 0x9fb85dd40; bundleID='com.Vita0818.Kikaria', path='<DVTFilePath:0xa06afe5e0:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xa0750d920; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xa076ef780; name='Apple Development: 8613924000275 (3RXSHW2LS9)', hash='92FCE91AAEDFD5BF12C75536FF3FED235BFEAC12', serialNumber='56E4ADFB8EC2716F682AAC11D91C9132', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2026-05-01 07:19:43 +0000''>', entitlements='{
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria";
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 1;
+}', teamID='L5ZXXFUZTL', identifier='com.Vita0818.Kikaria', executablePath='<DVTFilePath:0xa0750eac0:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/Kikaria'>', hardenedRuntime='0'>'>: {
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria";
+    "beta-reports-active" = 1;
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 0;
+}
+2026-06-15 10:55:34 +0000  Associated App Clip Identifiers Filter: Skipping because "com.apple.developer.associated-appclip-app-identifiers" is not present
+2026-06-15 10:55:34 +0000  Entitlements for <IDEDistributionItem: 0x9fb85dd40; bundleID='com.Vita0818.Kikaria', path='<DVTFilePath:0xa06afe5e0:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xa0750d920; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xa076efe40; name='Apple Development: 8613924000275 (3RXSHW2LS9)', hash='92FCE91AAEDFD5BF12C75536FF3FED235BFEAC12', serialNumber='56E4ADFB8EC2716F682AAC11D91C9132', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2026-05-01 07:19:43 +0000''>', entitlements='{
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria";
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 1;
+}', teamID='L5ZXXFUZTL', identifier='com.Vita0818.Kikaria', executablePath='<DVTFilePath:0xa0750eac0:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/Kikaria'>', hardenedRuntime='0'>'> are: {
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria";
+    "beta-reports-active" = 1;
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 0;
+}
+2026-06-15 10:55:34 +0000  Writing entitlements for <IDEDistributionItem: 0x9fb85dd40; bundleID='com.Vita0818.Kikaria', path='<DVTFilePath:0xa06afe5e0:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app'>', codeSigningInfo='<_DVTCodeSigningInformation_Path: 0xa0750d920; isSigned='1', isAdHocSigned='0', signingCertificate='<DVTSigningCertificate: 0xa076efe40; name='Apple Development: 8613924000275 (3RXSHW2LS9)', hash='92FCE91AAEDFD5BF12C75536FF3FED235BFEAC12', serialNumber='56E4ADFB8EC2716F682AAC11D91C9132', certificateKinds='(
+    "1.2.840.113635.100.6.1.12",
+    "1.2.840.113635.100.6.1.2"
+), issueDate='2026-05-01 07:19:43 +0000''>', entitlements='{
+    "application-identifier" = "L5ZXXFUZTL.com.Vita0818.Kikaria";
+    "com.apple.developer.team-identifier" = L5ZXXFUZTL;
+    "com.apple.security.application-groups" =     (
+        "group.com.vita0818.kikaria"
+    );
+    "get-task-allow" = 1;
+}', teamID='L5ZXXFUZTL', identifier='com.Vita0818.Kikaria', executablePath='<DVTFilePath:0xa0750eac0:'/Users/vita/Library/Developer/Xcode/Archives/2026-05-21/Kikaria 2026-5-21, 15.06.xcarchive/Products/Applications/Kikaria.app/Kikaria'>', hardenedRuntime='0'>'> to: /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/entitlements~~~WUETkF
+2026-06-15 10:55:35 +0000  invoking codesign: <NSConcreteTask: 0x9f8fe8dc0; launchPath='/usr/bin/codesign', arguments='(
+    "-f",
+    "-s",
+    "-",
+    "--signature-size",
+    16000,
+    "--entitlements",
+    "/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/entitlements~~~WUETkF",
+    "--requirements",
+    "=designated => anchor apple generic and identifier \"com.Vita0818.Kikaria\" and certificate leaf[subject.CN] = \"Apple Distribution: Vita Chi (L5ZXXFUZTL)\" and certificate 1[field.1.2.840.113635.100.6.2.1] /* exists */",
+    "--preserve-metadata=identifier,flags,runtime,launch-constraints,library-constraints",
+    "--omit-adhoc-flag",
+    "--team-identifier",
+    L5ZXXFUZTL,
+    "--generate-entitlement-der",
+    "--strip-disallowed-xattrs",
+    "-vvv",
+    "/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app"
+)'>
+2026-06-15 10:55:35 +0000  codesign output: /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app: replacing existing signature
+/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app: signed app bundle with Mach-O thin (arm64) [com.Vita0818.Kikaria]
+2026-06-15 10:55:35 +0000  Remote code signing '/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app' with signature slices '[<DVTCodeSignatureSlice: 0x9f64e9950; architecture='arm64', cmsDigest='<DVTCodeSignatureHash: 0xa07543900; digestAlgorithmDescription='sha256', cdHashHexEncoded='c0a06260e22704eb352b819919bfc9fd02019502660056ef0eb1ff7e5961fddb'>', codeSignatureHashes='{(
+    <DVTCodeSignatureHash: 0xa07540640; digestAlgorithmDescription='sha256', cdHashHexEncoded='c0a06260e22704eb352b819919bfc9fd02019502660056ef0eb1ff7e5961fddb'>
+)}', cmsHexEncoded=''>]' and configuration 'RemoteSigningToolConfiguration(path: <DVTFilePath:0xa07593660:'/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app'>, signingCertificate: <DVTSigningCertificate: 0xa076ef3c0; name='Apple Distribution: Vita Chi (L5ZXXFUZTL)', hash='4F9053FCFEEFEBC56A03CA61C65FE2FD07F0BA18', serialNumber='29D75F842E03AC82AAB87CF9A899A22B', certificateKinds='(
+    "1.2.840.113635.100.6.1.7",
+    "1.2.840.113635.100.6.1.4"
+), issueDate='2026-05-07 09:27:09 +0000''>, session: <DVTServicesAccountBasedSession: 0x9fb05f6c0; account='<DVTAppleIDBasedDeveloperAccount: 0x9fc9cdb80; username='vita0818@icloud.com'>'>, team: <DVTPortalTeam: 0xa050536c0; name='Vita Chi', teamID='L5ZXXFUZTL', type='Individual', memberships='(
+    "<DVTPortalMembership: 0x9f4921830; programs='{(\n    <DVTPortalProgram: 0x9f83ee6c0; <DVTPortalProgram: 0x9f83ee6c0; identifier='Xcode.Portal.Program.iOS'>>\n)}'>",
+    "<DVTPortalMembership: 0x9f4921350; programs='{(\n    <DVTPortalProgram: 0x9f83ecd70; <DVTPortalProgram: 0x9f83ecd70; identifier='Xcode.Portal.Program.Mac'>>\n)}'>"
+)'>, codeResourcesDictionary: [AnyHashable("files"): {
+    "AppIcon60x60@2x.png" = {length = 20, bytes = 0xf2449a5cdbbf9f189ea36977f9a45fea154b9a79};
+    "AppIcon76x76@2x~ipad.png" = {length = 20, bytes = 0x11c6673dbcd00c231b193801a671c898b9ad921c};
+    "Assets.car" = {length = 20, bytes = 0x9cc7c0b1cccaffdabe27d95fea16e7a4931183e7};
+    "Info.plist" = {length = 20, bytes = 0x7ff9732698a1c55ba228b938643101bdc1d4584b};
+    PkgInfo = {length = 20, bytes = 0x9f9eea0cfe2d65f2c3d6b092e375b40782d08f31};
+    "PlugIns/KikariaWidget.appex/Info.plist" = {length = 20, bytes = 0x3b90195a56b53367a328b7ff8380db8cf4643686};
+    "PlugIns/KikariaWidget.appex/KikariaWidget" = {length = 20, bytes = 0xc38003653e755a9b43c8e7163b6383830ce71895};
+    "PlugIns/KikariaWidget.appex/_CodeSignature/CodeResources" = {length = 20, bytes = 0xcf737fdccd837a92dafc9d32c72187c00d2fe46b};
+    "PlugIns/KikariaWidget.appex/embedded.mobileprovision" = {length = 20, bytes = 0xaafc25d992b3c0bf491156456ca9deb495686442};
+    "Presets/\U5927\U5b66\U7269\U7406.md" = {length = 20, bytes = 0x12ff421ae8f3bdbcb35bcdc8caba0f87afffacdb};
+    "Presets/\U5927\U5b66\U82f1\U8bedBand4.md" = {length = 20, bytes = 0xe21dbc8048d1d0ddedb705b5798e10931e1898e8};
+    "Presets/\U5fae\U79ef\U5206.md" = {length = 20, bytes = 0xfdbc38f0470160fa57df94f81d771f0151f2e968};
+    "Presets/\U79bb\U6563\U6570\U5b66.md" = {length = 20, bytes = 0x502a760c473f05b59b6808e642c1e271f341148c};
+    "Presets/\U79bb\U6563\U6570\U5b66_BACKUP.md" = {length = 20, bytes = 0x16f6c7971c151c48a7f40ed39a5e10a1415703fc};
+    "SwiftMath_SwiftMath.bundle/Info.plist" = {length = 20, bytes = 0x6599b1f27af62b7ea19d899a3a0a6cfe875f2965};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.otf" = {length = 20, bytes = 0x95c134a2f6d13ad241391284833d93c3e7dc953f};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.plist" = {length = 20, bytes = 0x7935fe36341ebd2948cc1b1be7a3e9bb188650d0};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.otf" = {length = 20, bytes = 0xf7a78125faef6edd9d52bcf183efe50828161152};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.plist" = {length = 20, bytes = 0x1d7367ef94178e071271220ae914ec273aa3f176};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.otf" = {length = 20, bytes = 0xdd22461010b967c2a7c0de72c20dc643dcda875e};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.plist" = {length = 20, bytes = 0x69a83f2ed376e0d0a1827ff8761d862a175759bc};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/GUST-FONT-LICENSE.txt" = {length = 20, bytes = 0x7e9b02d3f480aeeebe30e9a88a671beff2ffde7b};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.otf" = {length = 20, bytes = 0x4940e4b6dc15f3182088d4a67977621d8c9fe000};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.plist" = {length = 20, bytes = 0x7522b5597a6df389f087378c17c83b7a0c480c95};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.otf" = {length = 20, bytes = 0x1bc7420803056bebf2b0893645984e104e72838c};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.plist" = {length = 20, bytes = 0xa26cf5fc0996222b64973c3f70af2ef9ea0cd56a};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.otf" = {length = 20, bytes = 0xbdf386691de2afa3da952eee1390cec6660995b9};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.plist" = {length = 20, bytes = 0xb03cbbf215f2c26c57ae8220c7d987fdf1a0ac3e};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LICENSE" = {length = 20, bytes = 0x6333fa560dfaf045208cf3962b21d7e7b42fe54d};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.otf" = {length = 20, bytes = 0x79b446ae022531851cd2a1c8d2f5895952ae803b};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.plist" = {length = 20, bytes = 0x9822f43d380c6c97ecffd09054a998282acc21d5};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.otf" = {length = 20, bytes = 0x77f5ea81dab3dedab28ae86a606d2cd7359f4813};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.plist" = {length = 20, bytes = 0x37bcdebac6360f0e52b3c7b1f8b3ae714582849d};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.otf" = {length = 20, bytes = 0x2663843911949b4cc56325f1398fa19ccd5786e5};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.plist" = {length = 20, bytes = 0x156b90940e58ba3a9bbf9c874139d5d7ab891d22};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/OFL.txt" = {length = 20, bytes = 0x64fae833f13a5c8f4aba92e14ab964ccf4789328};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.otf" = {length = 20, bytes = 0x07c3f9f3830b86cffac0f6892462f62984661377};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.plist" = {length = 20, bytes = 0x440ff2076a3ff5b9f80e491b112b6345d38d5f21};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/math_table_to_plist.py" = {length = 20, bytes = 0x40ab047e97e95c6d609bb07da1bb71427fca47bb};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.otf" = {length = 20, bytes = 0xbc3e8a85d2c903d4dbd4438e55ba395ee77699d4};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.plist" = {length = 20, bytes = 0x662d319cb55482cb9542d4847c46bc4ccbf1d47e};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.otf" = {length = 20, bytes = 0x63c19549eda5d573937e63f86a9585fe9ad3316c};
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.plist" = {length = 20, bytes = 0x6320c444800f6f589805786444e7e857e9a16097};
+    "embedded.mobileprovision" = {length = 20, bytes = 0xf39a4ee1a250ba17a02a0c69dcb524d5af46818f};
+}, AnyHashable("rules"): {
+    "^.*" = 1;
+    "^.*\\.lproj/" =     {
+        optional = 1;
+        weight = 1000;
+    };
+    "^.*\\.lproj/locversion.plist$" =     {
+        omit = 1;
+        weight = 1100;
+    };
+    "^Base\\.lproj/" =     {
+        weight = 1010;
+    };
+    "^version.plist$" = 1;
+}, AnyHashable("files2"): {
+    "AppIcon60x60@2x.png" =     {
+        hash2 = {length = 32, bytes = 0x6662f5c0 ddc0b685 694956f2 46f5dae2 ... d99e6e12 5c64f0bb };
+    };
+    "AppIcon76x76@2x~ipad.png" =     {
+        hash2 = {length = 32, bytes = 0x3d08b92d bc08f0ef 79c854f4 92e4d7f9 ... cd481621 432945a9 };
+    };
+    "Assets.car" =     {
+        hash2 = {length = 32, bytes = 0x37eda638 857ecd19 63f1bdfa 3c6acccb ... 714fe466 70d583a7 };
+    };
+    "PlugIns/KikariaWidget.appex/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xb85ec247 fae043b8 82fcc922 13e64437 ... 20778261 d16cd8f4 };
+    };
+    "PlugIns/KikariaWidget.appex/KikariaWidget" =     {
+        hash2 = {length = 32, bytes = 0x17ae5718 703085ae cd19a7a5 08e6b420 ... 7290018f 5157fbe2 };
+    };
+    "PlugIns/KikariaWidget.appex/_CodeSignature/CodeResources" =     {
+        hash2 = {length = 32, bytes = 0x94c1abee 653d6e13 d72ed8b9 94ea5586 ... bac270e6 c690b4a8 };
+    };
+    "PlugIns/KikariaWidget.appex/embedded.mobileprovision" =     {
+        hash2 = {length = 32, bytes = 0x6b6a91c3 4c821182 14aff586 9c47d3d2 ... a66045ae 0fd84b1c };
+    };
+    "Presets/\U5927\U5b66\U7269\U7406.md" =     {
+        hash2 = {length = 32, bytes = 0xb69905fd ad65277e c695dc27 5b15c24f ... bb2da621 e86fc057 };
+    };
+    "Presets/\U5927\U5b66\U82f1\U8bedBand4.md" =     {
+        hash2 = {length = 32, bytes = 0x2ad9c8c2 52234c43 28f2a225 f85dec7e ... dbd1b657 57354d99 };
+    };
+    "Presets/\U5fae\U79ef\U5206.md" =     {
+        hash2 = {length = 32, bytes = 0xab614703 f0e53de4 da030277 60c02d41 ... 8d4de640 906c3a9e };
+    };
+    "Presets/\U79bb\U6563\U6570\U5b66.md" =     {
+        hash2 = {length = 32, bytes = 0xfa1e8c19 594a98f1 2e39dfa7 87abb98b ... fb8d5684 a93af1cf };
+    };
+    "Presets/\U79bb\U6563\U6570\U5b66_BACKUP.md" =     {
+        hash2 = {length = 32, bytes = 0x9e7324bb f1bd28c9 07473b5b 7df0dff8 ... d4ad275b 8d03198b };
+    };
+    "SwiftMath_SwiftMath.bundle/Info.plist" =     {
+        hash2 = {length = 32, bytes = 0xf495b457 f9eac93e 151baf59 c2ad5a9a ... 3e765efb fe70250c };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.otf" =     {
+        hash2 = {length = 32, bytes = 0xb0d9e681 c08ff1f4 dc6ebf08 5cc96258 ... 5890b9f8 fd12d568 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.plist" =     {
+        hash2 = {length = 32, bytes = 0x97ebe044 f4c5bdc9 1ff522bd fb0425f1 ... bc9ba6c5 74e141fb };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.otf" =     {
+        hash2 = {length = 32, bytes = 0xbd07fef1 faecea7f a4a89256 e4e06ef9 ... 420229fd a37c2efb };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.plist" =     {
+        hash2 = {length = 32, bytes = 0x7b8f7450 68f1583e a83a18da 079bdecb ... 89f4edbb 2c3a9f9e };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.otf" =     {
+        hash2 = {length = 32, bytes = 0x2028cbd3 dd4d8c0c f1608520 eb475995 ... e7c31352 0186e35b };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.plist" =     {
+        hash2 = {length = 32, bytes = 0xb32d6388 ee5769b6 e68ffcc6 f660dc73 ... 41c2afd4 ba6a0305 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/GUST-FONT-LICENSE.txt" =     {
+        hash2 = {length = 32, bytes = 0x2bd69aff c3da0071 5116f713 f57eab97 ... 15987b15 b9c16f73 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.otf" =     {
+        hash2 = {length = 32, bytes = 0xc6161377 e9708415 2b948f62 abe874cb ... 54a4c648 8a5009f1 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.plist" =     {
+        hash2 = {length = 32, bytes = 0x2fe6c519 cbf876e4 2ec601a1 4ca615e9 ... bba26cf9 ee45f780 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.otf" =     {
+        hash2 = {length = 32, bytes = 0xaa6713ae 76838a7d b9eefe4f 503b963d ... 50b72eb8 32221660 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.plist" =     {
+        hash2 = {length = 32, bytes = 0xaaca68ec ef79f005 f41568df 36ac467e ... c357a156 e3f4e114 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.otf" =     {
+        hash2 = {length = 32, bytes = 0xa9e82575 a514f10c eed193d3 93bf2ea6 ... be085df1 59a8c253 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.plist" =     {
+        hash2 = {length = 32, bytes = 0x3db5772f a9fbf71c 96ca37ec caf38d8c ... d23a3cc0 c9de348e };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LICENSE" =     {
+        hash2 = {length = 32, bytes = 0x431b2cb8 2b8a5597 73235982 31f1baa4 ... 81a9a393 d0bc29ed };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.otf" =     {
+        hash2 = {length = 32, bytes = 0xb9242115 e4d41b9c cbe17934 0d4ddaf5 ... efb87e89 50781313 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.plist" =     {
+        hash2 = {length = 32, bytes = 0xb00eeb44 5c4f525e c5339184 1d8b6e75 ... c8a720ac 8b7bc408 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.otf" =     {
+        hash2 = {length = 32, bytes = 0xe81bd44a cbb7119c 8f00128b 36fecc5d ... a52402cc f4da9d32 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.plist" =     {
+        hash2 = {length = 32, bytes = 0x35701c3b 94bea930 16a9161d 017baceb ... 8b47d014 5fede503 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.otf" =     {
+        hash2 = {length = 32, bytes = 0x9dda7e17 fa67b7e3 4083798f 56faf5e5 ... 35c2957e 4397ca28 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.plist" =     {
+        hash2 = {length = 32, bytes = 0x232aced0 2fe2d815 53a1545c 551d8d5f ... 8bb10af3 f4145c03 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/OFL.txt" =     {
+        hash2 = {length = 32, bytes = 0xa96bed88 f867f6a5 bbe78ced 4ca52a3c ... dd9097b2 f8206d8d };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.otf" =     {
+        hash2 = {length = 32, bytes = 0x6075562b 771f8b82 f0c179e3 63389684 ... e2628e50 4bd7be0f };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.plist" =     {
+        hash2 = {length = 32, bytes = 0x201e6a48 3783415f 335328f2 d02b356f ... 89823658 9c8cb946 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/math_table_to_plist.py" =     {
+        hash2 = {length = 32, bytes = 0x62a8e69a e5230b04 20a34e28 d9b6a44b ... 0f065665 83dafb3e };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.otf" =     {
+        hash2 = {length = 32, bytes = 0xe5ce42b4 fe826b7e a4c08743 59decf0b ... 94107a99 24e2cd5a };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.plist" =     {
+        hash2 = {length = 32, bytes = 0x57ddeac7 c51e1342 aeb30fb7 2f6beb4d ... ab9150c0 6f7ec3c8 };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.otf" =     {
+        hash2 = {length = 32, bytes = 0xd76666cb 2dc222b4 a811db96 c41cc185 ... 94126b4e 010a5c6c };
+    };
+    "SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.plist" =     {
+        hash2 = {length = 32, bytes = 0xe64b5302 d65885a3 02b34eb2 eb1e14c6 ... 93411361 baae0363 };
+    };
+    "embedded.mobileprovision" =     {
+        hash2 = {length = 32, bytes = 0xdc8b4099 6f218fd7 15a21b5e 3a581f5f ... 2d0ba231 d5a0d03c };
+    };
+}, AnyHashable("rules2"): {
+    ".*\\.dSYM($|/)" =     {
+        weight = 11;
+    };
+    "^(.*/)?\\.DS_Store$" =     {
+        omit = 1;
+        weight = 2000;
+    };
+    "^.*" = 1;
+    "^.*\\.lproj/" =     {
+        optional = 1;
+        weight = 1000;
+    };
+    "^.*\\.lproj/locversion.plist$" =     {
+        omit = 1;
+        weight = 1100;
+    };
+    "^Base\\.lproj/" =     {
+        weight = 1010;
+    };
+    "^Info\\.plist$" =     {
+        omit = 1;
+        weight = 20;
+    };
+    "^PkgInfo$" =     {
+        omit = 1;
+        weight = 20;
+    };
+    "^embedded\\.provisionprofile$" =     {
+        weight = 20;
+    };
+    "^version\\.plist$" =     {
+        weight = 20;
+    };
+}], enableSignatureValidation: true, logAspect: <DVTLogAspect:0xa07593c00:IDEDistributionPipeline:level=verbose(3):effective-level=verbose(3)>)'
+2026-06-15 10:55:35 +0000  Sending request 943ACC22-81C3-4CA0-A970-907C1509A3D4 to <https://developerservices2.apple.com/services/v1/certificates> for session <DVTServicesAccountBasedSession: 0x9fb05f6c0; account='<DVTAppleIDBasedDeveloperAccount: 0x9fc9cdb80; username='vita0818@icloud.com'>'>.
+Method: POST
+
+Headers:
+{
+    Accept = "application/vnd.api+json";
+    "Accept-Encoding" = "gzip, deflate";
+    "Content-Length" = 113;
+    "Content-Type" = "application/vnd.api+json";
+    DSESSIONID = 1dr4m9h9e4r6ouk7pu98u9ojgi6qjeif1r3k8tj97haak8e7dpni;
+    "User-Agent" = Xcode;
+    "X-Apple-App-Info" = "com.apple.gs.xcode.auth";
+    "X-Apple-GS-Token" = "AAAABLwIAAAAAGoOrzIRDWdzLnhjb2RlLmF1dGi9AEF7qQBVzXkpx3dLyBD7f+yat/VPHrNFX+GgYWs4SOM20GU7icCipVOWtoukAyJIqUioLXWKkezJPEHwvdfpmbjVfOYEHk8NcdHz3iHVK/2RjUq/P2at2zqp09DGB4aBXw1qhjx8xCqWsLn09boRD2eZ5/og";
+    "X-Apple-I-Identity-Id" = "000473-08-72e0224f-915a-4341-ae3c-c285c8b000db";
+    "X-HTTP-Method-Override" = GET;
+    "X-MMe-Client-Info" = "<Mac17,2> <macOS;26.5.1;25F80> <com.apple.AuthKit/1 (com.apple.dt.Xcode/24943)>";
+    "X-Mme-Device-Id" = "18256743-5183-5FA8-A781-8AE05F7241A0";
+    "X-Xcode-Version" = "26.5 (17F42)";
+}
+
+Payload:
+{"urlEncodedQueryParams":"teamId=L5ZXXFUZTL&filter%5BserialNumber%5D=29D75F842E03AC82AAB87CF9A899A22B&limit=200"}
+2026-06-15 10:55:36 +0000  Received response for 943ACC22-81C3-4CA0-A970-907C1509A3D4 @ <https://developerservices2.apple.com/services/v1/certificates>. Code = 0
+2026-06-15 10:55:36 +0000  Response payload: {
+  "data" : [ {
+    "type" : "certificates",
+    "id" : "43P6X6T432",
+    "attributes" : {
+      "requesterEmail" : "vita0818@icloud.com",
+      "serialNumber" : "29D75F842E03AC82AAB87CF9A899A22B",
+      "certificateContent" : "MIIF0TCCBLmgAwIBAgIQKddfhC4DrIKquHz5qJmiKzANBgkqhkiG9w0BAQsFADB1MUQwQgYDVQQDDDtBcHBsZSBXb3JsZHdpZGUgRGV2ZWxvcGVyIFJlbGF0aW9ucyBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTELMAkGA1UECwwCRzMxEzARBgNVBAoMCkFwcGxlIEluYy4xCzAJBgNVBAYTAlVTMB4XDTI2MDUwNzA5MjcwOVoXDTI3MDUwNzA5MjcwOFowgYUxGjAYBgoJkiaJk/IsZAEBDApMNVpYWEZVWlRMMTIwMAYDVQQDDClBcHBsZSBEaXN0cmlidXRpb246IFZpdGEgQ2hpIChMNVpYWEZVWlRMKTETMBEGA1UECwwKTDVaWFhGVVpUTDERMA8GA1UECgwIVml0YSBDaGkxCzAJBgNVBAYTAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3jQIQkOl6GA+rooVLdn0QbrEYo66cMVYEzruAOe58VJ/uR63Xbkjo7KbRg+UYA5haCRqJtMbYDefKtEHJ0fHxZmVaHag5Kb1JgL8fb5o1e1NgEIImBbhMyvYQbIUUxq/7nYN/EJyHxXgAlJI92tCFRAA22dpc0DGERzXMe+G0DWBFPsVKLzhL11Kk2GdPFdYGKByBtsLRtm+YAvQ+1KQfL77ro+9JTT78Q/rhUaE7K1u2VfyXsOWbqp//7DIjQfd2SzCsFAjluMeBoJKvoErbpXaErDjTx//stpKcvqvDPJ/MnROx1SLpIqBLRgat1CCQZ6s9mBFEeOv4EDbdZa5oQIDAQABo4ICSjCCAkYwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBQJ/sAVkPmvZAqSErkmKGMMl+ynsjBwBggrBgEFBQcBAQRkMGIwLQYIKwYBBQUHMAKGIWh0dHA6Ly9jZXJ0cy5hcHBsZS5jb20vd3dkcmczLmRlcjAxBggrBgEFBQcwAYYlaHR0cDovL29jc3AuYXBwbGUuY29tL29jc3AwMy13d2RyZzMxMTCCAR4GA1UdIASCARUwggERMIIBDQYJKoZIhvdjZAUBMIH/MIHDBggrBgEFBQcCAjCBtgyBs1JlbGlhbmNlIG9uIHRoaXMgY2VydGlmaWNhdGUgYnkgYW55IHBhcnR5IGFzc3VtZXMgYWNjZXB0YW5jZSBvZiB0aGUgdGhlbiBhcHBsaWNhYmxlIHN0YW5kYXJkIHRlcm1zIGFuZCBjb25kaXRpb25zIG9mIHVzZSwgY2VydGlmaWNhdGUgcG9saWN5IGFuZCBjZXJ0aWZpY2F0aW9uIHByYWN0aWNlIHN0YXRlbWVudHMuMDcGCCsGAQUFBwIBFitodHRwczovL3d3dy5hcHBsZS5jb20vY2VydGlmaWNhdGVhdXRob3JpdHkvMBYGA1UdJQEB/wQMMAoGCCsGAQUFBwMDMB0GA1UdDgQWBBSjKEnhULoCAzs+tmKY4mNGR3LdijAOBgNVHQ8BAf8EBAMCB4AwEwYKKoZIhvdjZAYBBwEB/wQCBQAwEAYKKoZIhvdjZAYBIAQCBQAwEwYKKoZIhvdjZAYBBAEB/wQCBQAwDQYJKoZIhvcNAQELBQADggEBACmec4/uR2cPBULcct8h16WEiwABJ5B14VpAiy8V9JN8E/f8aq0o6dr5G6vaCHxn4X28U9Gk/aT0GVEOZTwaTuKrYdKuCfM7Oegl174VCLZNJloIq1H/Oe1PGxUw64nk8TERaoliB+v9IWqtkVi5OWlWH0Q3Fzn6oelkuBNhJHcYoQybszJDUawPkEUId1l/DyhtKnsLWzBRaen1FrLTVHsurPfmgzp4CpfrkQ316WzjqFv7f0vOW2Url7FumkXNl9+MQh1Q4exw+M9Zp3ciB4wuTaQe5Zr6S44hzgJWeTbZe90/cgiw9pneESknLGnUzPyOu1kGU+kM/zoa5ybTnak=",
+      "displayName" : "Vita Chi",
+      "requesterLastName" : "Qi",
+      "csrContent" : null,
+      "machineName" : null,
+      "platform" : null,
+      "requesterFirstName" : "Ji",
+      "machineId" : null,
+      "name" : "Apple Distribution: Vita Chi",
+      "responseId" : "e88341bf-bd18-420e-b20e-9801e7a8284d",
+      "expirationDate" : "2027-05-07T09:27:08.000+00:00",
+      "certificateType" : "DISTRIBUTION_MANAGED"
+    },
+    "links" : {
+      "self" : "https://developerservices2.apple.com:443/services/v1/certificates/43P6X6T432"
+    }
+  } ],
+  "links" : {
+    "self" : "https://developerservices2.apple.com:443/services/v1/certificates?filter%5BserialNumber%5D=29D75F842E03AC82AAB87CF9A899A22B&limit=200"
+  },
+  "meta" : {
+    "paging" : {
+      "total" : 1,
+      "limit" : 200
+    }
+  }
+}
+
+2026-06-15 10:55:36 +0000  Sending request 1B7D304B-DB25-4B32-BCF1-E3CF430A112A to <https://developerservices3.apple.com/services/v1/batch> for session <DVTServicesAccountBasedSession: 0x9fb05f6c0; account='<DVTAppleIDBasedDeveloperAccount: 0x9fc9cdb80; username='vita0818@icloud.com'>'>.
+Method: POST
+
+Headers:
+{
+    Accept = "application/vnd.api+json";
+    "Accept-Encoding" = "gzip, deflate";
+    "Content-Length" = 488;
+    "Content-Type" = "application/vnd.api+json";
+    DSESSIONID = 1dr4m9h9e4r6ouk7pu98u9ojgi6qjeif1r3k8tj97haak8e7dpni;
+    "User-Agent" = Xcode;
+    "X-Apple-App-Info" = "com.apple.gs.xcode.auth";
+    "X-Apple-GS-Token" = "AAAABLwIAAAAAGoOrzIRDWdzLnhjb2RlLmF1dGi9AEF7qQBVzXkpx3dLyBD7f+yat/VPHrNFX+GgYWs4SOM20GU7icCipVOWtoukAyJIqUioLXWKkezJPEHwvdfpmbjVfOYEHk8NcdHz3iHVK/2RjUq/P2at2zqp09DGB4aBXw1qhjx8xCqWsLn09boRD2eZ5/og";
+    "X-Apple-I-Identity-Id" = "000473-08-72e0224f-915a-4341-ae3c-c285c8b000db";
+    "X-MMe-Client-Info" = "<Mac17,2> <macOS;26.5.1;25F80> <com.apple.AuthKit/1 (com.apple.dt.Xcode/24943)>";
+    "X-Mme-Device-Id" = "18256743-5183-5FA8-A781-8AE05F7241A0";
+    "X-Xcode-Version" = "26.5 (17F42)";
+}
+
+Payload:
+{"data":{"type":"batch","attributes":{"resourceList":[{"data":{"relationships":{"certificate":{"data":{"id":"43P6X6T432","type":"certificates"}},"bundleId":{"data":{"id":"4LGS9Z9CR3","type":"bundleIds"}}},"attributes":{"teamId":"L5ZXXFUZTL","digestHash":"C0A06260E22704EB352B819919BFC9FD02019502660056EF0EB1FF7E5961FDDB","cdHashSha256":"C0A06260E22704EB352B819919BFC9FD02019502660056EF0EB1FF7E5961FDDB","name":"0"},"type":"codeSignatures"}}],"teamId":"L5ZXXFUZTL","resourceVersion":"1"}}}
+2026-06-15 10:55:36 +0000  Received response for 1B7D304B-DB25-4B32-BCF1-E3CF430A112A @ <https://developerservices3.apple.com/services/v1/batch>. Code = 0
+2026-06-15 10:55:36 +0000  Response payload: {
+  "data" : {
+    "type" : "batch",
+    "id" : "2a191338-bcc1-4208-b20d-99cef9a947f3",
+    "attributes" : {
+      "responseId" : "2a191338-bcc1-4208-b20d-99cef9a947f3",
+      "resourceList" : [ {
+        "type" : "codeSignatures",
+        "id" : "cf31683f-5a29-4e39-a232-11c7fb28170c",
+        "attributes" : {
+          "digestHash" : "C0A06260E22704EB352B819919BFC9FD02019502660056EF0EB1FF7E5961FDDB",
+          "cdHashSha256" : "C0A06260E22704EB352B819919BFC9FD02019502660056EF0EB1FF7E5961FDDB",
+          "signature" : "MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgEFADALBgkqhkiG9w0BBwGggDCCBdEwggS5oAMCAQICECnXX4QuA6yCqrh8+aiZoiswDQYJKoZIhvcNAQELBQAwdTFEMEIGA1UEAww7QXBwbGUgV29ybGR3aWRlIERldmVsb3BlciBSZWxhdGlvbnMgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkxCzAJBgNVBAsMAkczMRMwEQYDVQQKDApBcHBsZSBJbmMuMQswCQYDVQQGEwJVUzAeFw0yNjA1MDcwOTI3MDlaFw0yNzA1MDcwOTI3MDhaMIGFMRowGAYKCZImiZPyLGQBAQwKTDVaWFhGVVpUTDEyMDAGA1UEAwwpQXBwbGUgRGlzdHJpYnV0aW9uOiBWaXRhIENoaSAoTDVaWFhGVVpUTCkxEzARBgNVBAsMCkw1WlhYRlVaVEwxETAPBgNVBAoMCFZpdGEgQ2hpMQswCQYDVQQGEwJVUzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAN40CEJDpehgPq6KFS3Z9EG6xGKOunDFWBM67gDnufFSf7ket125I6Oym0YPlGAOYWgkaibTG2A3nyrRBydHx8WZlWh2oOSm9SYC/H2+aNXtTYBCCJgW4TMr2EGyFFMav+52DfxCch8V4AJSSPdrQhUQANtnaXNAxhEc1zHvhtA1gRT7FSi84S9dSpNhnTxXWBigcgbbC0bZvmAL0PtSkHy++66PvSU0+/EP64VGhOytbtlX8l7Dlm6qf/+wyI0H3dkswrBQI5bjHgaCSr6BK26V2hKw408f/7LaSnL6rwzyfzJ0TsdUi6SKgS0YGrdQgkGerPZgRRHjr+BA23WWuaECAwEAAaOCAkowggJGMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUCf7AFZD5r2QKkhK5JihjDJfsp7IwcAYIKwYBBQUHAQEEZDBiMC0GCCsGAQUFBzAChiFodHRwOi8vY2VydHMuYXBwbGUuY29tL3d3ZHJnMy5kZXIwMQYIKwYBBQUHMAGGJWh0dHA6Ly9vY3NwLmFwcGxlLmNvbS9vY3NwMDMtd3dkcmczMTEwggEeBgNVHSAEggEVMIIBETCCAQ0GCSqGSIb3Y2QFATCB/zCBwwYIKwYBBQUHAgIwgbYMgbNSZWxpYW5jZSBvbiB0aGlzIGNlcnRpZmljYXRlIGJ5IGFueSBwYXJ0eSBhc3N1bWVzIGFjY2VwdGFuY2Ugb2YgdGhlIHRoZW4gYXBwbGljYWJsZSBzdGFuZGFyZCB0ZXJtcyBhbmQgY29uZGl0aW9ucyBvZiB1c2UsIGNlcnRpZmljYXRlIHBvbGljeSBhbmQgY2VydGlmaWNhdGlvbiBwcmFjdGljZSBzdGF0ZW1lbnRzLjA3BggrBgEFBQcCARYraHR0cHM6Ly93d3cuYXBwbGUuY29tL2NlcnRpZmljYXRlYXV0aG9yaXR5LzAWBgNVHSUBAf8EDDAKBggrBgEFBQcDAzAdBgNVHQ4EFgQUoyhJ4VC6AgM7PrZimOJjRkdy3YowDgYDVR0PAQH/BAQDAgeAMBMGCiqGSIb3Y2QGAQcBAf8EAgUAMBAGCiqGSIb3Y2QGASAEAgUAMBMGCiqGSIb3Y2QGAQQBAf8EAgUAMA0GCSqGSIb3DQEBCwUAA4IBAQApnnOP7kdnDwVC3HLfIdelhIsAASeQdeFaQIsvFfSTfBP3/GqtKOna+Rur2gh8Z+F9vFPRpP2k9BlRDmU8Gk7iq2HSrgnzOznoJde+FQi2TSZaCKtR/zntTxsVMOuJ5PExEWqJYgfr/SFqrZFYuTlpVh9ENxc5+qHpZLgTYSR3GKEMm7MyQ1GsD5BFCHdZfw8obSp7C1swUWnp9Ray01R7Lqz35oM6eAqX65EN9els46hb+39LzltlK5exbppFzZffjEIdUOHscPjPWad3IgeMLk2kHuWa+kuOIc4CVnk22XvdP3IIsPaZ3hEpJyxp1Mz8jrtZBlPpDP86Gucm052pMIIEUTCCAzmgAwIBAgIQfK9pCiW3Of57m0R6wXjF7jANBgkqhkiG9w0BAQsFADBiMQswCQYDVQQGEwJVUzETMBEGA1UEChMKQXBwbGUgSW5jLjEmMCQGA1UECxMdQXBwbGUgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkxFjAUBgNVBAMTDUFwcGxlIFJvb3QgQ0EwHhcNMjAwMjE5MTgxMzQ3WhcNMzAwMjIwMDAwMDAwWjB1MUQwQgYDVQQDDDtBcHBsZSBXb3JsZHdpZGUgRGV2ZWxvcGVyIFJlbGF0aW9ucyBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTELMAkGA1UECwwCRzMxEzARBgNVBAoMCkFwcGxlIEluYy4xCzAJBgNVBAYTAlVTMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2PWJ/KhZC4fHTJEuLVaQ03gdpDDppUjvC0O/LYT7JF1FG+XrWTYSXFRknmxiLbTGl8rMPPbWBpH85QKmHGq0edVny6zpPwcR4YS8Rx1mjjmi6LRJ7TrS4RBgeo6TjMrA2gzAg9Dj+ZHWp4zIwXPirkbRYp2SqJBgN31ols2N4Pyb+ni743uvLRfdW/6AWSN1F7gSwe0b5TTO/iK1nkmw5VW/j4SiPKi6xYaVFuQAyZ8D0MyzOhZ71gVcnetHrg21LYwOaU1A0EtMOwSejSGxrC5DVDDOwYqGlJhL32oNP/77HK6XF8J4CjDgXx9UO0m3JQAaN4LSVpelUkl8YDib7wIDAQABo4HvMIHsMBIGA1UdEwEB/wQIMAYBAf8CAQAwHwYDVR0jBBgwFoAUK9BpR5R2Cf70a40uQKb3R01/CF4wRAYIKwYBBQUHAQEEODA2MDQGCCsGAQUFBzABhihodHRwOi8vb2NzcC5hcHBsZS5jb20vb2NzcDAzLWFwcGxlcm9vdGNhMC4GA1UdHwQnMCUwI6AhoB+GHWh0dHA6Ly9jcmwuYXBwbGUuY29tL3Jvb3QuY3JsMB0GA1UdDgQWBBQJ/sAVkPmvZAqSErkmKGMMl+ynsjAOBgNVHQ8BAf8EBAMCAQYwEAYKKoZIhvdjZAYCAQQCBQAwDQYJKoZIhvcNAQELBQADggEBAK1lE+j24IF3RAJHQr5fpTkg6mKp/cWQyXMT1Z6b0KoPjY3L7QHPbChAW8dVJEH4/M/BtSPp3Ozxb8qAHXfCxGFJJWevD8o5Ja3T43rMMygNDi6hV0Bz+uZcrgZRKe3jhQxPYdwyFot30ETKXXIDMUacrptAGvr04NM++i+MZp+XxFRZ79JI9AeZSWBZGcfdlNHAwWx/eCHvDOs7bJmCS1JgOLU5gm3sUjFTvg+RTElJdI+mUcuER04ddSduvfnSXPN/wmwLCTbiZOTCNwMUGdXqapSqqdv+9poIZ4vvK7iqF0mDr8/LvOnP6pVxsLRFoszlh6oKw0E6eVzaUDSdlTswggS7MIIDo6ADAgECAgECMA0GCSqGSIb3DQEBBQUAMGIxCzAJBgNVBAYTAlVTMRMwEQYDVQQKEwpBcHBsZSBJbmMuMSYwJAYDVQQLEx1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTEWMBQGA1UEAxMNQXBwbGUgUm9vdCBDQTAeFw0wNjA0MjUyMTQwMzZaFw0zNTAyMDkyMTQwMzZaMGIxCzAJBgNVBAYTAlVTMRMwEQYDVQQKEwpBcHBsZSBJbmMuMSYwJAYDVQQLEx1BcHBsZSBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTEWMBQGA1UEAxMNQXBwbGUgUm9vdCBDQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAOSRqQkfkdseR1DrBe1eeYQt6zaiV0xV7IsZid75S2z1B6siMALoGD74UAnTf0GomPnRymacJGsR0KO75Bsqwx+VnnoMpEeLW9QWNzPLxA9NzhRp0ckZcvVdDtV/X5vyJQO6VY9NXQ3xZDUjFUsVWR2zlPf2nJ7PULrBWFBnjwi0IPfLrCwgb3C2PwEwjLdDzw+dPfMrSSgayP7OtbkO2V4c1ss9tTqt9A8OAJILsSEWLnTVPA3bYharo3GSR1NVwa8vQbP4++NwzeajTEV+H0xrUJZBicR0YgsQg0GHM4qBsTBY7FoEMoxos48d3mVz/2deZbxJ2HafMxRloXeUyS0CAwEAAaOCAXowggF2MA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBQr0GlHlHYJ/vRrjS5ApvdHTX8IXjAfBgNVHSMEGDAWgBQr0GlHlHYJ/vRrjS5ApvdHTX8IXjCCAREGA1UdIASCAQgwggEEMIIBAAYJKoZIhvdjZAUBMIHyMCoGCCsGAQUFBwIBFh5odHRwczovL3d3dy5hcHBsZS5jb20vYXBwbGVjYS8wgcMGCCsGAQUFBwICMIG2GoGzUmVsaWFuY2Ugb24gdGhpcyBjZXJ0aWZpY2F0ZSBieSBhbnkgcGFydHkgYXNzdW1lcyBhY2NlcHRhbmNlIG9mIHRoZSB0aGVuIGFwcGxpY2FibGUgc3RhbmRhcmQgdGVybXMgYW5kIGNvbmRpdGlvbnMgb2YgdXNlLCBjZXJ0aWZpY2F0ZSBwb2xpY3kgYW5kIGNlcnRpZmljYXRpb24gcHJhY3RpY2Ugc3RhdGVtZW50cy4wDQYJKoZIhvcNAQEFBQADggEBAFw2mUwteLftjJvc83eb8nbSdzBPwR+Fg4UbmT1HN/Kpm0COLNSxkBLYvvRzm+7SZA/LeU802KI++Xj/a8gH7H05g4tTINM4xLG/mk8Ka/8r/FmnBQl8F0BWER5007eLIztHo9VvJOLr0bdw3w9F4SfK8W147ee1Fxeo3H4iNcol1dkP1mvUoiQjEfehrI9zgWDGG1sJL5Ky+ERI8GA4nhX1PSZnIIozavcNgs/e66Mv+VNqW2TAYzN39zoHLFbr2g8hDtq6cxlPtdk2f8GHVdmnmbkyQvvY1XGefqFStxu9k0IkEirHDx22TZxeY8hLgBdQqorV2uT80AkHN7B1dSEAADGCA2IwggNeAgEBMIGJMHUxRDBCBgNVBAMMO0FwcGxlIFdvcmxkd2lkZSBEZXZlbG9wZXIgUmVsYXRpb25zIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MQswCQYDVQQLDAJHMzETMBEGA1UECgwKQXBwbGUgSW5jLjELMAkGA1UEBhMCVVMCECnXX4QuA6yCqrh8+aiZoiswDQYJYIZIAWUDBAIBBQCgggGpMBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI2MDYxNTEwNTUzNlowLwYJKoZIhvcNAQkEMSIEIMCgYmDiJwTrNSuBmRm/yf0CAZUCZgBW7w6x/35ZYf3bMDwGCSqGSIb3Y2QJAjEvMC0GCWCGSAFlAwQCAQQgwKBiYOInBOs1K4GZGb/J/QIBlQJmAFbvDrH/fllh/dswgf8GCSqGSIb3Y2QJATGB8QSB7jwhRE9DVFlQRSBwbGlzdCBQVUJMSUMgIi0vL0FwcGxlLy9EVEQgUExJU1QgMS4wLy9FTiIgImh0dHA6Ly93d3cuYXBwbGUuY29tL0RURHMvUHJvcGVydHlMaXN0LTEuMC5kdGQiPgo8cGxpc3QgdmVyc2lvbj0iMS4wIj4KPGRpY3Q+Cgk8a2V5PmNkaGFzaGVzPC9rZXk+Cgk8YXJyYXk+CgkJPGRhdGE+CgkJd0tCaVlPSW5CT3MxSzRHWkdiL0ovUUlCbFFJPQoJCTwvZGF0YT4KCTwvYXJyYXk+CjwvZGljdD4KPC9wbGlzdD4wDQYJKoZIhvcNAQELBQAEggEAEInw4EpKNj46qvWPDD/0CiCoCo0kF8g9WhVapucFiDWiEP1SYg7kgijDToEQhHGUNZHt6K1ShhTB1deFtZ/K/qL3UgzYk55UGmV0BctNfJrVgjWvCq/+OdfHSZTr7+nrVE6wZMJFV6+IP1yH7SgC7By47BMMcZKHiEtF7MiJ0vAN6n+B8/qOZMS3eD1XmR9cGQ9l3jA+qNxIVgVOpD5Btfl61ii/y67OXYIqAqpsR3PF9mJk6gg89fwyNO7NUO22Z/AZxVpPYnwPGha025/IdprSxltLNaShHfz7GhufLY1SLO8g3o0idM+IiZNmsN+/rCbIcZTdEXu8zIsVUGMkTAAAAAAAAA==",
+          "name" : "0",
+          "responseId" : "2a191338-bcc1-4208-b20d-99cef9a947f3",
+          "cmsSignature" : "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",
+          "timestamp" : false
+        },
+        "relationships" : {
+          "bundleId" : {
+            "data" : {
+              "type" : "bundleIds",
+              "id" : "4LGS9Z9CR3"
+            },
+            "links" : {
+              "self" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/cf31683f-5a29-4e39-a232-11c7fb28170c/relationships/bundleId"
+              },
+              "related" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/cf31683f-5a29-4e39-a232-11c7fb28170c/bundleId"
+              }
+            }
+          },
+          "certificate" : {
+            "data" : {
+              "type" : "certificates",
+              "id" : "43P6X6T432"
+            },
+            "links" : {
+              "self" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/cf31683f-5a29-4e39-a232-11c7fb28170c/relationships/certificate"
+              },
+              "related" : {
+                "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/cf31683f-5a29-4e39-a232-11c7fb28170c/certificate"
+              }
+            }
+          }
+        },
+        "links" : {
+          "self" : {
+            "href" : "https://developerservices3.apple.com:443/services/v1/codeSignatures/cf31683f-5a29-4e39-a232-11c7fb28170c"
+          }
+        }
+      } ],
+      "resourceVersion" : "1"
+    },
+    "links" : {
+      "self" : "https://developerservices3.apple.com:443/services/v1/batch/2a191338-bcc1-4208-b20d-99cef9a947f3"
+    }
+  },
+  "links" : {
+    "self" : "https://developerservices3.apple.com:443/services/v1/batch"
+  }
+}
+
+2026-06-15 10:55:36 +0000  Remote signature for /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app (arch: arm64) is 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
+2026-06-15 10:55:36 +0000  invoking codesign: <NSConcreteTask: 0x9f8fe8dc0; launchPath='/usr/bin/codesign', arguments='(
+    "-e",
+    "--edit-cms",
+    "/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/cms~~~dcEpak",
+    "/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app"
+)'>
+2026-06-15 10:55:36 +0000  codesign output: 
+2026-06-15 10:55:36 +0000  Processing step: IDEDistributionZipODRItemStep
+2026-06-15 10:55:36 +0000  Skipping step: IDEDistributionZipODRItemStep because it said so
+2026-06-15 10:55:36 +0000  Skipping step: IDEDistributionZipODRItemStep because it said so
+2026-06-15 10:55:36 +0000  Processing step: IDEDistributionCreateIPAStep
+2026-06-15 10:55:36 +0000  Running /usr/bin/rsync '-8aPhhE' '/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Symbols' '--link-dest' '/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e' '/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root'
+2026-06-15 10:55:36 +0000  Symbols/
+Symbols/07B0D8F3-58C3-32C4-85EA-8D6A468C57E9.symbols
+Symbols/B2F9BBA4-77FA-304F-8756-80F4E04053C0.symbols
+2026-06-15 10:55:36 +0000  /usr/bin/rsync exited with 0
+2026-06-15 10:55:36 +0000  Running /usr/bin/ditto '-V' '-c' '-k' '--norsrc' '/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root' '/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Packages/Kikaria.ipa'
+2026-06-15 10:55:36 +0000  >>> Copying /var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root 
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/_CodeSignature/CodeResources ... 
+2026-06-15 10:55:36 +0000  14033 bytes for ./Payload/Kikaria.app/_CodeSignature/CodeResources
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/PlugIns/KikariaWidget.appex/_CodeSignature/CodeResources ... 
+2026-06-15 10:55:36 +0000  2040 bytes for ./Payload/Kikaria.app/PlugIns/KikariaWidget.appex/_CodeSignature/CodeResources
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/PlugIns/KikariaWidget.appex/KikariaWidget ... 
+2026-06-15 10:55:36 +0000  204080 bytes for ./Payload/Kikaria.app/PlugIns/KikariaWidget.appex/KikariaWidget
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/PlugIns/KikariaWidget.appex/embedded.mobileprovision ... 
+2026-06-15 10:55:36 +0000  12568 bytes for ./Payload/Kikaria.app/PlugIns/KikariaWidget.appex/embedded.mobileprovision
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/PlugIns/KikariaWidget.appex/Info.plist ... 
+2026-06-15 10:55:36 +0000  843 bytes for ./Payload/Kikaria.app/PlugIns/KikariaWidget.appex/Info.plist
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/AppIcon60x60@2x.png ... 
+2026-06-15 10:55:36 +0000  18284 bytes for ./Payload/Kikaria.app/AppIcon60x60@2x.png
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/Assets.car ... 
+2026-06-15 10:55:36 +0000  7557976 bytes for ./Payload/Kikaria.app/Assets.car
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/AppIcon76x76@2x~ipad.png ... 
+2026-06-15 10:55:36 +0000  28029 bytes for ./Payload/Kikaria.app/AppIcon76x76@2x~ipad.png
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/Presets/大学物理.md ... 
+2026-06-15 10:55:36 +0000  88236 bytes for ./Payload/Kikaria.app/Presets/大学物理.md
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/Presets/离散数学.md ... 
+2026-06-15 10:55:36 +0000  428646 bytes for ./Payload/Kikaria.app/Presets/离散数学.md
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/Presets/离散数学_BACKUP.md ... 
+2026-06-15 10:55:36 +0000  428379 bytes for ./Payload/Kikaria.app/Presets/离散数学_BACKUP.md
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/Presets/微积分.md ... 
+2026-06-15 10:55:36 +0000  103907 bytes for ./Payload/Kikaria.app/Presets/微积分.md
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/Presets/大学英语Band4.md ... 
+2026-06-15 10:55:36 +0000  189847 bytes for ./Payload/Kikaria.app/Presets/大学英语Band4.md
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/embedded.mobileprovision ... 
+2026-06-15 10:55:36 +0000  12474 bytes for ./Payload/Kikaria.app/embedded.mobileprovision
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/Kikaria ... 
+2026-06-15 10:55:36 +0000  2206912 bytes for ./Payload/Kikaria.app/Kikaria
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/Info.plist ... 
+2026-06-15 10:55:36 +0000  1484 bytes for ./Payload/Kikaria.app/Info.plist
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.plist ... 
+2026-06-15 10:55:36 +0000  153377 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.plist
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.otf ... 
+2026-06-15 10:55:36 +0000  293084 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.otf
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.otf ... 
+2026-06-15 10:55:36 +0000  440268 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.otf
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.plist ... 
+2026-06-15 10:55:36 +0000  99277 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.plist
+2026-06-15 10:55:36 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.plist ... 
+2026-06-15 10:55:37 +0000  99401 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.plist ... 
+2026-06-15 10:55:37 +0000  50321 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LICENSE ... 
+2026-06-15 10:55:37 +0000  1075 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LICENSE
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/math_table_to_plist.py ... 
+2026-06-15 10:55:37 +0000  7145 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/math_table_to_plist.py
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.plist ... 
+2026-06-15 10:55:37 +0000  74123 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.otf ... 
+2026-06-15 10:55:37 +0000  498408 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.plist ... 
+2026-06-15 10:55:37 +0000  58011 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.plist ... 
+2026-06-15 10:55:37 +0000  105024 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Sans.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.otf ... 
+2026-06-15 10:55:37 +0000  823988 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.otf ... 
+2026-06-15 10:55:37 +0000  179840 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/FiraMath-Regular.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.plist ... 
+2026-06-15 10:55:37 +0000  192517 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Garamond-Math.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.otf ... 
+2026-06-15 10:55:37 +0000  733736 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.otf ... 
+2026-06-15 10:55:37 +0000  433528 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Asana-Math.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.otf ... 
+2026-06-15 10:55:37 +0000  451008 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/KpMath-Light.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.plist ... 
+2026-06-15 10:55:37 +0000  131044 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LeteSansMath.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.otf ... 
+2026-06-15 10:55:37 +0000  428792 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/Euler-Math.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/OFL.txt ... 
+2026-06-15 10:55:37 +0000  5104 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/OFL.txt
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.otf ... 
+2026-06-15 10:55:37 +0000  538696 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/GUST-FONT-LICENSE.txt ... 
+2026-06-15 10:55:37 +0000  1456 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/GUST-FONT-LICENSE.txt
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.otf ... 
+2026-06-15 10:55:37 +0000  588848 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/LibertinusMath-Regular.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.otf ... 
+2026-06-15 10:55:37 +0000  532404 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/texgyretermes-math.otf
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.plist ... 
+2026-06-15 10:55:37 +0000  65067 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/latinmodern-math.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.plist ... 
+2026-06-15 10:55:37 +0000  225479 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/NotoSansMath-Regular.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.plist ... 
+2026-06-15 10:55:37 +0000  152248 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/mathFonts.bundle/xits-math.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/Info.plist ... 
+2026-06-15 10:55:37 +0000  681 bytes for ./Payload/Kikaria.app/SwiftMath_SwiftMath.bundle/Info.plist
+2026-06-15 10:55:37 +0000  copying file ./Payload/Kikaria.app/PkgInfo ... 
+2026-06-15 10:55:37 +0000  8 bytes for ./Payload/Kikaria.app/PkgInfo
+2026-06-15 10:55:37 +0000  copying file ./Symbols/B2F9BBA4-77FA-304F-8756-80F4E04053C0.symbols ... 
+2026-06-15 10:55:37 +0000  8134404 bytes for ./Symbols/B2F9BBA4-77FA-304F-8756-80F4E04053C0.symbols
+2026-06-15 10:55:37 +0000  copying file ./Symbols/07B0D8F3-58C3-32C4-85EA-8D6A468C57E9.symbols ... 
+2026-06-15 10:55:37 +0000  341404 bytes for ./Symbols/07B0D8F3-58C3-32C4-85EA-8D6A468C57E9.symbols
+2026-06-15 10:55:37 +0000  /usr/bin/ditto exited with 0
+2026-06-15 10:55:37 +0000  Processing step: IDEDistributionAppStoreInformationStep
+2026-06-15 10:55:37 +0000  Skipping step: IDEDistributionAppStoreInformationStep because it said so
+2026-06-15 10:55:37 +0000  Processing step: IDEDistributionGenerateProcessedDistributionItems
+2026-06-15 10:55:37 +0000  IDEDistributionItem init <DVTFilePath:0x9f10a6df0:'/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app/PlugIns/KikariaWidget.appex'>
+2026-06-15 10:55:37 +0000  IDEDistributionItem init <DVTFilePath:0xa07593660:'/var/folders/8p/t9gqz5213cqdslvht9fmd0zm0000gn/T/XcodeDistPipeline.~~~hd263e/Root/Payload/Kikaria.app'>
+2026-06-15 10:55:37 +0000  Processing step: IDEDistributionCreateManifestStep
+2026-06-15 10:55:37 +0000  Skipping step: IDEDistributionCreateManifestStep because it said so

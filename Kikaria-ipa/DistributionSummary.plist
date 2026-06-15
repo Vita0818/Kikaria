@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Kikaria.ipa</key>
+	<array>
+		<dict>
+			<key>architectures</key>
+			<array>
+				<string>arm64</string>
+			</array>
+			<key>buildNumber</key>
+			<string>5</string>
+			<key>certificate</key>
+			<dict>
+				<key>SHA1</key>
+				<string>4F9053FCFEEFEBC56A03CA61C65FE2FD07F0BA18</string>
+				<key>dateExpires</key>
+				<string>2027/5/7</string>
+				<key>type</key>
+				<string>Cloud Managed Apple Distribution</string>
+			</dict>
+			<key>embeddedBinaries</key>
+			<array>
+				<dict>
+					<key>architectures</key>
+					<array>
+						<string>arm64</string>
+					</array>
+					<key>buildNumber</key>
+					<string>5</string>
+					<key>certificate</key>
+					<dict>
+						<key>SHA1</key>
+						<string>4F9053FCFEEFEBC56A03CA61C65FE2FD07F0BA18</string>
+						<key>dateExpires</key>
+						<string>2027/5/7</string>
+						<key>type</key>
+						<string>Cloud Managed Apple Distribution</string>
+					</dict>
+					<key>entitlements</key>
+					<dict>
+						<key>application-identifier</key>
+						<string>L5ZXXFUZTL.com.Vita0818.Kikaria.KikariaWidget</string>
+						<key>beta-reports-active</key>
+						<true/>
+						<key>com.apple.developer.team-identifier</key>
+						<string>L5ZXXFUZTL</string>
+						<key>com.apple.security.application-groups</key>
+						<array>
+							<string>group.com.vita0818.kikaria</string>
+						</array>
+						<key>get-task-allow</key>
+						<false/>
+					</dict>
+					<key>name</key>
+					<string>KikariaWidget.appex</string>
+					<key>profile</key>
+					<dict>
+						<key>UUID</key>
+						<string>200c0d57-0b1d-4c18-8522-6bf13021e246</string>
+						<key>dateExpires</key>
+						<string>2027/5/7</string>
+						<key>name</key>
+						<string>iOS Team Store Provisioning Profile: com.Vita0818.Kikaria.KikariaWidget</string>
+					</dict>
+					<key>symbols</key>
+					<true/>
+					<key>team</key>
+					<dict>
+						<key>id</key>
+						<string>L5ZXXFUZTL</string>
+						<key>name</key>
+						<string>Vita Chi</string>
+					</dict>
+					<key>versionNumber</key>
+					<string>2.1</string>
+				</dict>
+			</array>
+			<key>entitlements</key>
+			<dict>
+				<key>application-identifier</key>
+				<string>L5ZXXFUZTL.com.Vita0818.Kikaria</string>
+				<key>beta-reports-active</key>
+				<true/>
+				<key>com.apple.developer.team-identifier</key>
+				<string>L5ZXXFUZTL</string>
+				<key>com.apple.security.application-groups</key>
+				<array>
+					<string>group.com.vita0818.kikaria</string>
+				</array>
+				<key>get-task-allow</key>
+				<false/>
+			</dict>
+			<key>name</key>
+			<string>Kikaria.app</string>
+			<key>profile</key>
+			<dict>
+				<key>UUID</key>
+				<string>62f83db5-45e5-4131-8fd2-7f4fff4e5b0f</string>
+				<key>dateExpires</key>
+				<string>2027/5/7</string>
+				<key>name</key>
+				<string>iOS Team Store Provisioning Profile: com.Vita0818.Kikaria</string>
+			</dict>
+			<key>symbols</key>
+			<true/>
+			<key>team</key>
+			<dict>
+				<key>id</key>
+				<string>L5ZXXFUZTL</string>
+				<key>name</key>
+				<string>Vita Chi</string>
+			</dict>
+			<key>versionNumber</key>
+			<string>2.1</string>
+		</dict>
+	</array>
+</dict>
+</plist>
