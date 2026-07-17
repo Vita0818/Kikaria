@@ -1,6 +1,16 @@
 # TESTING
 
-最后自查日期：2026-05-26
+## 外部依赖与禁止兜底验证（Vitemis 强制规则）
+
+本项目继承 `/Users/vita/Vitemis/docs/DEPENDENCY_POLICY.md`。涉及外部能力的变更必须验证：
+
+- exact 外部依赖可用时只调用其官方 API/扩展点，不调用第一方重复实现。
+- 依赖缺失、版本不兼容或构建/签名/许可证/平台/安全条件不成立时，产生明确、可诊断失败并停止该能力。
+- 失败路径不会切换到 legacy、另一 provider/backend、adapter/shim、cache、mock、简化实现或不完整路径。
+- 测试 double 只存在于测试 target，不进入 production selection 或 runtime fallback。
+- Review 检查新增 wrapper/adapter/facade 是否仅为官方 API 必需的最薄接线；发现核心能力复制、第二实现或静默降级即判定失败。
+
+最后自查日期：2026-07-04
 
 ## 环境要求
 
@@ -128,6 +138,7 @@ xcodebuild -project Kikaria.xcodeproj -scheme Kikaria -configuration Debug -dest
 - iPad landscape：两列布局、范围选择面板、Review 双列。
 - macOS：窗口最小尺寸、侧边栏、快捷键、复用页面、编辑资料。
 - Widget small/medium/large：浅色、深色、空数据、长 preset 名、长知识点标题。
+- v3.1 语言适配：至少分别用中文和英文首选语言检查 App 首页、设置、Preset 切换、Review、Markdown 指南、通知预览文案和 Widget small/medium/large；确认用户知识点正文、用户自定义 preset 名称和存档字段没有被翻译或重写。
 - Markdown：导入 `.md` / `.txt`、中文逗号 tags、缺少 hint/content 的错误提示、LaTeX inline/block。
 - 数据持久化：切换 preset、重启恢复、每日目标、倒数日期、重点/已掌握状态。
 - 通知：权限请求、开关、时间、倒数安全线、关闭后取消通知。

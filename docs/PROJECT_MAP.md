@@ -1,6 +1,6 @@
 # PROJECT_MAP
 
-最后自查日期：2026-05-26
+最后自查日期：2026-07-04
 
 本文件根据当前源码、Xcode 工程配置、脚本和测试文件整理。扫描时排除了 `.git/`、`.build/`、`build/`、`DerivedData/`、`xcuserdata/` 等依赖缓存、构建产物或用户本地状态。
 
@@ -51,9 +51,9 @@
 - `Kikaria/KnowledgePoint.swift`：`KnowledgePoint`、Markdown parse/export、`KnowledgePreset` 和内置 preset 资源加载。
 - `Kikaria/StudyTracking.swift`：学习活动记录、Widget snapshot 模型、App 侧 Widget 数据写入。
 - `Kikaria/KikariaAdaptiveLayout.swift`：跨 iPhone/iPad/Mac 的尺寸分类、页面宽度、两列布局和缩放指标。
-- `Kikaria/KikariaTypography.swift`：中文、英文、数字混排字体入口。
+- `Kikaria/KikariaTypography.swift`：中文、英文、数字混排字体入口；v3.1 起也承载 App/macOS 侧 `KikariaLocalization` 轻量文案映射和内置 preset 展示名映射。
 - `Kikaria/KikariaLatexParser.swift`、`Kikaria/LatexToken.swift`、`Kikaria/KikariaMathText.swift`、`Kikaria/KikariaMathFormulaView.swift`：LaTeX token 化、本地 SwiftMath 渲染和 fallback 显示。
-- `KikariaWidget/KikariaWidget.swift`：Widget 数据读取、TimelineProvider、三尺寸布局和 Widget bundle 入口。
+- `KikariaWidget/KikariaWidget.swift`：Widget 数据读取、TimelineProvider、三尺寸布局和 Widget bundle 入口；Widget target 内有独立 `WidgetLocalization` 文案映射。
 - `KikariaMac/KikariaMacApp.swift`：macOS App `@main` 入口。
 - `KikariaMac/KikariaMacRootView.swift`：macOS 复用主 ContentView 的窗口包装。
 - `scripts/build.sh`：Xcode build 检查脚本，默认输出到 `.build/DerivedData`。

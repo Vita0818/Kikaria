@@ -106,7 +106,7 @@ struct WidgetSnapshot: Codable {
     }
 
     static let placeholder = WidgetSnapshot(
-        presetName: "高等数学知识点",
+        presetName: KikariaLocalization.usesEnglish ? "Calculus" : "高等数学知识点",
         todayMasteredCount: 0,
         masteredCount: 0,
         dailyGoal: 20,
@@ -114,7 +114,10 @@ struct WidgetSnapshot: Codable {
         todayReviewCount: 0,
         todayHintCount: 0,
         randomKnowledgePoints: [
-            WidgetKnowledgePointPreview(title: "极限的保号性", tag: "极限")
+            WidgetKnowledgePointPreview(
+                title: KikariaLocalization.usesEnglish ? "Limit Sign Preservation" : "极限的保号性",
+                tag: KikariaLocalization.usesEnglish ? "Limits" : "极限"
+            )
         ],
         lastUpdated: Date()
     )

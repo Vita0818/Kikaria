@@ -569,15 +569,15 @@ private enum MacSidebarDestination: CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .dashboard:
-            "仪表盘"
+            KikariaLocalization.string("仪表盘")
         case .todayOverview:
-            "今日概览"
+            KikariaLocalization.string("今日概览")
         case .reinforcement:
-            "重点集锦"
+            KikariaLocalization.string("重点集锦")
         case .mastered:
-            "已掌握"
+            KikariaLocalization.string("已掌握")
         case .presetSelection:
-            "预设管理"
+            KikariaLocalization.string("预设管理")
         }
     }
 
@@ -685,7 +685,7 @@ private struct MacSidebarView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("打开设置")
+            .accessibilityLabel(KikariaLocalization.string("打开设置"))
             .padding(.horizontal, 14)
             .padding(.bottom, 14)
         }
@@ -767,7 +767,7 @@ struct DailyReviewRecord: Codable, Equatable {
 }
 
 private func studyProgressNotificationBody(for presetName: String) -> String {
-    "今天的「\(presetName)」学习量尚未达标哦，抓紧学习吧！"
+    KikariaLocalization.notificationBody(presetName: presetName)
 }
 
 private let retiredBuiltInPresetIDs: Set<String> = [
@@ -971,11 +971,7 @@ private func countdownDays(until targetDate: Date?) -> Int? {
 }
 
 private func countdownText(for targetDate: Date?) -> String {
-    guard let days = countdownDays(until: targetDate) else {
-        return "--"
-    }
-
-    return "\(days) 天"
+    KikariaLocalization.countdownText(days: countdownDays(until: targetDate))
 }
 
 private struct StudyProgressWarning {
@@ -1039,7 +1035,7 @@ private enum KikariaNotificationManager {
         for state in states.values {
             rescheduleStudyProgressWarning(
                 for: state,
-                presetName: presetNames[state.presetId] ?? "当前预设"
+                presetName: presetNames[state.presetId] ?? KikariaLocalization.string("当前预设")
             )
         }
     }
@@ -1102,16 +1098,16 @@ private enum KikariaNotificationManager {
                     if granted {
                         scheduleAuthorizedDebugTestNotification(presetName: presetName, completion: completion)
                     } else {
-                        completion("请在系统设置中允许通知")
+                        completion(KikariaLocalization.string("请在系统设置中允许通知"))
                     }
                 }
             } else if settings.authorizationStatus == .denied {
                 DispatchQueue.main.async {
-                    completion("请在系统设置中允许通知")
+                    completion(KikariaLocalization.string("请在系统设置中允许通知"))
                 }
             } else {
                 DispatchQueue.main.async {
-                    completion("通知权限不可用")
+                    completion(KikariaLocalization.string("通知权限不可用"))
                 }
             }
         }
@@ -1137,9 +1133,9 @@ private enum KikariaNotificationManager {
         center.add(request) { error in
             DispatchQueue.main.async {
                 if error == nil {
-                    completion("提醒将在 5 秒后发送")
+                    completion(KikariaLocalization.string("提醒将在 5 秒后发送"))
                 } else {
-                    completion("提醒发送失败")
+                    completion(KikariaLocalization.string("提醒发送失败"))
                 }
             }
         }
@@ -1266,6 +1262,14 @@ struct ContentView: View {
         presets.first { $0.id == currentPresetID } ?? KnowledgePreset.defaultPreset
     }
 
+    private var currentPresetDisplayName: String {
+        displayName(for: currentPreset)
+    }
+
+    private func displayName(for preset: KnowledgePreset) -> String {
+        KikariaLocalization.builtInPresetDisplayName(preset.name, isBuiltIn: preset.isBuiltIn)
+    }
+
     private var currentPresetActivityRecords: [StudyActivityRecord] {
         activityRecords.filter { $0.presetId == currentPresetID }
     }
@@ -1283,17 +1287,11 @@ struct ContentView: View {
     }
 
     private var homeDateTitle: String {
-        let date = Date()
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "MMM"
-
-        let day = Calendar.current.component(.day, from: date)
-        return "\(formatter.string(from: date)) \(day)\(ordinalSuffix(for: day))"
+        KikariaLocalization.homeDateTitle(for: Date())
     }
 
     private var homeDaysLeftText: String {
-        "\(countdownDayCount.map(String.init) ?? "--") Days Left"
+        KikariaLocalization.daysLeftText(days: countdownDayCount)
     }
 
     private var homeProgressText: String {
@@ -1328,7 +1326,7 @@ struct ContentView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("打开设置")
+                .accessibilityLabel(KikariaLocalization.string("打开设置"))
                 #endif
             }
 
@@ -1344,7 +1342,7 @@ struct ContentView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("开始背诵")
+                .accessibilityLabel(KikariaLocalization.string("开始背诵"))
 
                 Spacer(minLength: bubbleSafeSpacing)
             }
@@ -1364,7 +1362,7 @@ struct ContentView: View {
                     scopeCountText: selectedScopeCountText,
                     reinforcedCount: reinforcedCount,
                     masteredCount: masteredCount,
-                    presetName: currentPreset.name
+                    presetName: currentPresetDisplayName
                 )
             }
         }
@@ -1400,7 +1398,7 @@ struct ContentView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("开始背诵")
+                    .accessibilityLabel(KikariaLocalization.string("开始背诵"))
 
                     Spacer(minLength: 34)
                 }
@@ -1423,7 +1421,7 @@ struct ContentView: View {
                         scopeCountText: selectedScopeCountText,
                         reinforcedCount: reinforcedCount,
                         masteredCount: masteredCount,
-                        presetName: currentPreset.name,
+                        presetName: currentPresetDisplayName,
                         isExpanded: true,
                         cardScale: cardScale
                     )
@@ -1441,7 +1439,7 @@ struct ContentView: View {
                 )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("打开设置")
+            .accessibilityLabel(KikariaLocalization.string("打开设置"))
             .padding(.top, 26)
             #endif
         }
@@ -1600,7 +1598,7 @@ struct ContentView: View {
                                         )
                                     }
                                     .buttonStyle(.plain)
-                                    .accessibilityLabel("打开设置")
+                                    .accessibilityLabel(KikariaLocalization.string("打开设置"))
                                     #endif
                                 }
                                 .padding(.top, 14)
@@ -1616,7 +1614,7 @@ struct ContentView: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("开始背诵")
+                                .accessibilityLabel(KikariaLocalization.string("开始背诵"))
 
                                 Spacer(minLength: 30)
 
@@ -1624,7 +1622,7 @@ struct ContentView: View {
                                     NavigationLink(value: AppRoute.todayOverview) {
                                         TodayOverviewHomeProgressButton(
                                             dateText: homeDateTitle,
-                                            daysLeftText: "\(countdownDayCount.map(String.init) ?? "--") Days Left",
+                                            daysLeftText: homeDaysLeftText,
                                             progressText: "\(todayMarkedMasteredCount)/\(dailyGoal)",
                                             isExpanded: isExpanded,
                                             cardScale: homeCardScale
@@ -1636,7 +1634,7 @@ struct ContentView: View {
                                         scopeCountText: selectedScopeCountText,
                                         reinforcedCount: reinforcedCount,
                                         masteredCount: masteredCount,
-                                        presetName: currentPreset.name,
+                                        presetName: currentPresetDisplayName,
                                         isExpanded: isExpanded,
                                         cardScale: homeCardScale
                                     )
@@ -1669,7 +1667,7 @@ struct ContentView: View {
                     )
                 case .todayOverview:
                     TodayOverviewView(
-                        presetName: currentPreset.name,
+                        presetName: currentPresetDisplayName,
                         activityRecords: currentPresetActivityRecords,
                         knowledgePoints: knowledgePoints,
                         dailyGoal: dailyGoal,
@@ -1729,7 +1727,7 @@ struct ContentView: View {
                         notificationsEnabled: notificationsEnabled,
                         notificationTime: notificationTimeBinding,
                         dangerPercent: dangerPercentBinding,
-                        currentPresetName: currentPreset.name,
+                        currentPresetName: currentPresetDisplayName,
                         onClose: {
                             navigationPath.removeAll()
                         },
@@ -2072,7 +2070,7 @@ struct ContentView: View {
                 presetStates[currentPresetID] = currentPresetStateSnapshot()
                 persistLibrary()
                 rescheduleAllPresetNotifications()
-                completion(granted, granted ? nil : "请在系统设置中允许通知")
+                completion(granted, granted ? nil : KikariaLocalization.string("请在系统设置中允许通知"))
             }
         } else {
             notificationsEnabled = false
@@ -2100,7 +2098,7 @@ struct ContentView: View {
 
     private func sendDebugTestNotification(completion: @escaping (String) -> Void) {
         KikariaNotificationManager.scheduleDebugTestNotification(
-            presetName: currentPreset.name,
+            presetName: currentPresetDisplayName,
             completion: completion
         )
     }
@@ -2358,13 +2356,13 @@ struct ContentView: View {
     private func createPreset(name: String, category: String, markdownText: String) -> PresetCreationOutcome {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
-            return .failure("请填写预设名称。")
+            return .failure(KikariaLocalization.string("请填写预设名称。"))
         }
 
         let trimmedMarkdown = markdownText.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let parsedPoints = try? KnowledgePoint.parseMarkdown(trimmedMarkdown) else {
-            return .failure("没有解析到有效知识点。请检查 # 标题、tags、hint: 和 content:。")
+            return .failure(KikariaLocalization.string("没有解析到有效知识点。请检查 # 标题、tags、hint: 和 content:。"))
         }
 
         saveCurrentPresetState()
@@ -2559,7 +2557,7 @@ struct ContentView: View {
 
         var states = presetStates
         states[currentPresetID] = currentPresetStateSnapshot()
-        let presetNames = Dictionary(uniqueKeysWithValues: presets.map { ($0.id, $0.name) })
+        let presetNames = Dictionary(uniqueKeysWithValues: presets.map { ($0.id, displayName(for: $0)) })
         KikariaNotificationManager.rescheduleAllStudyProgressWarnings(for: states, presetNames: presetNames)
     }
 
@@ -2567,24 +2565,6 @@ struct ContentView: View {
         currentPresetActivityRecords.filter { record in
             Calendar.current.isDate(record.date, inSameDayAs: date) &&
                 (type == nil || record.type == type)
-        }
-    }
-
-    private func ordinalSuffix(for day: Int) -> String {
-        let lastTwoDigits = day % 100
-        if lastTwoDigits == 11 || lastTwoDigits == 12 || lastTwoDigits == 13 {
-            return "th"
-        }
-
-        switch day % 10 {
-        case 1:
-            return "st"
-        case 2:
-            return "nd"
-        case 3:
-            return "rd"
-        default:
-            return "th"
         }
     }
 
@@ -2602,7 +2582,7 @@ struct ContentView: View {
     private func updateWidgetSnapshot() {
         WidgetDataStore.save(
             WidgetSnapshot(
-                presetName: currentPreset.name,
+                presetName: currentPresetDisplayName,
                 todayMasteredCount: todayMarkedMasteredCount,
                 masteredCount: masteredCount,
                 dailyGoal: dailyGoal,
@@ -2706,7 +2686,7 @@ private struct OnboardingView: View {
                             onComplete()
                         }
                     } label: {
-                        Text(selectedPage == pages.count - 1 ? "开始使用" : "下一步")
+                        Text(KikariaLocalization.string(selectedPage == pages.count - 1 ? "开始使用" : "下一步"))
                             .font(KikariaTypography.chineseButton(size: isExpanded ? 19 : 18))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
@@ -2749,12 +2729,12 @@ private struct OnboardingPageCard: View {
             }
 
             VStack(spacing: isExpanded ? 14 : 12) {
-                Text(page.title)
+                Text(KikariaLocalization.string(page.title))
                     .font(KikariaTypography.chineseTitle(size: isExpanded ? 32 : 29, weight: .bold))
                     .foregroundStyle(KikariaTheme.deepText)
                     .multilineTextAlignment(.center)
 
-                Text(page.subtitle)
+                Text(KikariaLocalization.string(page.subtitle))
                     .font(KikariaTypography.chineseBody(size: isExpanded ? 17 : 16, weight: .medium))
                     .foregroundStyle(KikariaTheme.softText)
                     .multilineTextAlignment(.center)
@@ -2808,7 +2788,7 @@ private struct KikariaSearchBar: View {
                 .font(.system(size: 15 * resolvedScale, weight: .semibold))
                 .foregroundStyle(KikariaTheme.blueGray)
 
-            TextField(placeholder, text: $text)
+            TextField(KikariaLocalization.string(placeholder), text: $text)
                 .font(KikariaTypography.chineseBody(size: 15 * resolvedScale, weight: .medium))
                 .foregroundStyle(KikariaTheme.deepText)
                 .textInputAutocapitalization(.never)
@@ -2849,7 +2829,7 @@ private struct KikariaAdaptiveBackButton: View {
         .buttonStyle(.plain)
         .frame(width: size, height: size)
         .contentShape(Circle())
-        .accessibilityLabel("返回")
+        .accessibilityLabel(KikariaLocalization.string("返回"))
     }
 }
 
@@ -2906,7 +2886,7 @@ private struct ActivityView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("导出文件已准备好")
+            Text(KikariaLocalization.string("导出文件已准备好"))
                 .font(KikariaTypography.chineseHeadline(size: 18))
                 .foregroundStyle(KikariaTheme.deepText)
 
@@ -2916,7 +2896,7 @@ private struct ActivityView: View {
                     .lineLimit(2)
             }
 
-            Button("完成") {
+            Button(KikariaLocalization.string("完成")) {
                 dismiss()
             }
             .font(KikariaTypography.chineseButton(size: 14))
@@ -2934,7 +2914,7 @@ private func sanitizedFilename(_ name: String) -> String {
     let components = name.components(separatedBy: invalidCharacters)
     let sanitized = components.joined(separator: "-")
         .trimmingCharacters(in: .whitespacesAndNewlines)
-    return sanitized.isEmpty ? "预设" : sanitized
+    return sanitized.isEmpty ? KikariaLocalization.string("预设") : sanitized
 }
 
 private struct ActivitySummary {
@@ -2986,15 +2966,11 @@ private struct TodayOverviewView: View {
     }
 
     private var progressMessage: String {
-        if todaySummary.markedMasteredCount >= dailyGoal {
-            return "今日目标已经达成，保持这份节奏就很好。"
-        }
-
-        if todaySummary.reviewedAnswerCount > 0 {
-            return "今日已经进入状态，还差 \(remainingToGoal) 个新增掌握达到目标。"
-        }
-
-        return "今天还很安静，可以从一个知识点开始。"
+        KikariaLocalization.progressMessage(
+            markedMasteredCount: todaySummary.markedMasteredCount,
+            reviewedAnswerCount: todaySummary.reviewedAnswerCount,
+            dailyGoal: dailyGoal
+        )
     }
 
     var body: some View {
@@ -3012,7 +2988,7 @@ private struct TodayOverviewView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18 * scale) {
                         VStack(alignment: .leading, spacing: 8 * scale) {
-                            Text("今日概览")
+                            Text(KikariaLocalization.string("今日概览"))
                                 .font(KikariaTypography.chineseTitle(size: 32 * scale))
                                 .foregroundStyle(KikariaTheme.deepText)
 
@@ -3022,7 +2998,7 @@ private struct TodayOverviewView: View {
                         .padding(.top, 18 * scale + metrics.ipadPortraitOverviewTopInset)
 
                         VStack(alignment: .leading, spacing: 12 * scale) {
-                            Text("今日新增已掌握")
+                            Text(KikariaLocalization.string("今日新增已掌握"))
                                 .font(KikariaTypography.chineseHeadline(size: 15 * scale))
                                 .foregroundStyle(KikariaTheme.softText)
 
@@ -3051,7 +3027,7 @@ private struct TodayOverviewView: View {
 
                         Button(action: onOpenHistory) {
                             HStack(spacing: 12 * scale) {
-                                Text("复习历史")
+                                Text(KikariaLocalization.string("复习历史"))
                                     .font(KikariaTypography.chineseHeadline(size: 18 * scale))
                                     .foregroundStyle(KikariaTheme.deepText)
 
@@ -3094,7 +3070,7 @@ private struct OverviewMetricCard: View {
         let resolvedScale = max(scale, 1)
 
         VStack(alignment: .leading, spacing: 10 * resolvedScale) {
-            Text(title)
+            Text(KikariaLocalization.string(title))
                 .font(KikariaTypography.chineseCaption(size: 13 * resolvedScale, weight: .semibold))
                 .foregroundStyle(KikariaTheme.softText)
 
@@ -3116,7 +3092,7 @@ private struct ReviewHistoryView: View {
     @State private var selectedDate = Date()
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 7)
-    private let weekdaySymbols = ["一", "二", "三", "四", "五", "六", "日"]
+    private let weekdaySymbols = KikariaLocalization.weekdaySymbols
 
     var body: some View {
         KikariaAdaptivePage { metrics in
@@ -3126,7 +3102,7 @@ private struct ReviewHistoryView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        Text("复习历史")
+                        Text(KikariaLocalization.string("复习历史"))
                             .font(KikariaTypography.chineseTitle())
                             .foregroundStyle(KikariaTheme.deepText)
                             .padding(.top, 18)
@@ -3203,8 +3179,7 @@ private struct ReviewHistoryView: View {
     }
 
     private var monthTitle: String {
-        let components = Calendar.current.dateComponents([.year, .month], from: visibleMonth)
-        return "\(components.year ?? 0)年 \(components.month ?? 1)月"
+        KikariaLocalization.monthTitle(for: visibleMonth)
     }
 
     private var monthCells: [Date?] {
@@ -3294,8 +3269,7 @@ private struct HistoryDaySummaryCard: View {
     let summary: ActivitySummary
 
     private var title: String {
-        let components = Calendar.current.dateComponents([.month, .day], from: date)
-        return "\(components.month ?? 1)月\(components.day ?? 1)日"
+        KikariaLocalization.monthDayTitle(for: date)
     }
 
     var body: some View {
@@ -3306,7 +3280,7 @@ private struct HistoryDaySummaryCard: View {
 
                 Spacer()
 
-                KikariaTypography.mixedText("\(summary.totalCount) 条记录", size: 12, weight: .semibold)
+                KikariaTypography.mixedText(KikariaLocalization.recordCount(summary.totalCount), size: 12, weight: .semibold)
                     .foregroundStyle(KikariaTheme.softText)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
@@ -3314,7 +3288,7 @@ private struct HistoryDaySummaryCard: View {
             }
 
             if summary.totalCount == 0 {
-                Text("这一天还没有学习记录。")
+                Text(KikariaLocalization.string("这一天还没有学习记录。"))
                     .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
                     .foregroundStyle(KikariaTheme.softText)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -3338,7 +3312,7 @@ private struct HistorySummaryRow: View {
 
     var body: some View {
         HStack {
-            Text(title)
+            Text(KikariaLocalization.string(title))
                 .font(KikariaTypography.chineseBody(size: 15, weight: .medium))
                 .foregroundStyle(KikariaTheme.deepText)
 
@@ -3508,7 +3482,7 @@ private struct SettingsView: View {
             }
 
             Button(action: onEditProfile) {
-                Text("编辑个人资料")
+                Text(KikariaLocalization.string("编辑个人资料"))
                     .font(KikariaTypography.chineseButton(size: metrics.isPadPortrait ? 17 * scale : (metrics.isPadWidth ? 17 : 16)))
                     .foregroundStyle(KikariaTheme.deepText)
                     .padding(.horizontal, metrics.isPadPortrait ? 28 * scale : (metrics.isPadWidth ? 28 : 24))
@@ -3551,7 +3525,7 @@ private struct SettingsView: View {
 
             SettingsListRow(
                 title: "倒数日",
-                valueText: countdownEndDate.map { "\(countdownDays(until: $0) ?? 0)天" } ?? "未设置",
+                valueText: countdownEndDate.map { KikariaLocalization.countdownText(days: countdownDays(until: $0)) } ?? KikariaLocalization.string("未设置"),
                 scale: rowScale
             ) {
                 prepareCountdownDraft()
@@ -3617,7 +3591,7 @@ private struct SettingsView: View {
                 }
 
                 if countdownStartDate == nil || countdownEndDate == nil {
-                    Text("需设置倒数日")
+                    Text(KikariaLocalization.string("需设置倒数日"))
                         .font(KikariaTypography.chineseCaption(size: 12 * scale, weight: .medium))
                         .foregroundStyle(KikariaTheme.softText)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -3704,7 +3678,7 @@ private struct SettingsView: View {
     ) -> some View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: 26 * scale) {
-                Text("设置")
+                Text(KikariaLocalization.string("设置"))
                     .font(KikariaTypography.chineseTitle(size: metrics.isPadWidth ? 32 : 30))
                     .foregroundStyle(KikariaTheme.deepText)
                     .padding(.top, 18 * scale)
@@ -3756,7 +3730,7 @@ private struct SettingsView: View {
                 } else {
                     VStack(spacing: 0) {
                     HStack {
-                        Text("设置")
+                        Text(KikariaLocalization.string("设置"))
                             .font(KikariaTypography.chineseTitle(size: metrics.isPadPortrait ? 34 * scale : (metrics.isPadWidth ? 32 : 30)))
                             .foregroundStyle(KikariaTheme.deepText)
 
@@ -3795,7 +3769,7 @@ private struct SettingsView: View {
                             }
 
                             Button(action: onEditProfile) {
-                                Text("编辑个人资料")
+                                Text(KikariaLocalization.string("编辑个人资料"))
                                     .font(KikariaTypography.chineseButton(size: metrics.isPadPortrait ? 17 * scale : (metrics.isPadWidth ? 17 : 16)))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.horizontal, metrics.isPadPortrait ? 28 * scale : (metrics.isPadWidth ? 28 : 24))
@@ -3836,7 +3810,7 @@ private struct SettingsView: View {
 
                             SettingsListRow(
                                 title: "倒数日",
-                                valueText: countdownEndDate.map { "\(countdownDays(until: $0) ?? 0)天" } ?? "未设置",
+                                valueText: countdownEndDate.map { KikariaLocalization.countdownText(days: countdownDays(until: $0)) } ?? KikariaLocalization.string("未设置"),
                                 scale: rowScale
                             ) {
                                 prepareCountdownDraft()
@@ -3900,7 +3874,7 @@ private struct SettingsView: View {
                                 }
 
                                 if countdownStartDate == nil || countdownEndDate == nil {
-                                    Text("需设置倒数日")
+                                    Text(KikariaLocalization.string("需设置倒数日"))
                                         .font(KikariaTypography.chineseCaption(size: 12 * scale, weight: .medium))
                                         .foregroundStyle(KikariaTheme.softText)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -4046,9 +4020,9 @@ private struct SettingsView: View {
                     } onDone: {
                         guard Calendar.current.startOfDay(for: countdownDraftEndDate) >= Calendar.current.startOfDay(for: countdownDraftStartDate) else {
                             withAnimation(.easeInOut(duration: 0.2)) {
-                                countdownErrorMessage = "结束日期不能早于开始日期。"
+                                countdownErrorMessage = KikariaLocalization.string("结束日期不能早于开始日期。")
                             }
-                            showToast("结束日期不能早于开始日期")
+                            showToast(KikariaLocalization.string("结束日期不能早于开始日期"))
                             return
                         }
 
@@ -4135,10 +4109,10 @@ private struct SettingsView: View {
         }
         .navigationBarBackButtonHidden(true)
         .kikariaHiddenNavigationChrome()
-        .alert("隐私政策", isPresented: $isShowingPrivacyPolicy) {
-            Button("知道了", role: .cancel) {}
+        .alert(KikariaLocalization.string("隐私政策"), isPresented: $isShowingPrivacyPolicy) {
+            Button(KikariaLocalization.string("知道了"), role: .cancel) {}
         } message: {
-            Text("Kikaria 当前仅在本机保存你的学习资料、预设、头像和学习进度。学习进度通知使用 iOS 本地通知，不会上传到服务器。")
+            Text(KikariaLocalization.string("Kikaria 当前仅在本机保存你的学习资料、预设、头像和学习进度。学习进度通知使用 iOS 本地通知，不会上传到服务器。"))
         }
     }
 
@@ -4185,7 +4159,7 @@ private struct SettingsSectionCard<Content: View>: View {
         let resolvedScale = max(scale, 1)
 
         VStack(alignment: .leading, spacing: 8 * resolvedScale) {
-            KikariaTypography.mixedText(title, size: 13 * resolvedScale, weight: .semibold)
+            KikariaTypography.localizedMixedText(title, size: 13 * resolvedScale, weight: .semibold)
                 .foregroundStyle(KikariaTheme.softText)
                 .padding(.horizontal, 4 * resolvedScale)
 
@@ -4221,7 +4195,7 @@ private struct SettingsRowContent: View {
         let resolvedScale = max(scale, 1)
 
         HStack(spacing: 14 * resolvedScale) {
-            KikariaTypography.mixedText(title, size: 16 * resolvedScale, weight: .semibold)
+            KikariaTypography.localizedMixedText(title, size: 16 * resolvedScale, weight: .semibold)
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.84)
@@ -4276,7 +4250,7 @@ private struct SettingsInfoTextRow: View {
     var body: some View {
         let resolvedScale = max(scale, 1)
 
-        KikariaTypography.mixedText(text, size: 16 * resolvedScale, weight: .semibold)
+            KikariaTypography.localizedMixedText(text, size: 16 * resolvedScale, weight: .semibold)
             .foregroundStyle(KikariaTheme.softText)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
@@ -4295,13 +4269,13 @@ private struct SettingsToggleRow: View {
         let resolvedScale = max(scale, 1)
 
         HStack(spacing: 14 * resolvedScale) {
-            KikariaTypography.mixedText(title, size: 17 * resolvedScale, weight: .semibold)
+            KikariaTypography.localizedMixedText(title, size: 17 * resolvedScale, weight: .semibold)
                 .foregroundStyle(KikariaTheme.deepText)
 
             Spacer()
 
             Toggle(
-                title,
+                KikariaLocalization.string(title),
                 isOn: Binding(
                     get: { isOn },
                     set: { onChange($0) }
@@ -4333,10 +4307,10 @@ private struct SettingsOptionRow: View {
                     .liquidGlassCircle(fillOpacity: 0.36, strokeOpacity: 0.34, shadowOpacity: 0.06, shadowRadius: 8, shadowY: 4)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    KikariaTypography.mixedText(title, size: 17, weight: .semibold)
+                    KikariaTypography.localizedMixedText(title, size: 17, weight: .semibold)
                         .foregroundStyle(KikariaTheme.deepText)
 
-                    KikariaTypography.mixedText(subtitle, size: 13, weight: .medium)
+                    KikariaTypography.localizedMixedText(subtitle, size: 13, weight: .medium)
                         .foregroundStyle(KikariaTheme.softText)
                 }
 
@@ -4409,7 +4383,7 @@ private struct DailyGoalPickerBubble: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("每日学习目标")
+                Text(KikariaLocalization.string("每日学习目标"))
                     .font(KikariaTypography.chineseHeadline())
                     .foregroundStyle(KikariaTheme.deepText)
 
@@ -4420,9 +4394,9 @@ private struct DailyGoalPickerBubble: View {
                     .foregroundStyle(KikariaTheme.sky)
             }
 
-            Picker("每日学习目标", selection: $dailyGoal) {
+            Picker(KikariaLocalization.string("每日学习目标"), selection: $dailyGoal) {
                 ForEach(1...100, id: \.self) { goal in
-                    KikariaWheelValueText(text: "\(goal) 个", width: 88)
+                    KikariaWheelValueText(text: KikariaLocalization.goalUnit(goal), width: 88)
                         .tag(goal)
                 }
             }
@@ -4432,7 +4406,7 @@ private struct DailyGoalPickerBubble: View {
             .clipped()
 
             Button(action: onDone) {
-                Text("完成")
+                Text(KikariaLocalization.string("完成"))
                     .font(KikariaTypography.chineseButton())
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -4461,7 +4435,7 @@ private struct NotificationTimePickerBubble: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("通知时间")
+                Text(KikariaLocalization.string("通知时间"))
                     .font(KikariaTypography.chineseHeadline())
                     .foregroundStyle(KikariaTheme.deepText)
 
@@ -4478,7 +4452,7 @@ private struct NotificationTimePickerBubble: View {
                 .clipped()
 
             Button(action: onDone) {
-                Text("完成")
+                Text(KikariaLocalization.string("完成"))
                     .font(KikariaTypography.chineseButton())
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -4572,13 +4546,13 @@ private struct CountdownDateRangePickerBubble: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("倒数日")
+                Text(KikariaLocalization.string("倒数日"))
                     .font(KikariaTypography.chineseHeadline())
                     .foregroundStyle(KikariaTheme.deepText)
 
                 Spacer()
 
-                KikariaTypography.mixedText(isConfigured ? countdownText(for: endDate) : "未设置", size: 17, weight: .semibold)
+                KikariaTypography.mixedText(isConfigured ? countdownText(for: endDate) : KikariaLocalization.string("未设置"), size: 17, weight: .semibold)
                     .monospacedDigit()
                     .foregroundStyle(KikariaTheme.sky)
             }
@@ -4596,7 +4570,7 @@ private struct CountdownDateRangePickerBubble: View {
 
             HStack(spacing: 10) {
                 Button(action: onClear) {
-                    Text("清除")
+                    Text(KikariaLocalization.string("清除"))
                         .font(KikariaTypography.chineseButton())
                         .foregroundStyle(KikariaTheme.deepText)
                         .frame(maxWidth: .infinity)
@@ -4606,7 +4580,7 @@ private struct CountdownDateRangePickerBubble: View {
                 .buttonStyle(.plain)
 
                 Button(action: onDone) {
-                    Text("完成")
+                    Text(KikariaLocalization.string("完成"))
                         .font(KikariaTypography.chineseButton())
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -4623,7 +4597,7 @@ private struct CountdownDateRangePickerBubble: View {
 
     private func datePickerSection(title: String, selection: Binding<Date>) -> some View {
         VStack(spacing: 14) {
-            KikariaTypography.mixedText(title, size: 13, weight: .semibold)
+            KikariaTypography.localizedMixedText(title, size: 13, weight: .semibold)
                 .foregroundStyle(KikariaTheme.softText)
                 .frame(maxWidth: .infinity, alignment: .center)
 
@@ -4641,7 +4615,7 @@ private struct CountdownDateWheelPicker: View {
 
     private let calendar = Calendar.current
     private static let monthSymbols: [String] = {
-        let formatter = DateFormatter()
+        let formatter = KikariaLocalization.dateFormatter("LLLL")
         return formatter.monthSymbols
     }()
 
@@ -4772,7 +4746,7 @@ private struct DangerPercentPickerBubble: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("进度安全线")
+                Text(KikariaLocalization.string("进度安全线"))
                     .font(KikariaTypography.chineseHeadline())
                     .foregroundStyle(KikariaTheme.deepText)
 
@@ -4783,7 +4757,7 @@ private struct DangerPercentPickerBubble: View {
                     .foregroundStyle(KikariaTheme.sky)
             }
 
-            Picker("进度安全线", selection: $dangerPercent) {
+            Picker(KikariaLocalization.string("进度安全线"), selection: $dangerPercent) {
                 ForEach(1...100, id: \.self) { percent in
                     KikariaWheelValueText(text: "\(percent)%", width: 82)
                         .tag(percent)
@@ -4795,7 +4769,7 @@ private struct DangerPercentPickerBubble: View {
             .clipped()
 
             Button(action: onDone) {
-                Text("完成")
+                Text(KikariaLocalization.string("完成"))
                     .font(KikariaTypography.chineseButton())
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -4837,7 +4811,7 @@ private struct PresetSelectionView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: metrics.pageTitleSpacing(defaultValue: 18 * scale)) {
                 HStack(alignment: .center, spacing: 20 * scale) {
-                    Text("切换预设")
+                    Text(KikariaLocalization.string("切换预设"))
                         .font(KikariaTypography.chineseTitle(size: titleFontSize))
                         .foregroundStyle(KikariaTheme.deepText)
 
@@ -4845,7 +4819,7 @@ private struct PresetSelectionView: View {
 
                     Button(action: onUploadNewPreset) {
                         HStack(spacing: 12 * scale) {
-                            Text("上传新预设")
+                            Text(KikariaLocalization.string("上传新预设"))
                                 .font(KikariaTypography.chineseButton(size: 17 * scale))
                             Spacer()
                             Image(systemName: "plus")
@@ -4928,7 +4902,7 @@ private struct PresetSelectionView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: titleSpacing) {
-                            Text("切换预设")
+                            Text(KikariaLocalization.string("切换预设"))
                                 .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .padding(.top, titleTopPadding)
@@ -4936,7 +4910,7 @@ private struct PresetSelectionView: View {
 
                             Button(action: onUploadNewPreset) {
                                 HStack(spacing: 12 * scale) {
-                                    Text("上传新预设")
+                                    Text(KikariaLocalization.string("上传新预设"))
                                         .font(KikariaTypography.chineseButton(size: 17 * scale))
                                     Spacer()
                                     Image(systemName: "plus")
@@ -5001,27 +4975,27 @@ private struct PresetSelectionView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("切换预设？", isPresented: isConfirmingPreset) {
-            Button("取消", role: .cancel) {
+        .alert(KikariaLocalization.string("切换预设？"), isPresented: isConfirmingPreset) {
+            Button(KikariaLocalization.string("取消"), role: .cancel) {
                 pendingPreset = nil
             }
 
-            Button("确认切换", role: .destructive) {
+            Button(KikariaLocalization.string("确认切换"), role: .destructive) {
                 confirmPresetSwitch()
             }
         } message: {
-            Text("将切换到另一套知识点。当前预设的学习进度会被保留。")
+            Text(KikariaLocalization.string("将切换到另一套知识点。当前预设的学习进度会被保留。"))
         }
-        .alert("删除预设？", isPresented: isConfirmingPresetDelete) {
-            Button("取消", role: .cancel) {
+        .alert(KikariaLocalization.string("删除预设？"), isPresented: isConfirmingPresetDelete) {
+            Button(KikariaLocalization.string("取消"), role: .cancel) {
                 pendingDeletePreset = nil
             }
 
-            Button("删除", role: .destructive) {
+            Button(KikariaLocalization.string("删除"), role: .destructive) {
                 confirmPresetDelete()
             }
         } message: {
-            Text("删除后将移除该预设的所有知识点、重点集锦、已掌握状态和学习记录。")
+            Text(KikariaLocalization.string("删除后将移除该预设的所有知识点、重点集锦、已掌握状态和学习记录。"))
         }
     }
 
@@ -5055,9 +5029,9 @@ private struct PresetSelectionView: View {
         pendingPreset = nil
 
         if switchPreset(preset) {
-            showToast("已切换至「\(preset.name)」")
+            showToast(KikariaLocalization.presetSwitchedToast(KikariaLocalization.builtInPresetDisplayName(preset.name, isBuiltIn: preset.isBuiltIn)))
         } else {
-            showToast("预设解析失败，请稍后再试")
+            showToast(KikariaLocalization.string("预设解析失败，请稍后再试"))
         }
     }
 
@@ -5070,11 +5044,11 @@ private struct PresetSelectionView: View {
 
         switch deletePreset(preset.id) {
         case .deleted(let name):
-            showToast("已删除「\(name)」")
+            showToast(KikariaLocalization.presetDeletedToast(KikariaLocalization.builtInPresetDisplayName(name, isBuiltIn: preset.isBuiltIn)))
         case .blockedLastPreset:
-            showToast("至少需要保留一个预设")
+            showToast(KikariaLocalization.string("至少需要保留一个预设"))
         case .notFound:
-            showToast("预设不存在")
+            showToast(KikariaLocalization.string("预设不存在"))
         }
     }
 
@@ -5113,13 +5087,13 @@ private struct PresetCard: View {
             HStack(alignment: .top, spacing: 12 * scale) {
                 VStack(alignment: .leading, spacing: 8 * scale) {
                     HStack(spacing: 8 * scale) {
-                        KikariaTypography.mixedText(preset.name, size: 20 * scale, weight: .semibold)
+                        KikariaTypography.mixedText(KikariaLocalization.builtInPresetDisplayName(preset.name, isBuiltIn: preset.isBuiltIn), size: 20 * scale, weight: .semibold)
                             .foregroundStyle(KikariaTheme.deepText)
                             .lineLimit(1)
                             .minimumScaleFactor(0.82)
 
                         if isCurrent {
-                            Text("当前")
+                            Text(KikariaLocalization.string("当前"))
                                 .font(KikariaTypography.tag(size: 11 * scale, weight: .bold))
                                 .foregroundStyle(KikariaTheme.sky)
                                 .padding(.horizontal, 8 * scale)
@@ -5129,7 +5103,7 @@ private struct PresetCard: View {
                     }
 
                     HStack(spacing: 9 * scale) {
-                        KikariaTypography.mixedText("\(preset.knowledgePointCount) 个知识点", size: 12 * scale, weight: .semibold)
+                        KikariaTypography.mixedText(KikariaLocalization.knowledgePointCount(preset.knowledgePointCount), size: 12 * scale, weight: .semibold)
                             .foregroundStyle(KikariaTheme.softText)
                     }
                 }
@@ -5206,13 +5180,13 @@ private struct NewPresetView: View {
 
                         Spacer()
 
-                        Text("上传新预设")
+                        Text(KikariaLocalization.string("上传新预设"))
                             .font(KikariaTypography.chineseHeadline(size: 17 * scale))
                             .foregroundStyle(KikariaTheme.deepText)
 
                         Spacer()
 
-                        Button("保存") {
+                        Button(KikariaLocalization.string("保存")) {
                             savePreset()
                         }
                         .font(KikariaTypography.chineseButton(size: 17 * scale))
@@ -5234,7 +5208,7 @@ private struct NewPresetView: View {
                                 isImportingFile = true
                             } label: {
                                 Label {
-                                    KikariaTypography.mixedText("选择 .md / .txt 文件", size: 17 * scale, weight: .semibold)
+                                    KikariaTypography.localizedMixedText("选择 .md / .txt 文件", size: 17 * scale, weight: .semibold)
                                 } icon: {
                                     Image(systemName: "doc.badge.plus")
                                 }
@@ -5247,13 +5221,13 @@ private struct NewPresetView: View {
 
                             VStack(alignment: .leading, spacing: 8 * scale) {
                                 HStack(alignment: .center) {
-                                    KikariaTypography.mixedText("Markdown 文本", size: 14 * scale, weight: .semibold)
+                                    KikariaTypography.localizedMixedText("Markdown 文本", size: 14 * scale, weight: .semibold)
                                         .foregroundStyle(KikariaTheme.softText)
 
                                     Spacer()
 
                                     NavigationLink(value: AppRoute.markdownFormatGuide) {
-                                        KikariaTypography.mixedText("如何编写 Markdown 预设？", size: 12 * scale, weight: .semibold)
+                                        KikariaTypography.localizedMixedText("如何编写 Markdown 预设？", size: 12 * scale, weight: .semibold)
                                             .foregroundStyle(KikariaTheme.sky)
                                             .padding(.horizontal, 12 * scale)
                                             .padding(.vertical, 7 * scale)
@@ -5324,17 +5298,17 @@ private struct NewPresetView: View {
                 }
                 errorMessage = nil
             } catch {
-                errorMessage = "文件读取失败，请确认它是 UTF-8 文本。"
+                errorMessage = KikariaLocalization.string("文件读取失败，请确认它是 UTF-8 文本。")
             }
         case .failure:
-            errorMessage = "文件选择失败，请重试。"
+            errorMessage = KikariaLocalization.string("文件选择失败，请重试。")
         }
     }
 
     private func savePreset() {
         switch createPreset(name, category, markdownText) {
         case .success(let preset):
-            showToast("已创建「\(preset.name)」")
+            showToast(KikariaLocalization.presetCreatedToast(preset.name))
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
                 dismiss()
             }
@@ -5370,99 +5344,21 @@ private struct MarkdownFormatGuideView: View {
     @State private var toastMessage: String?
     @State private var toastToken = UUID()
 
-    private static let formatTemplate = """
-    # 知识点名称
+    private static var formatTemplate: String {
+        KikariaLocalization.markdownFormatTemplate
+    }
 
-    tags: 标签1, 标签2, 标签3
+    private static var completeExample: String {
+        KikariaLocalization.markdownCompleteExample
+    }
 
-    hint:
-    这里写提示，可以是一句话，也可以是几行文字。
+    private static var latexExample: String {
+        KikariaLocalization.markdownLatexExample
+    }
 
-    content:
-    这里写完整答案或背诵内容，可以是一段或多段文字。
-
-    ---
-    """
-
-    private static let completeExample = """
-    # 极限的保号性
-
-    tags: 高等数学, 极限, 基础
-
-    hint:
-    当函数极限大于 0 时，函数值在充分靠近该点时也大于 0。
-
-    content:
-    若 lim f(x) = A，且 A > 0，则存在某个去心邻域，使得在该邻域内 f(x) > 0。
-
-    ---
-
-    # 罗尔定理
-
-    tags: 高等数学, 中值定理
-
-    hint:
-    闭区间连续，开区间可导，两端函数值相等。
-
-    content:
-    若函数 f(x) 在 [a,b] 上连续，在 (a,b) 内可导，且 f(a)=f(b)，则至少存在一点 ξ∈(a,b)，使得 f'(ξ)=0。
-    """
-
-    private static let latexExample = """
-    Kikaria 使用本地 SwiftMath 渲染公式，不会联网处理。
-
-    推荐：中文说明放在公式外
-
-    函数 $f(x)=x^2$ 的导数是 $2x$。
-
-    当 x 接近 0 时，有：
-
-    $$
-    \\lim_{x\\to0}\\frac{\\sin x}{x}=1
-    $$
-
-    不推荐：没有 $ 包裹的 LaTeX 不会渲染
-
-    \\Delta\\varphi=0
-    """
-
-    private static let aiPrompt = """
-    请你把我提供的学习资料整理成 Kikaria 背诵 App 支持的结构化 Markdown 知识点。
-
-    格式必须严格遵守：
-
-    # 知识点名称
-
-    tags: 标签1, 标签2, 标签3
-
-    hint:
-    用简洁语言给出背诵提示，不要直接泄露完整答案。
-
-    content:
-    写出完整、准确、适合背诵的知识点内容。
-
-    ---
-
-    要求：
-    1. 每个知识点之间必须用单独一行 --- 分隔。
-    2. 每个知识点都必须包含标题、tags、hint、content 四部分。
-    3. tags 后的标签用逗号分隔。
-    4. hint 要简短，适合作为回忆提示。
-    5. content 要完整、准确、适合直接背诵。
-    6. 不要生成多余解释。
-    7. 不要使用表格。
-    8. 不要把多个知识点混在一起。
-    9. 如果原资料太长，请拆分成多个小知识点。
-    10. 输出结果只保留 Markdown 内容，不要添加寒暄或说明。
-    11. 数学公式可以使用 LaTeX，Kikaria 会用本地 SwiftMath 渲染，不会联网处理。
-    12. 只有 $...$ 和 $$...$$ 中的内容会渲染为公式；没有包裹的 LaTeX 命令会按普通文本保留。
-    13. 行内公式用 $...$，块级公式用 $$...$$。
-    14. 公式环境中不要混入中文，中文解释要写在公式外；必要时可少量使用 \\text{...}。
-
-    下面是需要整理的资料：
-
-    【在这里粘贴课本、讲义、笔记或 OCR 文本】
-    """
+    private static var aiPrompt: String {
+        KikariaLocalization.markdownAIPrompt
+    }
 
     var body: some View {
         KikariaAdaptivePage { metrics in
@@ -5482,7 +5378,7 @@ private struct MarkdownFormatGuideView: View {
 
                         Spacer()
 
-                        Text("Markdown 格式说明")
+                        Text(KikariaLocalization.string("Markdown 格式说明"))
                             .font(KikariaTypography.chineseHeadline(size: 17 * scale))
                             .foregroundStyle(KikariaTheme.deepText)
 
@@ -5500,7 +5396,7 @@ private struct MarkdownFormatGuideView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
                             MarkdownGuideCard {
-                                Text("Kikaria 使用结构化 Markdown 来导入知识点。每个知识点由标题、标签、提示和答案组成。多个知识点之间使用 --- 分隔。")
+                                Text(KikariaLocalization.string("Kikaria 使用结构化 Markdown 来导入知识点。每个知识点由标题、标签、提示和答案组成。多个知识点之间使用 --- 分隔。"))
                                     .font(KikariaTypography.chineseBody(size: 15))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .lineSpacing(5)
@@ -5509,7 +5405,7 @@ private struct MarkdownFormatGuideView: View {
                             MarkdownGuideCard(title: "格式规则") {
                                 MarkdownCodeBlock(text: Self.formatTemplate)
 
-                                Text("多个知识点之间用一行 --- 分隔。")
+                                Text(KikariaLocalization.string("多个知识点之间用一行 --- 分隔。"))
                                     .font(KikariaTypography.chineseBody(size: 14, weight: .medium))
                                     .foregroundStyle(KikariaTheme.softText)
                             }
@@ -5549,7 +5445,7 @@ private struct MarkdownFormatGuideView: View {
                             MarkdownGuideCard {
                                 VStack(alignment: .leading, spacing: 12) {
                                     HStack(alignment: .center) {
-                                        Text("给 AI 助手的 Prompt")
+                                        Text(KikariaLocalization.string("给 AI 助手的 Prompt"))
                                             .font(KikariaTypography.chineseHeadline(size: 18))
                                             .foregroundStyle(KikariaTheme.deepText)
 
@@ -5558,7 +5454,7 @@ private struct MarkdownFormatGuideView: View {
                                         Button {
                                             copyPrompt()
                                         } label: {
-                                            Label("复制 Prompt", systemImage: "doc.on.doc")
+                                            Label(KikariaLocalization.string("复制 Prompt"), systemImage: "doc.on.doc")
                                                 .font(KikariaTypography.chineseCaption(size: 12, weight: .semibold))
                                                 .foregroundStyle(.white)
                                                 .padding(.horizontal, 12)
@@ -5568,7 +5464,7 @@ private struct MarkdownFormatGuideView: View {
                                         .buttonStyle(.plain)
                                     }
 
-                                    Text("你可以把下面这段 prompt 复制给 AI 助手，并附上你的课本、讲义、笔记或照片识别出的文本，让 AI 帮你整理成 Kikaria 支持的 Markdown 格式。")
+                                    Text(KikariaLocalization.string("你可以把下面这段 prompt 复制给 AI 助手，并附上你的课本、讲义、笔记或照片识别出的文本，让 AI 帮你整理成 Kikaria 支持的 Markdown 格式。"))
                                         .font(KikariaTypography.chineseBody(size: 14))
                                         .foregroundStyle(KikariaTheme.softText)
                                         .lineSpacing(4)
@@ -5601,7 +5497,7 @@ private struct MarkdownFormatGuideView: View {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(Self.aiPrompt, forType: .string)
         #endif
-        showToast("Prompt 已复制")
+        showToast(KikariaLocalization.string("Prompt 已复制"))
     }
 
     private func showToast(_ message: String) {
@@ -5636,7 +5532,7 @@ private struct MarkdownGuideCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let title {
-                Text(title)
+                Text(KikariaLocalization.string(title))
                     .font(KikariaTypography.chineseHeadline(size: 18))
                     .foregroundStyle(KikariaTheme.deepText)
             }
@@ -5654,7 +5550,7 @@ private struct MarkdownCodeBlock: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            Text(text)
+            Text(KikariaLocalization.string(text))
                 .font(.system(size: 13, weight: .regular, design: .monospaced))
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineSpacing(4)
@@ -5680,7 +5576,7 @@ private struct MarkdownRuleText: View {
                 .frame(width: 5, height: 5)
                 .padding(.top, 8)
 
-            Text(text)
+            Text(KikariaLocalization.string(text))
                 .font(KikariaTypography.chineseBody(size: 14))
                 .foregroundStyle(KikariaTheme.deepText)
                 .lineSpacing(4)
@@ -5748,13 +5644,13 @@ private struct EditPresetView: View {
 
                         Spacer()
 
-                        Text("编辑预设")
+                        Text(KikariaLocalization.string("编辑预设"))
                             .font(KikariaTypography.chineseHeadline(size: 17 * scale))
                             .foregroundStyle(KikariaTheme.deepText)
 
                         Spacer()
 
-                        Button("保存") {
+                        Button(KikariaLocalization.string("保存")) {
                             onSavePreset(preset.id, name, category)
                             dismiss()
                         }
@@ -5774,7 +5670,7 @@ private struct EditPresetView: View {
                         ProfileTextField(title: "分类", text: $category)
 
                         Button(action: exportMarkdown) {
-                            Label("导出 Markdown", systemImage: "square.and.arrow.up")
+                            Label(KikariaLocalization.string("导出 Markdown"), systemImage: "square.and.arrow.up")
                                 .font(KikariaTypography.chineseButton())
                                 .foregroundStyle(KikariaTheme.deepText)
                                 .frame(maxWidth: .infinity)
@@ -5784,7 +5680,7 @@ private struct EditPresetView: View {
                         .buttonStyle(.plain)
 
                         Button(action: onAddPoint) {
-                            Label("添加知识点", systemImage: "plus.circle.fill")
+                            Label(KikariaLocalization.string("添加知识点"), systemImage: "plus.circle.fill")
                                 .font(KikariaTypography.chineseButton())
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
@@ -5849,7 +5745,7 @@ private struct EditPresetView: View {
                             Button(role: .destructive) {
                                 isConfirmingPresetDelete = true
                             } label: {
-                                Text("删除此预设")
+                                Text(KikariaLocalization.string("删除此预设"))
                                     .font(KikariaTypography.chineseButton())
                                     .foregroundStyle(KikariaTheme.removeCoral)
                                     .frame(maxWidth: .infinity)
@@ -5878,12 +5774,12 @@ private struct EditPresetView: View {
         .sheet(item: $shareFile) { file in
             ActivityView(activityItems: [file.url])
         }
-        .alert("删除知识点？", isPresented: isConfirmingPointDelete) {
-            Button("取消", role: .cancel) {
+        .alert(KikariaLocalization.string("删除知识点？"), isPresented: isConfirmingPointDelete) {
+            Button(KikariaLocalization.string("取消"), role: .cancel) {
                 pendingDeletePoint = nil
             }
 
-            Button("删除", role: .destructive) {
+            Button(KikariaLocalization.string("删除"), role: .destructive) {
                 if let pendingDeletePoint {
                     onDeletePoint(pendingDeletePoint.id, preset.id)
                 }
@@ -5891,16 +5787,16 @@ private struct EditPresetView: View {
                 pendingDeletePoint = nil
             }
         } message: {
-            Text("删除后，该知识点的重点集锦、已掌握和今日复习次数也会一并移除。")
+            Text(KikariaLocalization.string("删除后，该知识点的重点集锦、已掌握和今日复习次数也会一并移除。"))
         }
-        .alert("删除预设？", isPresented: $isConfirmingPresetDelete) {
-            Button("取消", role: .cancel) {}
-            Button("删除", role: .destructive) {
+        .alert(KikariaLocalization.string("删除预设？"), isPresented: $isConfirmingPresetDelete) {
+            Button(KikariaLocalization.string("取消"), role: .cancel) {}
+            Button(KikariaLocalization.string("删除"), role: .destructive) {
                 onDeletePreset(preset.id)
                 dismiss()
             }
         } message: {
-            Text("此操作会删除该自定义预设和它的学习状态。")
+            Text(KikariaLocalization.string("此操作会删除该自定义预设和它的学习状态。"))
         }
     }
 
@@ -5924,7 +5820,7 @@ private struct EditPresetView: View {
             try markdown.write(to: url, atomically: true, encoding: .utf8)
             shareFile = ShareFile(url: url)
         } catch {
-            showToast("导出失败")
+            showToast(KikariaLocalization.string("导出失败"))
         }
     }
 
@@ -5987,13 +5883,13 @@ private struct EditKnowledgePointView: View {
 
                         Spacer()
 
-                        Text(point == nil ? "添加知识点" : "编辑知识点")
+                        Text(KikariaLocalization.string(point == nil ? "添加知识点" : "编辑知识点"))
                             .font(KikariaTypography.chineseHeadline(size: 17 * scale))
                             .foregroundStyle(KikariaTheme.deepText)
 
                         Spacer()
 
-                        Button("保存") {
+                        Button(KikariaLocalization.string("保存")) {
                             savePoint()
                         }
                         .font(KikariaTypography.chineseButton(size: 17 * scale))
@@ -6048,7 +5944,7 @@ private struct EditKnowledgePointView: View {
             .filter { !$0.isEmpty }
 
         guard !trimmedTitle.isEmpty, !trimmedHint.isEmpty, !trimmedContent.isEmpty else {
-            errorMessage = "标题、提示和答案都不能为空。"
+            errorMessage = KikariaLocalization.string("标题、提示和答案都不能为空。")
             return
         }
 
@@ -6079,7 +5975,7 @@ private struct EditableLongTextField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
+            Text(KikariaLocalization.string(title))
                 .font(KikariaTypography.chineseHeadline(size: 14))
                 .foregroundStyle(KikariaTheme.softText)
 
@@ -6130,11 +6026,11 @@ private struct InitialProfileSetupView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: isExpanded ? 28 : 22) {
                         VStack(spacing: isExpanded ? 12 : 10) {
-                            Text("欢迎使用 Kikaria")
+                            Text(KikariaLocalization.string("欢迎使用 Kikaria"))
                                 .font(KikariaTypography.chineseTitle(size: isExpanded ? 34 : 30, weight: .bold))
                                 .foregroundStyle(KikariaTheme.deepText)
 
-                            Text("先设置你的个人资料")
+                            Text(KikariaLocalization.string("先设置你的个人资料"))
                                 .font(KikariaTypography.chineseBody(size: isExpanded ? 18 : 16, weight: .medium))
                                 .foregroundStyle(KikariaTheme.softText)
                         }
@@ -6164,7 +6060,7 @@ private struct InitialProfileSetupView: View {
                             }
                             .buttonStyle(.plain)
                             .offset(x: 3, y: 3)
-                            .accessibilityLabel("选择头像")
+                            .accessibilityLabel(KikariaLocalization.string("选择头像"))
                             #elseif os(macOS)
                             Button {
                                 isImportingAvatar = true
@@ -6183,7 +6079,7 @@ private struct InitialProfileSetupView: View {
                             .buttonStyle(.plain)
                             .contentShape(Circle())
                             .offset(x: 3, y: 3)
-                            .accessibilityLabel("选择头像")
+                            .accessibilityLabel(KikariaLocalization.string("选择头像"))
                             #endif
                         }
                         .padding(.top, 4)
@@ -6194,7 +6090,7 @@ private struct InitialProfileSetupView: View {
                         }
 
                         Button(action: saveProfile) {
-                            Text("开始使用")
+                            Text(KikariaLocalization.string("开始使用"))
                                 .font(KikariaTypography.chineseButton(size: isExpanded ? 18 : 17))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
@@ -6268,7 +6164,7 @@ private struct InitialProfileSetupView: View {
         Task {
             guard let compressedData = await loadCompressedAvatarData(from: selectedPhotoItem) else {
                 await MainActor.run {
-                    showToast("头像加载失败")
+                    showToast(KikariaLocalization.string("头像加载失败"))
                 }
                 return
             }
@@ -6296,7 +6192,7 @@ private struct InitialProfileSetupView: View {
 
         guard let data = try? Data(contentsOf: url),
               let compressedData = compressedAvatarData(from: data) else {
-            showToast("头像加载失败")
+            showToast(KikariaLocalization.string("头像加载失败"))
             return
         }
 
@@ -6372,13 +6268,13 @@ private struct EditProfileView: View {
 
                     Spacer()
 
-                    Text("编辑个人资料")
+                    Text(KikariaLocalization.string("编辑个人资料"))
                         .font(KikariaTypography.chineseHeadline())
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Spacer()
 
-                    Button("保存") {
+                    Button(KikariaLocalization.string("保存")) {
                         saveProfile()
                     }
                     .font(KikariaTypography.chineseButton())
@@ -6403,7 +6299,7 @@ private struct EditProfileView: View {
                                 selection: $selectedPhotoItem,
                                 matching: .images
                             ) {
-                                Label("更换头像", systemImage: "photo")
+                                Label(KikariaLocalization.string("更换头像"), systemImage: "photo")
                                     .font(KikariaTypography.chineseButton(size: 14))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.horizontal, 18)
@@ -6415,7 +6311,7 @@ private struct EditProfileView: View {
                             Button {
                                 // TODO: macOS 头像导入后续接入 NSOpenPanel；这里保留 iPad 版入口与布局。
                             } label: {
-                                Label("更换头像", systemImage: "photo")
+                                Label(KikariaLocalization.string("更换头像"), systemImage: "photo")
                                     .font(KikariaTypography.chineseButton(size: 14))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.horizontal, 18)
@@ -6492,10 +6388,10 @@ private struct ProfileTextField: View {
         let resolvedScale = max(scale, 1)
 
         VStack(alignment: .leading, spacing: 8 * resolvedScale) {
-            KikariaTypography.mixedText(title, size: 14 * resolvedScale, weight: .semibold)
+            KikariaTypography.localizedMixedText(title, size: 14 * resolvedScale, weight: .semibold)
                 .foregroundStyle(KikariaTheme.softText)
 
-            TextField(title, text: $text)
+            TextField(KikariaLocalization.string(title), text: $text)
                 .font(KikariaTypography.chineseBody(size: 16 * resolvedScale))
                 .foregroundStyle(KikariaTheme.deepText)
                 .textInputAutocapitalization(.never)
@@ -6553,13 +6449,13 @@ private struct MarkdownEditorView: View {
 
                     Spacer()
 
-                    Text("知识点上传")
+                    Text(KikariaLocalization.string("知识点上传"))
                         .font(KikariaTypography.chineseHeadline())
                         .foregroundStyle(KikariaTheme.deepText)
 
                     Spacer()
 
-                    Button("应用") {
+                    Button(KikariaLocalization.string("应用")) {
                         applyMarkdown()
                     }
                     .font(KikariaTypography.chineseButton())
@@ -6615,10 +6511,10 @@ private struct MarkdownEditorView: View {
                 errorMessage = nil
             }
 
-            showToast("已更新 \(parsedPoints.count) 个知识点")
+            showToast(KikariaLocalization.pointsUpdatedToast(parsedPoints.count))
         } catch {
             withAnimation(.easeInOut(duration: 0.2)) {
-                errorMessage = "没有解析到有效知识点。请检查 # 标题、hint: 和 content:。"
+                errorMessage = KikariaLocalization.string("没有解析到有效知识点。请检查 # 标题、hint: 和 content:。")
             }
         }
     }
@@ -6942,7 +6838,7 @@ private struct HomeDashboardGridCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.74)
 
-                    Text("当前预设")
+                    Text(KikariaLocalization.string("当前预设"))
                         .font(KikariaTypography.chineseCaption(size: (isExpanded ? 13 : 12) * scale, weight: .semibold))
                         .foregroundStyle(KikariaTheme.softText)
 
@@ -6974,7 +6870,7 @@ private struct HomeDashboardMetricColumn: View {
         let scale = max(cardScale, 1)
 
         VStack(spacing: (isExpanded ? 10 : 8) * scale) {
-            Text(title)
+            Text(KikariaLocalization.string(title))
                 .font(KikariaTypography.chineseCaption(size: (isExpanded ? 14 : 13) * scale, weight: .semibold))
                 .foregroundStyle(KikariaTheme.softText)
                 .lineLimit(1)
@@ -7096,7 +6992,7 @@ private struct PadPortraitHomeDashboardCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
 
-                    Text("当前预设")
+                    Text(KikariaLocalization.string("当前预设"))
                         .font(KikariaTypography.chineseCaption(size: 15, weight: .semibold))
                         .foregroundStyle(KikariaTheme.softText)
                         .lineLimit(1)
@@ -7125,7 +7021,7 @@ private struct PadPortraitHomeMetricColumn: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Text(title)
+            Text(KikariaLocalization.string(title))
                 .font(KikariaTypography.chineseCaption(size: 17, weight: .semibold))
                 .foregroundStyle(KikariaTheme.softText)
                 .lineLimit(1)
@@ -7203,11 +7099,11 @@ struct ScopeSelectionView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: titleSpacing) {
                             VStack(alignment: .leading, spacing: subtitleSpacing) {
-                                Text("选择范围")
+                                Text(KikariaLocalization.string("选择范围"))
                                     .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
 
-                                KikariaTypography.mixedText(selectedTags.isEmpty ? "未选择标签时，会默认使用全部知识点。" : "已选择 \(selectedTags.count) 个标签。", size: 15 * scale)
+                                KikariaTypography.mixedText(KikariaLocalization.selectedTagsSummary(isEmpty: selectedTags.isEmpty, count: selectedTags.count), size: 15 * scale)
                                     .foregroundStyle(KikariaTheme.softText)
                             }
                             .padding(.top, metrics.isPadPortrait ? 0 : 16 * scale)
@@ -7252,7 +7148,7 @@ struct ScopeSelectionView: View {
                             dismiss()
                         }
                     } label: {
-                        Text("完成")
+                        Text(KikariaLocalization.string("完成"))
                             .font(KikariaTypography.chineseButton(size: 17 * scale))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 18 * scale)
@@ -7719,7 +7615,7 @@ struct ReviewView: View {
 
         return VStack(spacing: (isExpanded ? 16 : 14) * buttonScale) {
             ReviewActionButton(
-                title: "查看提示",
+                title: KikariaLocalization.string("查看提示"),
                 systemImage: "lightbulb",
                 isPrimary: false,
                 isExpanded: isExpanded,
@@ -7735,7 +7631,7 @@ struct ReviewView: View {
             .allowsHitTesting(isInteractive && !isShowingHint)
 
             ReviewActionButton(
-                title: "查看答案",
+                title: KikariaLocalization.string("查看答案"),
                 systemImage: "doc.text",
                 isPrimary: true,
                 isExpanded: isExpanded,
@@ -7878,7 +7774,7 @@ struct ReviewView: View {
 
             if isShowingHint {
                 FloatingInfoCard(
-                    title: "提示",
+                    title: KikariaLocalization.string("提示"),
                     text: currentPoint.hint,
                     isExpanded: isExpanded
                 )
@@ -7887,7 +7783,7 @@ struct ReviewView: View {
 
             if isShowingContent {
                 FloatingInfoCard(
-                    title: "答案",
+                    title: KikariaLocalization.string("答案"),
                     text: currentPoint.content,
                     isExpanded: isExpanded
                 )
@@ -8801,7 +8697,7 @@ struct ReviewView: View {
         knowledgePoints[index].clearReinforcement()
         knowledgePoints[index].updatedAt = Date()
         onRecordActivity(.markedMastered, knowledgePoints[index])
-        showToast("\(title) 已掌握")
+        showToast(KikariaLocalization.masteredToast(title))
     }
 
     @discardableResult
@@ -8823,7 +8719,7 @@ struct ReviewView: View {
         onRecordActivity(.removedReinforcement, knowledgePoints[index])
 
         if shouldShowToast {
-            showToast("\(title) 已移出重点集锦")
+            showToast(KikariaLocalization.removedFocusToast(title))
         }
 
         return true
@@ -8849,7 +8745,7 @@ struct ReviewView: View {
         onRecordActivity(.removedMastered, knowledgePoints[index])
 
         if shouldShowToast {
-            showToast("\(title) 已移出已掌握")
+            showToast(KikariaLocalization.removedMasteredToast(title))
         }
 
         return true
@@ -8875,7 +8771,7 @@ struct ReviewView: View {
     }
 
     private func reinforcementAddedToastTitle(for title: String, count: Int) -> String {
-        count <= 1 ? "\(title) 已加入重点集锦" : "\(title) 已加入重点集锦 ×\(count)"
+        KikariaLocalization.addedFocusToast(title: title, count: count)
     }
 
     #if os(macOS)
@@ -9144,7 +9040,7 @@ private struct ReviewAnsweredActionGrid<TopButton: View, BottomButton: View>: Vi
                 .frame(width: leftWidth)
 
                 ReviewActionButton(
-                    title: "下一个",
+                title: "下一个",
                     systemImage: "shuffle",
                     isPrimary: false,
                     tone: .amber,
@@ -9183,7 +9079,7 @@ private struct NormalReviewAnsweredActionGrid: View {
             usesWideAnswerStack: usesWideAnswerStack
         ) {
             ReviewActionButton(
-                title: point.reinforcementCount > 0 ? "再次加入 ×\(point.reinforcementCount)" : "加入重点集锦",
+                title: KikariaLocalization.addFocusButtonTitle(count: point.reinforcementCount),
                 systemImage: "plus.circle.fill",
                 isPrimary: true,
                 isExpanded: isExpanded,
@@ -9272,7 +9168,7 @@ private struct MasteredReviewAnsweredActionGrid: View {
             usesWideAnswerStack: usesWideAnswerStack
         ) {
             ReviewActionButton(
-                title: point.reinforcementCount > 0 ? "再次加入 ×\(point.reinforcementCount)" : "加入重点集锦",
+                title: KikariaLocalization.addFocusButtonTitle(count: point.reinforcementCount),
                 systemImage: "plus.circle.fill",
                 isPrimary: true,
                 isExpanded: isExpanded,
@@ -9457,7 +9353,7 @@ private struct ReviewActionButton: View {
 
                 #if os(macOS)
                 HStack(spacing: 8 * scale) {
-                    Text(title)
+                    Text(KikariaLocalization.string(title))
                         .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
 
                     KikariaMacShortcutHintGroup(
@@ -9467,7 +9363,7 @@ private struct ReviewActionButton: View {
                     )
                 }
                 #else
-                Text(title)
+                Text(KikariaLocalization.string(title))
                     .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
                 #endif
             }
@@ -9475,7 +9371,7 @@ private struct ReviewActionButton: View {
         } else {
             #if os(macOS)
             HStack(spacing: 8 * scale) {
-                Label(title, systemImage: systemImage)
+                Label(KikariaLocalization.string(title), systemImage: systemImage)
                     .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
 
                 KikariaMacShortcutHintGroup(
@@ -9485,7 +9381,7 @@ private struct ReviewActionButton: View {
                 )
             }
             #else
-            Label(title, systemImage: systemImage)
+            Label(KikariaLocalization.string(title), systemImage: systemImage)
                 .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
             #endif
         }
@@ -9511,7 +9407,7 @@ private struct MasteredReviewButton: View {
                     .font(.system(size: (isExpanded ? 18 : 15) * scale, weight: .semibold))
                     .foregroundStyle(isMastered ? KikariaTheme.masteredGreen.opacity(0.9) : .white)
 
-                Text(isMastered ? "已设定为掌握" : "加入已掌握")
+                Text(KikariaLocalization.string(isMastered ? "已设定为掌握" : "加入已掌握"))
                     .font(KikariaTypography.chineseButton(size: (isExpanded ? 18 : 17) * scale))
 
                 #if os(macOS)
@@ -9575,7 +9471,7 @@ private struct ReinforcementCompletionView: View {
                 .shadow(color: Color.green.opacity(0.16), radius: 16, y: 8)
 
             Button(action: returnHome) {
-                Text("返回首页")
+                Text(KikariaLocalization.string("返回首页"))
                     .font(KikariaTypography.chineseButton())
                     .foregroundStyle(.white)
                     .padding(.horizontal, 42)
@@ -9702,7 +9598,7 @@ struct ReinforcementView: View {
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("重点集锦")
+                Text(KikariaLocalization.string("重点集锦"))
                     .font(KikariaTypography.chineseTitle(size: titleFontSize))
                     .foregroundStyle(KikariaTheme.deepText)
 
@@ -9788,7 +9684,7 @@ struct ReinforcementView: View {
                     VStack(spacing: 0) {
                         ScrollView {
                             LazyVStack(alignment: .leading, spacing: titleSpacing) {
-                                Text("重点集锦")
+                                Text(KikariaLocalization.string("重点集锦"))
                                     .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.top, titleTopPadding)
@@ -9864,7 +9760,7 @@ struct ReinforcementView: View {
         }
 
         onRecordActivity(.removedReinforcement, point)
-        showToast("\(point.title) 已移出重点集锦")
+        showToast(KikariaLocalization.removedFocusToast(point.title))
     }
 
     private func showToast(_ message: String) {
@@ -9937,7 +9833,7 @@ struct MasteredView: View {
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("已掌握")
+                Text(KikariaLocalization.string("已掌握"))
                     .font(KikariaTypography.chineseTitle(size: titleFontSize))
                     .foregroundStyle(KikariaTheme.deepText)
 
@@ -10028,7 +9924,7 @@ struct MasteredView: View {
                     VStack(spacing: 0) {
                         ScrollView {
                             LazyVStack(alignment: .leading, spacing: titleSpacing) {
-                                Text("已掌握")
+                                Text(KikariaLocalization.string("已掌握"))
                                     .font(KikariaTypography.chineseTitle(size: titleFontSize))
                                     .foregroundStyle(KikariaTheme.deepText)
                                     .padding(.top, titleTopPadding)
@@ -10110,7 +10006,7 @@ struct MasteredView: View {
         }
 
         onRecordActivity(.removedMastered, point)
-        showToast("\(point.title) 已移出已掌握")
+        showToast(KikariaLocalization.removedMasteredToast(point.title))
     }
 
     private func showToast(_ message: String) {
@@ -10138,7 +10034,7 @@ private struct ReinforcementStartButton: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Text("开始重点背诵")
+            Text(KikariaLocalization.string("开始重点背诵"))
                 .font(KikariaTypography.chineseHeadline(size: 20))
                 .foregroundStyle(KikariaTheme.deepText)
 
@@ -10164,7 +10060,7 @@ private struct MasteredStartButton: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Text("开始复习")
+            Text(KikariaLocalization.string("开始复习"))
                 .font(KikariaTypography.chineseHeadline(size: 20))
                 .foregroundStyle(KikariaTheme.deepText)
 
@@ -10243,7 +10139,7 @@ private struct ReinforcementCard: View {
             KnowledgeListInfoPreview(title: "答案", text: point.content)
 
             Button(action: removeAction) {
-                Label(removeTitle, systemImage: removeSystemImage)
+                Label(KikariaLocalization.string(removeTitle), systemImage: removeSystemImage)
                     .font(KikariaTypography.chineseButton(size: 14))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -10339,7 +10235,7 @@ private struct KnowledgeListInfoPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(KikariaLocalization.string(title))
                 .font(KikariaTypography.chineseHeadline(size: 13, weight: .bold))
                 .foregroundStyle(KikariaTheme.sky)
 
@@ -10361,7 +10257,7 @@ private struct KnowledgeListInfoPreview: View {
             .joined(separator: " ")
 
         guard !collapsedText.isEmpty else {
-            return "暂无内容"
+            return KikariaLocalization.string("暂无内容")
         }
 
         guard collapsedText.count > maxPreviewCharacters else {
@@ -10382,7 +10278,7 @@ private struct FloatingInfoCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: bodySpacing) {
-            Text(title)
+            Text(KikariaLocalization.string(title))
                 .font(KikariaTypography.chineseHeadline(size: isExpanded ? 15 : 14, weight: .bold))
                 .foregroundStyle(KikariaTheme.sky)
 
@@ -10450,13 +10346,13 @@ private struct TodayReviewCountPill: View {
     var isExpanded = false
 
     var body: some View {
-        KikariaTypography.mixedText("该知识点今日复习 \(count) 次", size: isExpanded ? 13 : 12, weight: .semibold)
+        KikariaTypography.mixedText(KikariaLocalization.todayReviewCount(count), size: isExpanded ? 13 : 12, weight: .semibold)
             .foregroundStyle(KikariaTheme.deepText.opacity(0.78))
             .monospacedDigit()
             .padding(.horizontal, isExpanded ? 20 : 18)
             .padding(.vertical, isExpanded ? 9 : 8)
             .liquidGlassCapsule(fillOpacity: 0.42, strokeOpacity: 0.38, shadowOpacity: 0.10, shadowRadius: isExpanded ? 14 : 12, shadowY: isExpanded ? 7 : 6)
-            .accessibilityLabel("该知识点今日复习 \(count) 次")
+            .accessibilityLabel(KikariaLocalization.todayReviewCount(count))
     }
 }
 
@@ -10555,10 +10451,10 @@ private struct SoftEmptyState: View {
                 .font(.system(size: 42))
                 .foregroundStyle(KikariaTheme.sky)
 
-            KikariaTypography.mixedText(title, size: 20, weight: .bold)
+            KikariaTypography.localizedMixedText(title, size: 20, weight: .bold)
                 .foregroundStyle(KikariaTheme.deepText)
 
-            KikariaTypography.mixedText(subtitle, size: 15)
+            KikariaTypography.localizedMixedText(subtitle, size: 15)
                 .foregroundStyle(KikariaTheme.softText)
                 .multilineTextAlignment(.center)
         }

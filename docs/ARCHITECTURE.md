@@ -1,6 +1,17 @@
 # ARCHITECTURE
 
-最后自查日期：2026-05-26
+## 外部依赖优先与禁止功能兜底（Vitemis 强制规则）
+
+本项目继承 `/Users/vita/Vitemis/docs/DEPENDENCY_POLICY.md`。本节是强制约束，不是建议。
+
+- 当用户指定、仓库已经采用，或经许可证、provenance、安全与平台审查可采用的外部依赖提供同等能力时，必须直接集成该依赖的官方 API 或官方扩展点。
+- 不得自行重写同等能力，不得新增替代 adapter、shim、compatibility layer、wrapper、proxy、facade、协议翻译层、parallel backend、preview backend、shadow implementation 或“先兜底、以后再换”的实现。
+- 本地代码只允许保留官方 API 必需的最薄生命周期、类型、权限、配置和 bundle 接线；不得重新实现、解释、扩展或替代依赖的核心能力。
+- exact 依赖因版本、构建、签名、许可证、平台、安全或官方 API 限制无法接入时，必须停止该能力、明确失败、报告 blocker 并请求用户决定；不得静默降级、切换 legacy/另一 provider/backend、使用 cache/mock/简化路径或继续交付不完整替代实现。
+- 现有 fallback、adapter 或重复实现不构成先例，后续不得扩展。安全 fail-closed 与明确要求的旧数据解码/迁移不是功能兜底，但必须保持最窄范围，不能演化成备用产品实现。
+- 只有用户针对 exact 依赖、exact 范围和退出条件作出的新明文决定才能例外。
+
+最后自查日期：2026-07-04
 
 ## 总体架构
 
@@ -21,7 +32,7 @@ SwiftPM 依赖当前只有 `SwiftMath`，用于本地 LaTeX 渲染。它是构�
 - 主 UI/状态层：`ContentView.swift` 持有大部分 `@State`、导航路由、页面组合、设置、Preset 管理、复习流程、通知调度和持久化。
 - 数据模型层：`KnowledgePoint.swift`、`StudyTracking.swift` 定义知识点、预设、学习活动、Widget snapshot 等 Codable 数据。
 - 数学渲染层：`KikariaLatexParser.swift`、`LatexToken.swift`、`KikariaMathText.swift`、`KikariaMathFormulaView.swift` 负责识别 `$...$` / `$$...$$` 并用 SwiftMath 渲染，失败时 fallback。
-- 自适应 UI 支撑层：`KikariaAdaptiveLayout.swift`、`KikariaTypography.swift` 提供尺寸指标和字体混排。
+- 自适应 UI 支撑层：`KikariaAdaptiveLayout.swift`、`KikariaTypography.swift` 提供尺寸指标、字体混排和 App/macOS 侧轻量本地化文案映射。
 - Widget 层：`KikariaWidget.swift` 复制 Widget snapshot 数据结构并独立渲染三种 Widget family。
 - macOS 包装层：`KikariaMacRootView.swift` 复用 `ContentView()`，只额外处理窗口 chrome。
 
@@ -105,6 +116,14 @@ SwiftPM 依赖当前只有 `SwiftMath`，用于本地 LaTeX 渲染。它是构�
 2. 代码块和行内反引号内容不会被当作数学公式。
 3. `KikariaMathFormulaView` 用 SwiftMath 渲染；渲染失败时展示可读 fallback 或原始源码。
 4. Markdown 导入、编辑和导出保留原始 LaTeX 源码。
+
+### v3.1 本地化文案
+
+1. App/macOS 侧通过 `KikariaLocalization` 判断 `Locale.preferredLanguages.first`：首选语言为中文时保留中文，其它语言使用英文短文案。
+2. `KikariaLocalization` 位于 `KikariaTypography.swift`，只作为展示层 helper 使用；默认 `mixedText` 不自动翻译输入，避免误翻用户知识点、标签、答案或用户自定义 preset 名称。
+3. 内置 preset 的英文名通过展示层映射生成，`KnowledgePreset.name`、`category`、`markdownText` 和用户存档不做迁移或重写。
+4. Widget Extension target 不编译 App 侧 helper，因此 `KikariaWidget.swift` 内有独立 `WidgetLocalization`。新增 Widget 文案时必须同步维护。
+5. 当前没有引入 `.strings`、string catalog、新三方库或运行时网络依赖。
 
 ## UI 与业务逻辑分层
 

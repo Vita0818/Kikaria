@@ -2,6 +2,94 @@ import SwiftUI
 import UIKit
 import WidgetKit
 
+private enum WidgetLocalization {
+    static var usesEnglish: Bool {
+        guard let preferredLanguage = Locale.preferredLanguages.first else {
+            return false
+        }
+
+        let locale = Locale(identifier: preferredLanguage)
+        let languageCode = locale.language.languageCode?.identifier ?? preferredLanguage
+        return !languageCode.lowercased().hasPrefix("zh")
+    }
+
+    static func string(_ source: String) -> String {
+        guard usesEnglish else {
+            return source
+        }
+
+        return englishStrings[source] ?? source
+    }
+
+    static func dateText(for date: Date) -> String {
+        if usesEnglish {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = "MMM"
+            let month = formatter.string(from: date)
+            let day = Calendar.current.component(.day, from: date)
+            return "\(month) \(day)\(ordinalSuffix(for: day))"
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_Hans_CN")
+        formatter.dateFormat = "M月d日"
+        return formatter.string(from: date)
+    }
+
+    static var placeholderPresetName: String {
+        usesEnglish ? "Calculus" : "高等数学知识点"
+    }
+
+    static var placeholderPoints: [WidgetKnowledgePointPreview] {
+        if usesEnglish {
+            return [
+                WidgetKnowledgePointPreview(title: "Limit Sign Preservation", tag: "Limits"),
+                WidgetKnowledgePointPreview(title: "Rolle's Theorem", tag: "Mean Value"),
+                WidgetKnowledgePointPreview(title: "Bayes' Theorem", tag: "Probability"),
+                WidgetKnowledgePointPreview(title: "Linear Independence", tag: "Linear Algebra"),
+                WidgetKnowledgePointPreview(title: "Derivative Product Rule", tag: "Calculus")
+            ]
+        }
+
+        return [
+            WidgetKnowledgePointPreview(title: "极限的保号性", tag: "极限"),
+            WidgetKnowledgePointPreview(title: "罗尔定理", tag: "中值定理"),
+            WidgetKnowledgePointPreview(title: "Bayes' Theorem", tag: "Probability"),
+            WidgetKnowledgePointPreview(title: "Linear Independence", tag: "Linear Algebra"),
+            WidgetKnowledgePointPreview(title: "Derivative Product Rule", tag: "Calculus")
+        ]
+    }
+
+    static func countdownLabel() -> String {
+        usesEnglish ? "Left" : "剩余"
+    }
+
+    private static func ordinalSuffix(for day: Int) -> String {
+        let lastTwoDigits = day % 100
+        if lastTwoDigits == 11 || lastTwoDigits == 12 || lastTwoDigits == 13 {
+            return "th"
+        }
+
+        switch day % 10 {
+        case 1:
+            return "st"
+        case 2:
+            return "nd"
+        case 3:
+            return "rd"
+        default:
+            return "th"
+        }
+    }
+
+    private static let englishStrings: [String: String] = [
+        "暂无知识点": "No points",
+        "Kikaria 学习概览": "Kikaria Progress",
+        "查看当前预设的今日完成和知识点预览。": "See today's progress and point previews."
+    ]
+}
+
 private enum WidgetTheme {
     private static func adaptive(
         light: (CGFloat, CGFloat, CGFloat),
@@ -84,25 +172,19 @@ private struct WidgetSnapshot: Codable {
     }
 
     static let placeholder = WidgetSnapshot(
-        presetName: "高等数学知识点",
+        presetName: WidgetLocalization.placeholderPresetName,
         todayMasteredCount: 0,
         masteredCount: 0,
         dailyGoal: 20,
         countdownDays: nil,
         todayReviewCount: 0,
         todayHintCount: 0,
-        randomKnowledgePoints: [
-            WidgetKnowledgePointPreview(title: "极限的保号性", tag: "极限"),
-            WidgetKnowledgePointPreview(title: "罗尔定理", tag: "中值定理"),
-            WidgetKnowledgePointPreview(title: "Bayes' Theorem", tag: "Probability"),
-            WidgetKnowledgePointPreview(title: "Linear Independence", tag: "Linear Algebra"),
-            WidgetKnowledgePointPreview(title: "Derivative Product Rule", tag: "Calculus")
-        ],
+        randomKnowledgePoints: WidgetLocalization.placeholderPoints,
         lastUpdated: Date()
     )
 
     static let preview = WidgetSnapshot(
-        presetName: "高等数学知识点",
+        presetName: WidgetLocalization.placeholderPresetName,
         todayMasteredCount: 3,
         masteredCount: 42,
         dailyGoal: 20,
@@ -264,12 +346,7 @@ private struct KikariaWidgetView: View {
     }
 
     private var widgetDateText: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "MMM"
-        let month = formatter.string(from: entry.date)
-        let day = Calendar.current.component(.day, from: entry.date)
-        return "\(month) \(day)\(ordinalSuffix(for: day))"
+        WidgetLocalization.dateText(for: entry.date)
     }
 
     private var previewPoints: [WidgetKnowledgePointPreview] {
@@ -362,7 +439,7 @@ private struct KikariaWidgetView: View {
                 VStack(spacing: 10) {
                     if previewPoints.isEmpty {
                         WidgetKnowledgePreviewCard(
-                            title: "暂无知识点",
+                            title: WidgetLocalization.string("暂无知识点"),
                             fill: widgetCardFill
                         )
                     } else {
@@ -400,7 +477,7 @@ private struct KikariaWidgetView: View {
                 VStack(spacing: metrics.capsuleSpacing) {
                     if visiblePoints.isEmpty {
                         LargeRandomPointCapsule(
-                            title: "暂无知识点",
+                            title: WidgetLocalization.string("暂无知识点"),
                             fill: largeWidgetCardFill,
                             width: metrics.contentWidth,
                             height: metrics.capsuleHeight
@@ -515,30 +592,13 @@ private struct KikariaWidgetView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.76)
 
-                Text("Left")
+                Text(WidgetLocalization.countdownLabel())
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(widgetSecondaryText)
             }
         }
     }
 
-    private func ordinalSuffix(for day: Int) -> String {
-        let lastTwoDigits = day % 100
-        if lastTwoDigits == 11 || lastTwoDigits == 12 || lastTwoDigits == 13 {
-            return "th"
-        }
-
-        switch day % 10 {
-        case 1:
-            return "st"
-        case 2:
-            return "nd"
-        case 3:
-            return "rd"
-        default:
-            return "th"
-        }
-    }
 }
 
 private struct LargeWidgetListMetrics {
@@ -648,8 +708,8 @@ struct KikariaProgressWidget: Widget {
         StaticConfiguration(kind: kind, provider: KikariaWidgetProvider()) { entry in
             KikariaWidgetView(entry: entry)
         }
-        .configurationDisplayName("Kikaria 学习概览")
-        .description("查看当前预设的今日完成和知识点预览。")
+        .configurationDisplayName(WidgetLocalization.string("Kikaria 学习概览"))
+        .description(WidgetLocalization.string("查看当前预设的今日完成和知识点预览。"))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }

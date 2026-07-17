@@ -1,8 +1,25 @@
 # DO_NOT_BREAK
 
-最后自查日期：2026-05-26
+## 外部依赖优先与禁止功能兜底（Vitemis 强制规则）
+
+本项目继承 `/Users/vita/Vitemis/docs/DEPENDENCY_POLICY.md`。本节是强制约束，不是建议。
+
+- 当用户指定、仓库已经采用，或经许可证、provenance、安全与平台审查可采用的外部依赖提供同等能力时，必须直接集成该依赖的官方 API 或官方扩展点。
+- 不得自行重写同等能力，不得新增替代 adapter、shim、compatibility layer、wrapper、proxy、facade、协议翻译层、parallel backend、preview backend、shadow implementation 或“先兜底、以后再换”的实现。
+- 本地代码只允许保留官方 API 必需的最薄生命周期、类型、权限、配置和 bundle 接线；不得重新实现、解释、扩展或替代依赖的核心能力。
+- exact 依赖因版本、构建、签名、许可证、平台、安全或官方 API 限制无法接入时，必须停止该能力、明确失败、报告 blocker 并请求用户决定；不得静默降级、切换 legacy/另一 provider/backend、使用 cache/mock/简化路径或继续交付不完整替代实现。
+- 现有 fallback、adapter 或重复实现不构成先例，后续不得扩展。安全 fail-closed 与明确要求的旧数据解码/迁移不是功能兜底，但必须保持最窄范围，不能演化成备用产品实现。
+- 只有用户针对 exact 依赖、exact 范围和退出条件作出的新明文决定才能例外。
+
+最后自查日期：2026-07-04
 
 本文件记录修改 Kikaria 时不得破坏的工程约束。未来 Codex 修改前必须先读本文件，再读对应源码。
+
+## Git 禁区
+
+- 未经用户明文要求具体 Git 操作，不 add、不 commit、不 push、不创建 PR；编辑、整理、修复、验证或准备工作都不等于提交请求。
+- 若用户要求提交，只提交当前 Git root 中与本任务相关的文件；不得递归进入、暂存、提交或推送子仓库、submodule、nested Git repo 或依赖 checkout。
+- 不执行破坏性 Git 操作，不强制 push，不删除用户未提交文件。
 
 ## 不得破坏的用户数据格式
 
@@ -63,6 +80,10 @@
 - Widget 支持 families：`.systemSmall`、`.systemMedium`、`.systemLarge`。
 - 通知 identifier：`kikaria.studyProgressWarning.<presetID>`。
 - LaTeX 只识别 `$...$` 和 `$$...$$`，代码块/反引号内容不应被当作公式。
+- v3.1 本地化只允许改展示层字符串：
+  - 不要把 `KnowledgePreset.name`、`category`、`markdownText`、`KnowledgePoint.title/tags/hint/content` 或用户存档批量翻译或迁移。
+  - 不要让 `KikariaTypography.mixedText` 默认自动翻译任意输入；用户知识点内容会经过该渲染入口。
+  - Widget target 有独立 `WidgetLocalization`，新增 Widget 文案时必须同步维护。
 
 ## 不得绕过的安全机制
 
